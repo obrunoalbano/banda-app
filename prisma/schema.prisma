@@ -1,0 +1,96 @@
+// https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../app/generated/prisma"
+}
+
+datasource db {
+  provider = "sqlite"
+}
+
+model Band {
+  id               String   @id @default(cuid())
+  name             String
+  responsible      String
+  phone            String
+  email            String   @unique
+  passwordHash     String
+  leadIngestToken  String?  @unique
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+  venues           Venue[]
+  shows            Show[]
+  leads            Lead[]
+}
+
+enum VenueSendStatus {
+  NAO_ENVIADO
+  ENVIADO
+  FINALIZADO
+}
+
+enum ShowPaymentStatus {
+  PAGO
+  AGUARDANDO_PAGAMENTO
+}
+
+model Venue {
+  id          String            @id @default(cuid())
+  bandId      String
+  band        Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name        String
+  responsible String
+  phone       String
+  email       String
+  city        String
+  state       String
+  valorCache  Float?
+  instagram   String?
+  sendStatus  VenueSendStatus   @default(NAO_ENVIADO)
+  createdAt   DateTime          @default(now())
+  updatedAt   DateTime          @updatedAt
+  shows       Show[]
+
+  @@index([bandId])
+}
+
+model Show {
+  id              String             @id @default(cuid())
+  bandId          String
+  band            Band               @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  venueId         String?
+  venue           Venue?             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  privateEventDetails String?
+  privateCity         String?
+  privateState        String?
+  privateValorCache   Float?
+  date            DateTime
+  time            String
+  paymentStatus   ShowPaymentStatus  @default(AGUARDANDO_PAGAMENTO)
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+
+  @@index([bandId])
+  @@index([venueId])
+  @@index([date])
+}
+
+model Lead {
+  id          String   @id @default(cuid())
+  bandId      String
+  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name        String
+  email       String
+  whatsapp    String?
+  eventDate   String?
+  city        String?
+  eventType   String?
+  eventDescription String?
+  metadata    Json?
+  source      String?
+  createdAt   DateTime @default(now())
+
+  @@index([bandId])
+  @@index([createdAt])
+}
