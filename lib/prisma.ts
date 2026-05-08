@@ -4,18 +4,43 @@ import { PrismaClient } from "@/app/generated/prisma/client";
 
 const globalForPrisma = globalThis as unknown as { prisma: PrismaClient | undefined };
 
+function parseBoolean(value: string | undefined): boolean | undefined {
+  const raw = value?.trim().toLowerCase();
+  if (!raw) return undefined;
+  if (raw === "false" || raw === "0" || raw === "no") return false;
+  if (raw === "true" || raw === "1" || raw === "yes") return true;
+  return undefined;
+}
+
 /**
- * TLS com cadeia não confiável (proxy corporativo, etc.).
- * Na Vercel, defina `DATABASE_SSL_REJECT_UNAUTHORIZED=false` se aparecer P1011 self-signed chain.
+ * Resolve a política TLS com fallback por envs comuns em plataformas cloud.
  */
-function pgSslFromEnv(): { rejectUnauthorized: boolean } | undefined {
-  const raw = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED?.trim().toLowerCase();
-  if (raw === "false" || raw === "0") {
-    return { rejectUnauthorized: false };
+function pgSslFromEnvOrUrl(connectionString: string): { rejectUnauthorized: boolean } | undefined {
+  const explicit = parseBoolean(process.env.DATABASE_SSL_REJECT_UNAUTHORIZED);
+  if (explicit !== undefined) {
+    return { rejectUnauthorized: explicit };
   }
-  if (raw === "true" || raw === "1") {
+
+  const tlsRejectUnauthorized = parseBoolean(process.env.NODE_TLS_REJECT_UNAUTHORIZED);
+  if (tlsRejectUnauthorized !== undefined) {
+    return { rejectUnauthorized: tlsRejectUnauthorized };
+  }
+
+  const pgSslMode = process.env.PGSSLMODE?.trim().toLowerCase();
+  if (pgSslMode === "disable") return undefined;
+  if (pgSslMode === "no-verify") return { rejectUnauthorized: false };
+  if (pgSslMode === "require" || pgSslMode === "verify-ca" || pgSslMode === "verify-full") {
     return { rejectUnauthorized: true };
   }
+
+  try {
+    const u = new URL(connectionString);
+    const sslmode = u.searchParams.get("sslmode")?.trim().toLowerCase();
+    if (sslmode === "no-verify") return { rejectUnauthorized: false };
+  } catch {
+    // Ignora URL inválida e mantém comportamento padrão.
+  }
+
   return undefined;
 }
 
@@ -36,7 +61,7 @@ function createClient() {
   if (!connectionString) {
     throw new Error("DATABASE_URL não definida");
   }
-  const ssl = pgSslFromEnv();
+  const ssl = pgSslFromEnvOrUrl(connectionString);
   if (ssl?.rejectUnauthorized === false) {
     connectionString = sanitizeConnectionStringForInsecureTls(connectionString);
   }
