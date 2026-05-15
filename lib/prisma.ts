@@ -44,12 +44,22 @@ function pgSslFromEnvOrUrl(connectionString: string): { rejectUnauthorized: bool
   return undefined;
 }
 
+/**
+ * Remove parâmetros SSL da URL e fixa `sslmode=no-verify`.
+ *
+ * O `pg` faz merge `Object.assign({}, poolConfig, parse(connectionString))`.
+ * `ssl=true` ou `sslmode=require` na URL sobrescrevem `poolConfig.ssl` e voltam
+ * a validar o certificado (erro "self-signed certificate in certificate chain").
+ */
 function sanitizeConnectionStringForInsecureTls(connectionString: string): string {
   try {
     const u = new URL(connectionString);
     u.searchParams.delete("sslmode");
     u.searchParams.delete("ssl");
-    u.searchParams.set("ssl", "true");
+    u.searchParams.delete("sslcert");
+    u.searchParams.delete("sslkey");
+    u.searchParams.delete("sslrootcert");
+    u.searchParams.set("sslmode", "no-verify");
     return u.toString();
   } catch {
     return connectionString;
