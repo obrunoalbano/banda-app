@@ -1,15 +1,32 @@
 "use client";
 
 import { signIn } from "next-auth/react";
-import { useRouter, useSearchParams } from "next/navigation";
+import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import Link from "next/link";
 
+/** Evita open redirect; só paths relativos internos. */
+function safeCallbackUrl(raw: string | null): string {
+  const fallback = "/casas";
+  if (!raw) return fallback;
+  const t = raw.trim();
+  if (!t.startsWith("/") || t.startsWith("//")) return fallback;
+  return t;
+}
+
+function messageForAuthError(code: string | null): string | null {
+  if (!code) return null;
+  if (code === "CredentialsSignin" || code === "CallbackRouteError") {
+    return "Email ou senha incorretos.";
+  }
+  return "Não foi possível entrar. Tente novamente.";
+}
+
 export function LoginForm() {
-  const router = useRouter();
   const searchParams = useSearchParams();
-  const callbackUrl = searchParams.get("callbackUrl") || "/casas";
+  const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const registered = searchParams.get("registered") === "1";
+  const urlAuthError = messageForAuthError(searchParams.get("error"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -19,18 +36,20 @@ export function LoginForm() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    const res = await signIn("credentials", {
-      email: email.trim().toLowerCase(),
-      password,
-      redirect: false,
-    });
-    setLoading(false);
-    if (res?.error) {
-      setError("Email ou senha incorretos.");
-      return;
+    try {
+      // `redirect: false` quebra em produção quando `data.url` vem relativo:
+      // o next-auth faz `new URL(data.url)` e lança antes de devolver o resultado.
+      await signIn("credentials", {
+        email: email.trim().toLowerCase(),
+        password,
+        callbackUrl,
+        redirect: true,
+      });
+    } catch {
+      setError("Não foi possível entrar. Tente novamente.");
+    } finally {
+      setLoading(false);
     }
-    router.push(callbackUrl);
-    router.refresh();
   }
 
   return (
@@ -40,9 +59,9 @@ export function LoginForm() {
           Cadastro concluído. Faça login com seu email e senha.
         </p>
       )}
-      {error && (
+      {(error ?? urlAuthError) && (
         <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
-          {error}
+          {error ?? urlAuthError}
         </p>
       )}
       <div className="flex flex-col gap-1">
