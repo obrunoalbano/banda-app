@@ -9,8 +9,14 @@ export async function middleware(request: NextRequest) {
     console.error("AUTH_SECRET não definido");
   }
 
+  // Em HTTPS (ex.: Vercel), o cookie de sessão usa o prefixo `__Secure-`.
+  // O `getToken` assume `secureCookie: false` por padrão e procura o nome errado.
+  const forwardedProto = request.headers.get("x-forwarded-proto");
+  const secureCookie =
+    forwardedProto === "https" || request.nextUrl.protocol === "https:";
+
   const token = secret
-    ? await getToken({ req: request, secret })
+    ? await getToken({ req: request, secret, secureCookie })
     : null;
 
   if (path.startsWith("/api/")) {
