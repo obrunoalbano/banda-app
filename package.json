@@ -18,6 +18,7 @@
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
     "@prisma/client": "^7.5.0",
+    "@vercel/analytics": "2.0.1",
     "bcryptjs": "^3.0.3",
     "next": "16.2.1",
     "next-auth": "^5.0.0-beta.30",
@@ -29,7 +30,7 @@
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
     "@types/bcryptjs": "^2.4.6",
-    "@types/node": "^20",
+    "@types/node": "24.13.6",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "dotenv": "^17.3.1",
@@ -38,7 +39,8 @@
     "prisma": "^7.5.0",
     "tailwindcss": "^4",
     "typescript": "^5",
-    "vitest": "^3.2.7"
+    "vite": "8.3.0",
+    "vitest": "5.0.1"
   },
   "engines": {
     "node": ">=20.9"
