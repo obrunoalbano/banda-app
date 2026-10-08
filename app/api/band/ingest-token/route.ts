@@ -1,20 +1,14 @@
-import { randomBytes } from "node:crypto";
 import { NextResponse } from "next/server";
+import { withBand } from "@/lib/api";
+import { generateLeadIngestToken } from "@/lib/lead-ingest-auth";
 import { prisma } from "@/lib/prisma";
-import { requireBandSession } from "@/lib/session";
 
-/** Gera ou regenera o token de ingestão de leads (único por banda). */
-export async function POST() {
-  const ctx = await requireBandSession();
-  if (!ctx) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const token = randomBytes(32).toString("hex");
+/** Gera ou regenera o token de ingestão de leads. Só o hash é persistido. */
+export const POST = withBand(async (_request, { bandId }) => {
+  const { token, hash } = generateLeadIngestToken();
   await prisma.band.update({
-    where: { id: ctx.bandId },
-    data: { leadIngestToken: token },
+    where: { id: bandId },
+    data: { leadIngestTokenHash: hash },
   });
-
   return NextResponse.json({ token });
-}
+});

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   title: "Agenda da banda",
-  description: "Gerencie cadastro e casas de show",
+  description: "Gerencie casas de show, agenda de shows e contatos da sua banda",
 };
 
 export default function RootLayout({

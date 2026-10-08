@@ -16,7 +16,8 @@ model Band {
   phone            String
   email            String   @unique
   passwordHash     String
-  leadIngestToken  String?  @unique
+  /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
+  leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
   venues           Venue[]
@@ -45,14 +46,16 @@ model Venue {
   email       String
   city        String
   state       String
-  valorCache  Float?
+  /// Cachê de referência da casa, em centavos (R$ 1.500,00 = 150000).
+  valorCacheCents Int?
   instagram   String?
   sendStatus  VenueSendStatus   @default(NAO_ENVIADO)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   shows       Show[]
 
-  @@index([bandId])
+  @@index([bandId, updatedAt])
+  @@index([bandId, city])
 }
 
 model Show {
@@ -60,20 +63,22 @@ model Show {
   bandId          String
   band            Band               @relation(fields: [bandId], references: [id], onDelete: Cascade)
   venueId         String?
-  venue           Venue?             @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  /// NoAction: uma casa com shows não pode ser apagada (preserva o histórico).
+  /// Não usar Restrict: bloquearia o cascade Band → Venue/Show na mesma instrução.
+  venue           Venue?             @relation(fields: [venueId], references: [id], onDelete: NoAction)
   privateEventDetails String?
   privateCity         String?
   privateState        String?
-  privateValorCache   Float?
+  /// Cachê do show em centavos. Snapshot: não muda se o cachê da casa mudar depois.
+  cacheCents          Int?
   date            DateTime
   time            String
   paymentStatus   ShowPaymentStatus  @default(AGUARDANDO_PAGAMENTO)
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
-  @@index([bandId])
+  @@index([bandId, date])
   @@index([venueId])
-  @@index([date])
 }
 
 model Lead {
@@ -91,6 +96,5 @@ model Lead {
   source      String?
   createdAt   DateTime @default(now())
 
-  @@index([bandId])
-  @@index([createdAt])
+  @@index([bandId, createdAt])
 }

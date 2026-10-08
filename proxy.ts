@@ -2,7 +2,11 @@ import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 import { getToken } from "next-auth/jwt";
 
-export async function middleware(request: NextRequest) {
+/**
+ * Proxy (antigo middleware no Next ≤15). Protege tudo por padrão:
+ * páginas sem sessão → /login; API sem sessão → 401. Rotas públicas são listadas abaixo.
+ */
+export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
   const secret = process.env.AUTH_SECRET;
   if (!secret) {

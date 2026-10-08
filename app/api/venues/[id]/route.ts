@@ -1,101 +1,40 @@
 import { NextResponse } from "next/server";
+import { jsonError, parseBody, withBand } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { requireBandSession } from "@/lib/session";
 import { venueUpdateSchema } from "@/lib/validations";
 
-type RouteContext = { params: Promise<{ id: string }> };
+type Params = { id: string };
 
-export async function GET(_request: Request, context: RouteContext) {
-  const ctx = await requireBandSession();
-  if (!ctx) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
+export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }) => {
+  const parsed = await parseBody(request, venueUpdateSchema);
+  if (!parsed.ok) return parsed.response;
 
-  const { id } = await context.params;
-  const venue = await prisma.venue.findFirst({
-    where: { id, bandId: ctx.bandId },
+  // updateMany com bandId: checa posse e atualiza em uma query.
+  const { count } = await prisma.venue.updateMany({
+    where: { id, bandId },
+    data: parsed.data,
   });
+  if (count === 0) return jsonError(404, "Casa não encontrada");
 
-  if (!venue) {
-    return NextResponse.json({ error: "Casa não encontrada" }, { status: 404 });
-  }
+  return NextResponse.json({ id });
+});
 
-  return NextResponse.json(venue);
-}
-
-export async function PATCH(request: Request, context: RouteContext) {
-  const ctx = await requireBandSession();
-  if (!ctx) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const { id } = await context.params;
+export const DELETE = withBand<Params>(async (_request, { bandId, params: { id } }) => {
   const existing = await prisma.venue.findFirst({
-    where: { id, bandId: ctx.bandId },
+    where: { id, bandId },
+    select: { _count: { select: { shows: true } } },
   });
+  if (!existing) return jsonError(404, "Casa não encontrada");
 
-  if (!existing) {
-    return NextResponse.json({ error: "Casa não encontrada" }, { status: 404 });
-  }
-
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
-  }
-
-  const parsed = venueUpdateSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Dados inválidos", details: parsed.error.flatten() },
-      { status: 400 },
+  // Preserva o histórico: a FK Show.venueId (NO ACTION) também barraria no banco.
+  const showCount = existing._count.shows;
+  if (showCount > 0) {
+    return jsonError(
+      409,
+      `Esta casa tem ${showCount} show(s) vinculado(s). Remova ou altere esses shows antes de remover a casa.`,
     );
-  }
-
-  const data = parsed.data;
-  const instagramNorm =
-    data.instagram === undefined
-      ? undefined
-      : data.instagram === null || data.instagram.trim() === ""
-        ? null
-        : data.instagram.trim();
-
-  const venue = await prisma.venue.update({
-    where: { id },
-    data: {
-      ...(data.name !== undefined && { name: data.name.trim() }),
-      ...(data.responsible !== undefined && { responsible: data.responsible.trim() }),
-      ...(data.phone !== undefined && { phone: data.phone.trim() }),
-      ...(data.email !== undefined && { email: data.email.trim().toLowerCase() }),
-      ...(data.city !== undefined && { city: data.city.trim() }),
-      ...(data.state !== undefined && { state: data.state.trim() }),
-      ...(data.valorCache !== undefined && {
-        valorCache: data.valorCache === null ? null : data.valorCache,
-      }),
-      ...(data.instagram !== undefined && { instagram: instagramNorm }),
-      ...(data.sendStatus !== undefined && { sendStatus: data.sendStatus }),
-    },
-  });
-
-  return NextResponse.json(venue);
-}
-
-export async function DELETE(_request: Request, context: RouteContext) {
-  const ctx = await requireBandSession();
-  if (!ctx) {
-    return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
-  }
-
-  const { id } = await context.params;
-  const existing = await prisma.venue.findFirst({
-    where: { id, bandId: ctx.bandId },
-  });
-
-  if (!existing) {
-    return NextResponse.json({ error: "Casa não encontrada" }, { status: 404 });
   }
 
   await prisma.venue.delete({ where: { id } });
   return NextResponse.json({ ok: true });
-}
+});

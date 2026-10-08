@@ -1,19 +1,19 @@
-import { auth } from "@/auth";
 import { ShowForm } from "@/components/ShowForm";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import Link from "next/link";
-import { notFound, redirect } from "next/navigation";
+import { requireBandId } from "@/lib/session";
+import { toDateOnlyString } from "@/lib/shows";
+import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function EditarShowPage({ params }: PageProps) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
-
+  const bandId = await requireBandId();
   const { id } = await params;
   const [show, venues] = await Promise.all([
     prisma.show.findFirst({
-      where: { id, bandId: session.user.id },
+      where: { id, bandId },
       select: {
         id: true,
         venueId: true,
@@ -22,33 +22,22 @@ export default async function EditarShowPage({ params }: PageProps) {
         privateEventDetails: true,
         privateCity: true,
         privateState: true,
-        privateValorCache: true,
+        cacheCents: true,
         paymentStatus: true,
       },
     }),
     prisma.venue.findMany({
-      where: { bandId: session.user.id },
-      select: { id: true, name: true, city: true, state: true },
+      where: { bandId },
+      select: { id: true, name: true, city: true, state: true, valorCacheCents: true },
       orderBy: { name: "asc" },
     }),
   ]);
-
   if (!show) notFound();
 
-  const showDate = show.date.toISOString().slice(0, 10);
-
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <div className="mb-8">
-        <Link
-          href={`/shows/${show.id}`}
-          className="text-sm text-zinc-500 hover:text-zinc-800 dark:hover:text-zinc-200"
-        >
-          ← Voltar aos detalhes
-        </Link>
-        <h1 className="mt-4 text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Alterar show</h1>
-      </div>
-      <ShowForm mode="edit" venues={venues} show={{ ...show, date: showDate }} />
+    <div className={containerClass}>
+      <PageHeader title="Alterar show" back={{ href: `/shows/${show.id}`, label: "Voltar aos detalhes" }} />
+      <ShowForm mode="edit" venues={venues} show={{ ...show, date: toDateOnlyString(show.date) }} />
     </div>
   );
 }

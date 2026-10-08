@@ -80,7 +80,9 @@ function createClient() {
   const pool = new Pool({
     connectionString,
     ...(ssl ? { ssl } : {}),
-    max: Number(process.env.DATABASE_POOL_MAX ?? 10),
+    // Em serverless cada instância abre o próprio pool: manter baixo e usar o pooler do
+    // provedor (PgBouncer/Supabase pooler) na DATABASE_URL. Em servidor long-running, 10.
+    max: Number(process.env.DATABASE_POOL_MAX ?? (process.env.VERCEL ? 3 : 10)),
     idleTimeoutMillis: Number(process.env.DATABASE_POOL_IDLE_MS ?? 10_000),
     connectionTimeoutMillis: Number(process.env.DATABASE_POOL_CONN_TIMEOUT_MS ?? 15_000),
   });
