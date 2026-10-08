@@ -34,8 +34,11 @@ yarn-error.log*
 .env*
 !.env.example
 
-# sqlite local db
-/dev.db
+# sqlite local db (qualquer caminho — evita versionar bancos criados por .env malformado)
+*.db
+*.db-journal
+*.sqlite
+*.sqlite3
 
 # vercel
 .vercel
