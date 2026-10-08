@@ -1,9 +1,9 @@
-import { auth } from "@/auth";
+import { getSession } from "@/lib/session";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 
 export default async function Home() {
-  const session = await auth();
+  const session = await getSession();
   if (session) redirect("/casas");
 
   return (
@@ -13,8 +13,8 @@ export default async function Home() {
           Agenda da banda
         </h1>
         <p className="mt-3 text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Cadastre sua banda e organize o contato com casas de show: status de envio, dados e
-          histórico em um só lugar.
+          Organize casas de show, agenda de shows com cachê e pagamento, e os contatos que chegam
+          pelo seu site, tudo em um só lugar.
         </p>
       </div>
       <div className="flex flex-wrap items-center justify-center gap-4">

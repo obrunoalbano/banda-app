@@ -1,5 +1,7 @@
 "use client";
 
+import { Alert } from "@/components/ui/Alert";
+import { buttonPrimaryClass, buttonSecondaryClass } from "@/components/ui/styles";
 import { useState } from "react";
 
 type LeadsIntegrationPanelProps = {
@@ -21,9 +23,28 @@ export function LeadsIntegrationPanel({
   const [error, setError] = useState<string | null>(null);
   const [hasToken, setHasToken] = useState(initialHasToken);
   const [token, setToken] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+
+  async function copyToken() {
+    if (!token) return;
+    try {
+      await navigator.clipboard.writeText(token);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch {
+      // Sem permissão de clipboard: o token continua visível para copiar manualmente.
+    }
+  }
 
   async function generateToken() {
+    if (
+      hasToken &&
+      !window.confirm("Regenerar o token? O token atual para de funcionar imediatamente nos sites integrados.")
+    ) {
+      return;
+    }
     setError(null);
+    setCopied(false);
     setLoading(true);
     const res = await fetch("/api/band/ingest-token", { method: "POST" });
     const data = await res.json().catch(() => ({}));
@@ -78,7 +99,7 @@ export function LeadsIntegrationPanel({
             type="button"
             disabled={loading}
             onClick={() => void generateToken()}
-            className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+            className={buttonPrimaryClass}
           >
             {loading ? "Gerando…" : hasToken ? "Regenerar token" : "Gerar token"}
           </button>
@@ -89,9 +110,7 @@ export function LeadsIntegrationPanel({
           )}
         </div>
 
-        {error && (
-          <p className="text-sm text-red-700 dark:text-red-300">{error}</p>
-        )}
+        {error && <Alert>{error}</Alert>}
 
         {token && (
           <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/60 dark:bg-amber-950/40">
@@ -99,6 +118,9 @@ export function LeadsIntegrationPanel({
               Copie o token agora — ele não será mostrado de novo nesta tela.
             </p>
             <pre className={`mt-2 overflow-x-auto ${inputMonoClass}`}>{token}</pre>
+            <button type="button" onClick={() => void copyToken()} className={`mt-2 ${buttonSecondaryClass}`}>
+              {copied ? "Copiado ✓" : "Copiar token"}
+            </button>
           </div>
         )}
       </div>

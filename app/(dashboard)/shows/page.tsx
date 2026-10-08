@@ -1,72 +1,70 @@
-import { auth } from "@/auth";
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { ShowsFilterForm } from "@/components/ShowsFilterForm";
+import { EmptyState } from "@/components/ui/EmptyState";
+import { PageHeader } from "@/components/ui/PageHeader";
+import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
+import { buttonPrimaryClass, containerClass, linkClass } from "@/components/ui/styles";
+import { Table, Td, Tr } from "@/components/ui/Table";
+import { formatDateOnly, monthLabel } from "@/lib/format";
+import { formatCents } from "@/lib/money";
+import { prisma } from "@/lib/prisma";
+import { requireBandId } from "@/lib/session";
 import {
-  aggregateShowCalendar,
-  capitalize,
   currentYearMonthUtc,
+  groupYearMonths,
   monthBoundsUtc,
-  monthNamePtBr,
   padMonth,
   yearBoundsUtc,
+  type YearMonth,
 } from "@/lib/show-calendar-aggregates";
-import { prisma } from "@/lib/prisma";
 import Link from "next/link";
-import { redirect } from "next/navigation";
 
 type PageProps = {
-  searchParams: Promise<{ casaId?: string; ano?: string; mes?: string }>;
+  searchParams: Promise<{ casaId?: string; ano?: string; mes?: string; pagina?: string }>;
 };
-
-function formatBrl(value: number | null | undefined): string {
-  if (value == null || !Number.isFinite(value)) return "—";
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
 
 function parseMesQuery(raw: string | undefined): number | null {
   if (typeof raw !== "string") return null;
-  const t = raw.trim();
-  if (t === "") return null;
-  const n = Number.parseInt(t, 10);
+  const n = Number.parseInt(raw.trim(), 10);
   if (!Number.isFinite(n) || n < 1 || n > 12) return null;
   return n;
 }
 
-export default async function ShowsPage({ searchParams }: PageProps) {
-  const session = await auth();
-  if (!session?.user?.id) redirect("/login");
+/** Pares (ano, mês) distintos — agregado no banco em vez de trazer todas as datas. */
+function fetchShowYearMonths(bandId: string) {
+  return prisma.$queryRaw<YearMonth[]>`
+    SELECT DISTINCT
+      EXTRACT(YEAR FROM "date")::int AS "year",
+      EXTRACT(MONTH FROM "date")::int AS "month"
+    FROM "Show"
+    WHERE "bandId" = ${bandId}
+  `;
+}
 
-  const bandId = session.user.id;
+export default async function ShowsPage({ searchParams }: PageProps) {
+  const bandId = await requireBandId();
   const sp = await searchParams;
   const casaIdFilter = typeof sp.casaId === "string" ? sp.casaId.trim() : "";
   const anoRaw = typeof sp.ano === "string" ? sp.ano.trim() : "";
-  const mesRaw = typeof sp.mes === "string" ? sp.mes.trim() : "";
+  const anoNum = /^\d{4}$/.test(anoRaw) ? Number.parseInt(anoRaw, 10) : null;
+  const mesNum = parseMesQuery(sp.mes);
+  const page = parsePage(sp.pagina);
 
-  const anoNum =
-    anoRaw !== "" && /^\d{4}$/.test(anoRaw) ? Number.parseInt(anoRaw, 10) : null;
-  const mesNum = parseMesQuery(mesRaw);
-
-  const [venues, showDatesRows, totalShows] = await Promise.all([
+  const [venues, yearMonths] = await Promise.all([
     prisma.venue.findMany({
       where: { bandId },
       select: { id: true, name: true },
       orderBy: { name: "asc" },
     }),
-    prisma.show.findMany({
-      where: { bandId },
-      select: { date: true },
-    }),
-    prisma.show.count({ where: { bandId } }),
+    fetchShowYearMonths(bandId),
   ]);
 
-  const { years, monthsByYear } = aggregateShowCalendar(showDatesRows.map((r) => r.date));
+  const { years, monthsByYear } = groupYearMonths(yearMonths);
+  const hasShows = years.length > 0;
 
-  const effectiveAno =
-    anoNum !== null && years.includes(anoNum) ? anoNum : null;
+  const effectiveAno = anoNum !== null && years.includes(anoNum) ? anoNum : null;
   const effectiveMes =
-    effectiveAno !== null &&
-    mesNum !== null &&
-    (monthsByYear.get(effectiveAno)?.includes(mesNum) ?? false)
+    effectiveAno !== null && mesNum !== null && (monthsByYear.get(effectiveAno)?.includes(mesNum) ?? false)
       ? mesNum
       : null;
 
@@ -74,67 +72,75 @@ export default async function ShowsPage({ searchParams }: PageProps) {
     { value: "", label: "Todos os anos" },
     ...years.map((y) => ({ value: String(y), label: String(y) })),
   ];
+  const monthOptions = [
+    { value: "", label: "Todos os meses" },
+    ...(effectiveAno === null ? [] : (monthsByYear.get(effectiveAno) ?? [])).map((m) => ({
+      value: padMonth(m),
+      label: monthLabel(m),
+    })),
+  ];
 
-  const monthOptions =
+  const dateWhere =
     effectiveAno === null
-      ? [{ value: "", label: "Todos os meses" }]
-      : [
-          { value: "", label: "Todos os meses" },
-          ...(monthsByYear.get(effectiveAno) ?? []).map((m) => ({
-            value: padMonth(m),
-            label: capitalize(monthNamePtBr(m)),
-          })),
-        ];
+      ? undefined
+      : effectiveMes !== null
+        ? monthBoundsUtc(effectiveAno, effectiveMes)
+        : yearBoundsUtc(effectiveAno);
 
-  let dateWhere: { gte: Date; lt: Date } | undefined;
-  if (effectiveAno !== null) {
-    if (effectiveMes !== null) {
-      dateWhere = monthBoundsUtc(effectiveAno, effectiveMes);
-    } else {
-      dateWhere = yearBoundsUtc(effectiveAno);
-    }
-  }
-
-  const shortcutYm = currentYearMonthUtc();
-  const shortcutParams = new URLSearchParams();
-  if (casaIdFilter) shortcutParams.set("casaId", casaIdFilter);
-  shortcutParams.set("ano", String(shortcutYm.year));
-  shortcutParams.set("mes", padMonth(shortcutYm.month));
-  const mesShortcutHref = `/shows?${shortcutParams.toString()}`;
-
-  const shows = await prisma.show.findMany({
-    where: {
-      bandId,
-      ...(casaIdFilter ? { venueId: casaIdFilter } : {}),
-      ...(dateWhere ? { date: dateWhere } : {}),
-    },
-    include: {
-      venue: { select: { id: true, name: true, city: true, state: true, valorCache: true } },
-    },
-    orderBy: [{ date: "desc" }, { time: "desc" }],
+  const now = currentYearMonthUtc();
+  const shortcutParams = new URLSearchParams({
+    ...(casaIdFilter && { casaId: casaIdFilter }),
+    ano: String(now.year),
+    mes: padMonth(now.month),
   });
+
+  const where = {
+    bandId,
+    ...(casaIdFilter ? { venueId: casaIdFilter } : {}),
+    ...(dateWhere ? { date: dateWhere } : {}),
+  };
+  const [filteredTotal, shows] = hasShows
+    ? await Promise.all([
+        prisma.show.count({ where }),
+        prisma.show.findMany({
+          where,
+          select: {
+            id: true,
+            date: true,
+            time: true,
+            cacheCents: true,
+            paymentStatus: true,
+            privateCity: true,
+            privateState: true,
+            venue: { select: { name: true, city: true, state: true } },
+          },
+          orderBy: [{ date: "desc" }, { time: "desc" }],
+          ...pageArgs(page),
+        }),
+      ])
+    : [0, []];
 
   const defaultAno = effectiveAno !== null ? String(effectiveAno) : "";
   const defaultMes = effectiveMes !== null ? padMonth(effectiveMes) : "";
+  const filterParams: Record<string, string> = {
+    ...(casaIdFilter && { casaId: casaIdFilter }),
+    ...(defaultAno && { ano: defaultAno }),
+    ...(defaultMes && { mes: defaultMes }),
+  };
 
   return (
-    <div className="mx-auto w-full max-w-5xl px-4 py-8">
-      <div className="mb-8 flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold text-zinc-900 dark:text-zinc-50">Shows</h1>
-          <p className="mt-1 text-sm text-zinc-600 dark:text-zinc-400">
-            Por padrão lista todos os shows. Ano e mês listam só períodos com cadastro.
-          </p>
-        </div>
-        <Link
-          href="/shows/nova"
-          className="inline-flex items-center justify-center rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
-          Novo show
-        </Link>
-      </div>
+    <div className={containerClass}>
+      <PageHeader
+        title="Shows"
+        description="Por padrão lista todos os shows. Ano e mês listam só períodos com cadastro."
+        actions={
+          <Link href="/shows/nova" className={buttonPrimaryClass}>
+            Novo show
+          </Link>
+        }
+      />
 
-      {totalShows > 0 && (
+      {hasShows && (
         <ShowsFilterForm
           key={`${casaIdFilter}-${defaultAno}-${defaultMes}`}
           venues={venues}
@@ -143,76 +149,56 @@ export default async function ShowsPage({ searchParams }: PageProps) {
           defaultVenueId={casaIdFilter}
           defaultAno={defaultAno}
           defaultMes={defaultMes}
-          mesShortcutHref={mesShortcutHref}
+          mesShortcutHref={`/shows?${shortcutParams.toString()}`}
         />
       )}
 
-      {totalShows === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          Nenhum show cadastrado.{" "}
-          <Link href="/shows/nova" className="font-medium text-zinc-900 underline dark:text-zinc-100">
-            Cadastrar o primeiro
-          </Link>
-        </p>
+      {!hasShows ? (
+        <EmptyState
+          message="Nenhum show cadastrado."
+          action={{ href: "/shows/nova", label: "Cadastrar o primeiro" }}
+        />
       ) : shows.length === 0 ? (
-        <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-          Nenhum show corresponde aos filtros.{" "}
-          <Link href="/shows" className="font-medium text-zinc-900 underline dark:text-zinc-100">
-            Limpar filtros
-          </Link>
-        </p>
+        <EmptyState
+          message="Nenhum show corresponde aos filtros."
+          action={{ href: "/shows", label: "Limpar filtros" }}
+        />
       ) : (
-        <div className="overflow-x-auto rounded-lg border border-zinc-200 dark:border-zinc-800">
-          <table className="w-full min-w-[960px] text-left text-sm">
-            <thead className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-800 dark:bg-zinc-900/50">
-              <tr>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Casa</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Cidade</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">UF</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Cachê</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Data</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Horário</th>
-                <th className="px-4 py-3 font-medium text-zinc-700 dark:text-zinc-300">Pagamento</th>
-                <th className="px-4 py-3 text-right font-medium text-zinc-700 dark:text-zinc-300">
-                  Ações
-                </th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-zinc-200 dark:divide-zinc-800">
-              {shows.map((show) => (
-                <tr key={show.id} className="bg-white dark:bg-zinc-950">
-                  <td className="px-4 py-3 font-medium text-zinc-900 dark:text-zinc-100">
-                    {show.venue?.name ?? "Evento Particular"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {show.venue?.city ?? show.privateCity ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {show.venue?.state ?? show.privateState ?? "—"}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {formatBrl(show.venue?.valorCache ?? show.privateValorCache)}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">
-                    {new Intl.DateTimeFormat("pt-BR", { timeZone: "UTC" }).format(show.date)}
-                  </td>
-                  <td className="px-4 py-3 text-zinc-700 dark:text-zinc-300">{show.time}</td>
-                  <td className="px-4 py-3">
-                    <ShowPaymentBadge status={show.paymentStatus} />
-                  </td>
-                  <td className="px-4 py-3 text-right">
-                    <Link
-                      href={`/shows/${show.id}`}
-                      className="font-medium text-zinc-900 underline hover:no-underline dark:text-zinc-100"
-                    >
-                      Detalhes
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
+        <>
+          <Table
+            minWidth={960}
+            headers={[
+              { label: "Casa" },
+              { label: "Cidade" },
+              { label: "UF" },
+              { label: "Cachê" },
+              { label: "Data" },
+              { label: "Horário" },
+              { label: "Pagamento" },
+              { label: "Ações", align: "right" },
+            ]}
+          >
+            {shows.map((show) => (
+              <Tr key={show.id}>
+                <Td strong>{show.venue?.name ?? "Evento Particular"}</Td>
+                <Td>{show.venue?.city ?? show.privateCity}</Td>
+                <Td>{show.venue?.state ?? show.privateState}</Td>
+                <Td>{formatCents(show.cacheCents)}</Td>
+                <Td>{formatDateOnly(show.date)}</Td>
+                <Td>{show.time}</Td>
+                <Td>
+                  <ShowPaymentBadge status={show.paymentStatus} />
+                </Td>
+                <Td align="right">
+                  <Link href={`/shows/${show.id}`} className={linkClass}>
+                    Detalhes
+                  </Link>
+                </Td>
+              </Tr>
+            ))}
+          </Table>
+          <Pagination page={page} total={filteredTotal} basePath="/shows" searchParams={filterParams} />
+        </>
       )}
     </div>
   );

@@ -1,79 +1,61 @@
 import type { Prisma } from "@/app/generated/prisma/client";
 import { NextResponse } from "next/server";
-import { prisma } from "@/lib/prisma";
+import { jsonError, parseBody } from "@/lib/api";
 import { leadIngestCorsHeaders } from "@/lib/lead-cors";
-import { extractLeadIngestToken } from "@/lib/lead-ingest-auth";
+import { extractLeadIngestToken, hashLeadIngestToken } from "@/lib/lead-ingest-auth";
+import { prisma } from "@/lib/prisma";
+import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
 import { leadIngestSchema, normalizeLeadIngestBody } from "@/lib/validations";
+
+/*
+ * Endpoint PÚBLICO (liberado em proxy.ts). Contrato usado por sites externos — não quebrar:
+ * token em `Authorization: Bearer` ou `X-Lead-Token`; aliases legados `phone`/`message`.
+ */
 
 export async function OPTIONS(request: Request) {
   const cors = leadIngestCorsHeaders(request);
-  if (!cors) {
-    return new NextResponse(null, { status: 204 });
-  }
   return new NextResponse(null, { status: 204, headers: cors });
 }
 
 export async function POST(request: Request) {
   const cors = leadIngestCorsHeaders(request);
+  const unauthorized = () => jsonError(401, "Credencial inválida ou ausente.", { headers: cors });
 
   const token = extractLeadIngestToken(request);
-  if (!token) {
-    return NextResponse.json({ error: "Credencial inválida ou ausente." }, { status: 401, headers: cors });
+  if (!token) return unauthorized();
+
+  const tokenHash = hashLeadIngestToken(token);
+  const limited = rateLimit(`ingest:${tokenHash}`, RATE_LIMITS.leadIngest);
+  if (!limited.ok) {
+    return jsonError(429, "Muitas requisições. Tente novamente em instantes.", {
+      headers: { ...cors, "Retry-After": String(limited.retryAfterSeconds) },
+    });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400, headers: cors });
-  }
+  const parsed = await parseBody(request, leadIngestSchema, {
+    normalize: normalizeLeadIngestBody,
+    headers: cors,
+  });
+  if (!parsed.ok) return parsed.response;
 
-  const parsed = leadIngestSchema.safeParse(normalizeLeadIngestBody(body));
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Dados inválidos", details: parsed.error.flatten() },
-      { status: 400, headers: cors },
-    );
-  }
-
-  const band = await prisma.band.findFirst({
-    where: { leadIngestToken: token },
+  const band = await prisma.band.findUnique({
+    where: { leadIngestTokenHash: tokenHash },
     select: { id: true },
   });
+  if (!band) return unauthorized();
 
-  if (!band) {
-    return NextResponse.json({ error: "Credencial inválida ou ausente." }, { status: 401, headers: cors });
-  }
-
-  const d = parsed.data;
-  const metaPayload: Prisma.InputJsonValue | undefined =
-    d.metadata !== undefined && d.metadata !== null
-      ? (d.metadata as Prisma.InputJsonValue)
-      : undefined;
-
+  const { metadata, ...data } = parsed.data;
   const lead = await prisma.lead.create({
     data: {
+      ...data,
       bandId: band.id,
-      name: d.name.trim(),
-      email: d.email.trim().toLowerCase(),
-      whatsapp: d.whatsapp?.trim() || null,
-      eventDate: d.eventDate?.trim() || null,
-      city: d.city?.trim() || null,
-      eventType: d.eventType?.trim() || null,
-      eventDescription: d.eventDescription?.trim() || null,
-      source: d.source?.trim() || null,
-      ...(metaPayload !== undefined ? { metadata: metaPayload } : {}),
+      ...(metadata != null && { metadata: metadata as Prisma.InputJsonValue }),
     },
     select: { id: true, name: true, email: true, createdAt: true },
   });
 
   return NextResponse.json(
-    {
-      id: lead.id,
-      name: lead.name,
-      email: lead.email,
-      createdAt: lead.createdAt.toISOString(),
-    },
+    { ...lead, createdAt: lead.createdAt.toISOString() },
     { status: 201, headers: cors },
   );
 }

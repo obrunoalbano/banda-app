@@ -1,22 +1,34 @@
 "use client";
 
 import type { ShowPaymentStatus } from "@/app/generated/prisma/enums";
-import { BRAZIL_UFS } from "@/lib/brazil-states";
+import { CitySelectFields } from "@/components/CitySelectFields";
+import { FormActions } from "@/components/FormActions";
+import { Alert } from "@/components/ui/Alert";
+import { CurrencyField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { linkClass } from "@/components/ui/styles";
+import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { SHOW_PAYMENT_OPTIONS } from "@/lib/show-payment-status";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useMemo, useState } from "react";
+import { useState } from "react";
 
-type ShowVenueOption = { id: string; name: string; city: string; state: string };
+type ShowVenueOption = {
+  id: string;
+  name: string;
+  city: string;
+  state: string;
+  valorCacheCents: number | null;
+};
+
 type ShowFormData = {
   id: string;
   venueId: string | null;
   date: string;
   time: string;
-  privateEventDetails?: string | null;
-  privateCity?: string | null;
-  privateState?: string | null;
-  privateValorCache?: number | null;
+  privateEventDetails: string | null;
+  privateCity: string | null;
+  privateState: string | null;
+  cacheCents: number | null;
   paymentStatus: ShowPaymentStatus;
 };
 
@@ -26,281 +38,151 @@ type ShowFormProps = {
   show?: ShowFormData;
 };
 
-const inputClass =
-  "rounded-md border border-zinc-300 bg-white px-3 py-2 text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100";
 const PRIVATE_EVENT_VALUE = "__PRIVATE_EVENT__";
 
 export function ShowForm({ mode, venues, show }: ShowFormProps) {
   const router = useRouter();
-  const [loading, setLoading] = useState(false);
-  const [loadingCities, setLoadingCities] = useState(false);
-  const [cities, setCities] = useState<string[]>([]);
-  const [error, setError] = useState<string | null>(null);
-
-  const initialVenueSelect = show == null ? "" : (show.venueId ?? PRIVATE_EVENT_VALUE);
-
+  const { submit, loading, error } = useJsonSubmit();
+  /** Enquanto o usuário não mexer no cachê, trocar de casa preenche com o cachê da casa. */
+  const [cacheTouched, setCacheTouched] = useState(false);
   const [form, setForm] = useState({
-    venueId: initialVenueSelect,
+    venueId: show == null ? "" : (show.venueId ?? PRIVATE_EVENT_VALUE),
     date: show?.date ?? "",
     time: show?.time ?? "",
     privateEventDetails: show?.privateEventDetails ?? "",
     privateCity: show?.privateCity ?? "",
     privateState: show?.privateState?.toUpperCase() ?? "",
-    privateValorCache: show?.privateValorCache ?? null,
+    cacheCents: show?.cacheCents ?? null,
     paymentStatus: show?.paymentStatus ?? ("AGUARDANDO_PAGAMENTO" as ShowPaymentStatus),
   });
+  const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
   const isPrivateEvent = form.venueId === PRIVATE_EVENT_VALUE;
 
-  useEffect(() => {
-    if (!isPrivateEvent) {
-      setCities([]);
-      return;
-    }
-    const uf = form.privateState.trim().toUpperCase();
-    if (uf.length !== 2) {
-      setCities([]);
-      return;
-    }
-    const ac = new AbortController();
-    setLoadingCities(true);
-    fetch(
-      `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${encodeURIComponent(uf)}/municipios?orderBy=nome`,
-      { signal: ac.signal },
-    )
-      .then((r) => {
-        if (!r.ok) throw new Error("ibge");
-        return r.json() as Promise<{ nome: string }[]>;
-      })
-      .then((data) =>
-        setCities(data.map((m) => m.nome).sort((a, b) => a.localeCompare(b, "pt-BR"))),
-      )
-      .catch(() => {
-        if (!ac.signal.aborted) setCities([]);
-      })
-      .finally(() => {
-        if (!ac.signal.aborted) setLoadingCities(false);
-      });
-    return () => ac.abort();
-  }, [form.privateState, isPrivateEvent]);
-
-  const payload = useMemo(
-    () => ({
-      venueId: isPrivateEvent ? null : form.venueId,
-      date: form.date,
-      time: form.time,
-      privateEventDetails: isPrivateEvent ? form.privateEventDetails.trim() || null : null,
-      privateCity: isPrivateEvent ? form.privateCity.trim() || null : null,
-      privateState: isPrivateEvent ? form.privateState.trim().toUpperCase() || null : null,
-      privateValorCache: isPrivateEvent
-        ? form.privateValorCache !== null &&
-          form.privateValorCache !== undefined &&
-          Number.isFinite(form.privateValorCache)
-          ? form.privateValorCache
-          : null
-        : null,
-      paymentStatus: form.paymentStatus,
-    }),
-    [form, isPrivateEvent],
-  );
-
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    setError(null);
-    setLoading(true);
-    const url = mode === "create" ? "/api/shows" : `/api/shows/${show!.id}`;
-    const res = await fetch(url, {
-      method: mode === "create" ? "POST" : "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-    const data = await res.json().catch(() => ({}));
-    setLoading(false);
-    if (!res.ok) {
-      setError(typeof data.error === "string" ? data.error : "Erro ao salvar.");
-      return;
-    }
+    const data = await submit<{ id: string }>(
+      mode === "create" ? "/api/shows" : `/api/shows/${show!.id}`,
+      mode === "create" ? "POST" : "PATCH",
+      {
+        venueId: isPrivateEvent ? null : form.venueId,
+        date: form.date,
+        time: form.time,
+        privateEventDetails: isPrivateEvent ? form.privateEventDetails : null,
+        privateCity: isPrivateEvent ? form.privateCity : null,
+        privateState: isPrivateEvent ? form.privateState : null,
+        cacheCents: form.cacheCents,
+        paymentStatus: form.paymentStatus,
+      },
+    );
+    if (!data) return;
     router.push(`/shows/${data.id}`);
     router.refresh();
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-4">
-      {error && (
-        <p className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-800 dark:bg-red-950/40 dark:text-red-200">
-          {error}
-        </p>
-      )}
+      {error && <Alert>{error}</Alert>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Casa de show</label>
-          <select
-            required
-            value={form.venueId}
-            onChange={(e) => setForm((f) => ({ ...f, venueId: e.target.value }))}
-            className={inputClass}
-          >
-            <option value="">Selecione a casa</option>
-            <option value={PRIVATE_EVENT_VALUE}>Evento Particular</option>
-            {venues.map((v) => (
-              <option key={v.id} value={v.id}>
-                {v.name} - {v.city}/{v.state}
-              </option>
-            ))}
-          </select>
-          {venues.length === 0 && (
-            <p className="text-xs text-zinc-500">
-              Nenhuma casa cadastrada. Use Evento Particular ou{" "}
-              <Link href="/casas/nova" className="font-medium underline">
-                cadastre uma casa
-              </Link>
-              .
-            </p>
-          )}
-        </div>
+        <SelectField
+          label="Casa de show"
+          className="sm:col-span-2"
+          required
+          value={form.venueId}
+          onChange={(e) => {
+            const venueId = e.target.value;
+            const venue = venues.find((v) => v.id === venueId);
+            set({
+              venueId,
+              ...(venue && !cacheTouched && { cacheCents: venue.valorCacheCents }),
+            });
+          }}
+          hint={
+            venues.length === 0 ? (
+              <>
+                Nenhuma casa cadastrada. Use Evento Particular ou{" "}
+                <Link href="/casas/nova" className={linkClass}>
+                  cadastre uma casa
+                </Link>
+                .
+              </>
+            ) : undefined
+          }
+        >
+          <option value="">Selecione a casa</option>
+          <option value={PRIVATE_EVENT_VALUE}>Evento Particular</option>
+          {venues.map((v) => (
+            <option key={v.id} value={v.id}>
+              {v.name} - {v.city}/{v.state}
+            </option>
+          ))}
+        </SelectField>
 
         {isPrivateEvent && (
           <>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Estado (UF)</label>
-              <select
-                required
-                value={form.privateState}
-                onChange={(e) => {
-                  const privateState = e.target.value;
-                  setForm((f) => ({ ...f, privateState, privateCity: "" }));
-                }}
-                className={inputClass}
-              >
-                <option value="">Selecione o estado</option>
-                {BRAZIL_UFS.map((s) => (
-                  <option key={s.sigla} value={s.sigla}>
-                    {s.nome} ({s.sigla})
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Cidade</label>
-              <select
-                required
-                value={form.privateCity}
-                onChange={(e) => setForm((f) => ({ ...f, privateCity: e.target.value }))}
-                className={inputClass}
-                disabled={!form.privateState || loadingCities}
-              >
-                <option value="">
-                  {!form.privateState
-                    ? "Selecione o estado primeiro"
-                    : loadingCities
-                      ? "Carregando cidades…"
-                      : "Selecione a cidade"}
-                </option>
-                {form.privateCity && !cities.includes(form.privateCity) && (
-                  <option value={form.privateCity}>{form.privateCity}</option>
-                )}
-                {cities.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-            </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Valor do cachê (R$)
-              </label>
-              <input
-                type="number"
-                inputMode="decimal"
-                min={0}
-                step={0.01}
-                value={form.privateValorCache == null ? "" : form.privateValorCache}
-                onChange={(e) => {
-                  const raw = e.target.value;
-                  setForm((f) => ({
-                    ...f,
-                    privateValorCache: raw === "" ? null : Number.parseFloat(raw),
-                  }));
-                }}
-                className={inputClass}
-                placeholder="Opcional"
-              />
-            </div>
-            <div className="flex flex-col gap-1 sm:col-span-2">
-              <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-                Detalhes do evento particular
-              </label>
-              <textarea
-                rows={3}
-                value={form.privateEventDetails}
-                onChange={(e) => setForm((f) => ({ ...f, privateEventDetails: e.target.value }))}
-                className={inputClass}
-                placeholder="Ex.: aniversário, casamento, local e observações (opcional)"
-              />
-            </div>
+            <CitySelectFields
+              state={form.privateState}
+              city={form.privateCity}
+              onChange={({ state, city }) => set({ privateState: state, privateCity: city })}
+            />
+            <TextAreaField
+              label="Detalhes do evento particular"
+              className="sm:col-span-2"
+              rows={3}
+              value={form.privateEventDetails}
+              onChange={(e) => set({ privateEventDetails: e.target.value })}
+              placeholder="Ex.: aniversário, casamento, local e observações (opcional)"
+            />
           </>
         )}
 
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Data</label>
-          <input
-            required
-            type="date"
-            value={form.date}
-            onChange={(e) => setForm((f) => ({ ...f, date: e.target.value }))}
-            className={inputClass}
-          />
-        </div>
-        <div className="flex flex-col gap-1">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">Horário</label>
-          <input
-            required
-            type="time"
-            step={60}
-            value={form.time}
-            onChange={(e) => setForm((f) => ({ ...f, time: e.target.value }))}
-            className={inputClass}
-          />
-        </div>
-        <div className="flex flex-col gap-1 sm:col-span-2">
-          <label className="text-sm font-medium text-zinc-700 dark:text-zinc-300">
-            Status de pagamento
-          </label>
-          <select
-            value={form.paymentStatus}
-            onChange={(e) =>
-              setForm((f) => ({
-                ...f,
-                paymentStatus: e.target.value as ShowPaymentStatus,
-              }))
-            }
-            className={inputClass}
-          >
-            {SHOW_PAYMENT_OPTIONS.map((o) => (
-              <option key={o.value} value={o.value}>
-                {o.label}
-              </option>
-            ))}
-          </select>
-        </div>
-      </div>
-      <div className="flex flex-wrap gap-3 pt-2">
-        <button
-          type="submit"
-          disabled={loading}
-          className="rounded-md bg-zinc-900 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-zinc-800 disabled:opacity-60 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+        <TextField
+          label="Data"
+          type="date"
+          required
+          value={form.date}
+          onChange={(e) => set({ date: e.target.value })}
+        />
+        <TextField
+          label="Horário"
+          type="time"
+          step={60}
+          required
+          value={form.time}
+          onChange={(e) => set({ time: e.target.value })}
+        />
+        <CurrencyField
+          label="Cachê"
+          className="sm:col-span-2"
+          value={form.cacheCents}
+          onValueChange={(cacheCents) => {
+            setCacheTouched(true);
+            set({ cacheCents });
+          }}
+          hint={
+            !isPrivateEvent && form.venueId
+              ? "Valor deste show. Alterar o cachê da casa depois não muda este valor."
+              : undefined
+          }
+        />
+        <SelectField
+          label="Status de pagamento"
+          className="sm:col-span-2"
+          value={form.paymentStatus}
+          onChange={(e) => set({ paymentStatus: e.target.value as ShowPaymentStatus })}
         >
-          {loading ? "Salvando…" : mode === "create" ? "Cadastrar show" : "Salvar alterações"}
-        </button>
-        <button
-          type="button"
-          onClick={() => router.back()}
-          className="rounded-md border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
-        >
-          Cancelar
-        </button>
+          {SHOW_PAYMENT_OPTIONS.map((o) => (
+            <option key={o.value} value={o.value}>
+              {o.label}
+            </option>
+          ))}
+        </SelectField>
       </div>
+      <FormActions
+        loading={loading}
+        submitLabel={mode === "create" ? "Cadastrar show" : "Salvar alterações"}
+        cancelHref={mode === "create" ? "/shows" : `/shows/${show!.id}`}
+      />
     </form>
   );
 }

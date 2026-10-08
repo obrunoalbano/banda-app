@@ -1,13 +1,14 @@
-/** Agrega anos (UTC) e meses por ano a partir das datas dos shows. */
-export function aggregateShowCalendar(
-  dates: Date[],
-): { years: number[]; monthsByYear: Map<number, number[]> } {
+export type YearMonth = { year: number; month: number };
+
+/** Anos (desc) e meses por ano (asc) a partir dos pares (ano, mês). */
+export function groupYearMonths(rows: YearMonth[]): {
+  years: number[];
+  monthsByYear: Map<number, number[]>;
+} {
   const map = new Map<number, Set<number>>();
-  for (const d of dates) {
-    const y = d.getUTCFullYear();
-    const m = d.getUTCMonth() + 1;
-    if (!map.has(y)) map.set(y, new Set());
-    map.get(y)!.add(m);
+  for (const { year, month } of rows) {
+    if (!map.has(year)) map.set(year, new Set());
+    map.get(year)!.add(month);
   }
   const years = [...map.keys()].sort((a, b) => b - a);
   const monthsByYear = new Map<number, number[]>();
@@ -35,20 +36,7 @@ export function padMonth(m: number): string {
   return String(m).padStart(2, "0");
 }
 
-export function monthNamePtBr(month1to12: number): string {
-  const d = new Date(Date.UTC(2000, month1to12 - 1, 1));
-  return new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" }).format(d);
-}
-
-export function capitalize(s: string): string {
-  if (!s) return s;
-  return s.charAt(0).toLocaleUpperCase("pt-BR") + s.slice(1);
-}
-
-export function currentYearMonthUtc(): { year: number; month: number } {
+export function currentYearMonthUtc(): YearMonth {
   const now = new Date();
-  return {
-    year: now.getUTCFullYear(),
-    month: now.getUTCMonth() + 1,
-  };
+  return { year: now.getUTCFullYear(), month: now.getUTCMonth() + 1 };
 }

@@ -1,42 +1,31 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
+import { isUniqueViolation, jsonError, parseBody } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
+import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
+import { clientIp } from "@/lib/request";
 import { registerBandSchema } from "@/lib/validations";
 
 export async function POST(request: Request) {
-  let body: unknown;
+  const limited = rateLimit(`register:${clientIp(request)}`, RATE_LIMITS.register);
+  if (!limited.ok) {
+    return jsonError(429, "Muitas tentativas. Tente novamente mais tarde.", {
+      headers: { "Retry-After": String(limited.retryAfterSeconds) },
+    });
+  }
+
+  const parsed = await parseBody(request, registerBandSchema);
+  if (!parsed.ok) return parsed.response;
+
+  const { password, ...data } = parsed.data;
   try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: "JSON inválido" }, { status: 400 });
+    await prisma.band.create({
+      data: { ...data, passwordHash: await hash(password, 12) },
+    });
+  } catch (error) {
+    if (isUniqueViolation(error)) return jsonError(409, "Este email já está cadastrado");
+    throw error;
   }
-
-  const parsed = registerBandSchema.safeParse(body);
-  if (!parsed.success) {
-    return NextResponse.json(
-      { error: "Dados inválidos", details: parsed.error.flatten() },
-      { status: 400 },
-    );
-  }
-
-  const { name, responsible, phone, email, password } = parsed.data;
-  const emailNorm = email.trim().toLowerCase();
-
-  const existing = await prisma.band.findUnique({ where: { email: emailNorm } });
-  if (existing) {
-    return NextResponse.json({ error: "Este email já está cadastrado" }, { status: 409 });
-  }
-
-  const passwordHash = await hash(password, 12);
-  await prisma.band.create({
-    data: {
-      name: name.trim(),
-      responsible: responsible.trim(),
-      phone: phone.trim(),
-      email: emailNorm,
-      passwordHash,
-    },
-  });
 
   return NextResponse.json({ ok: true }, { status: 201 });
 }

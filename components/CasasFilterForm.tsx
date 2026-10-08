@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { buttonPrimaryClass, buttonSecondaryClass, inputSmClass as inputClass } from "@/components/ui/styles";
 import { SEND_STATUS_OPTIONS } from "@/lib/send-status";
 
 type CasasFilterFormProps = {
@@ -7,8 +8,6 @@ type CasasFilterFormProps = {
   defaultStatus: string;
 };
 
-const inputClass =
-  "rounded-md border border-zinc-300 bg-white px-3 py-2 text-sm text-zinc-900 shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-950 dark:text-zinc-100";
 
 export function CasasFilterForm({ cities, defaultCidade, defaultStatus }: CasasFilterFormProps) {
   return (
@@ -55,13 +54,13 @@ export function CasasFilterForm({ cities, defaultCidade, defaultStatus }: CasasF
       <div className="flex flex-wrap gap-2 sm:pb-0.5">
         <button
           type="submit"
-          className="rounded-md bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+          className={buttonPrimaryClass}
         >
           Aplicar
         </button>
         <Link
           href="/casas"
-          className="inline-flex items-center justify-center rounded-md border border-zinc-300 px-4 py-2 text-sm font-medium text-zinc-800 hover:bg-zinc-100 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
+          className={buttonSecondaryClass}
         >
           Limpar
         </Link>
