@@ -30,8 +30,8 @@ Gere o `AUTH_SECRET` com `openssl rand -base64 32`. Uma variável por linha, com
 
 ## Deploy (Vercel)
 
-1. Configure `DATABASE_URL` (URL do **pooler**), `DIRECT_URL` (conexão direta) e `AUTH_SECRET`.
-2. Antes de publicar código que depende de schema novo, rode `npm run db:deploy` apontando para o banco de produção (faça backup antes de migrations que alteram dados).
+1. Configure `DATABASE_URL` (pooler do Supabase, modo transaction, porta 6543) e `AUTH_SECRET`. `DIRECT_URL` só é usada pelo Prisma CLI.
+2. Antes de publicar código que depende de schema novo, rode `npm run db:deploy` apontando para o banco de produção (faça backup antes de migrations que alteram dados). O `DIRECT_URL` deve ser o pooler em modo **session** (porta 5432), não a conexão direta `db.<ref>.supabase.co`, que é só IPv6 (erro P1001 em redes sem IPv6).
 
 ## Integração de leads
 

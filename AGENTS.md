@@ -128,7 +128,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 
 ## Banco e migrations
 
-- `prisma.config.ts` usa `DIRECT_URL` (se existir) para o CLI e `DATABASE_URL` no runtime. Em serverless, `DATABASE_URL` deve ser a URL do pooler; o pool por instância é 3 na Vercel (`DATABASE_POOL_MAX`).
+- `prisma.config.ts` usa `DIRECT_URL` (se existir) para o CLI e `DATABASE_URL` no runtime. Supabase: `DATABASE_URL` = pooler modo transaction (6543); `DIRECT_URL` = pooler modo session (5432). Não usar `db.<ref>.supabase.co` (só IPv6 → P1001). Em serverless, `DATABASE_URL` deve ser a URL do pooler; o pool por instância é 3 na Vercel (`DATABASE_POOL_MAX`).
 - Fluxo para alterar o schema: editar `schema.prisma` → `npm run db:migrate -- --name <descricao>` → commitar a pasta da migration. Em produção: `npm run db:deploy`.
 - Migrations que transformam dados são escritas/ajustadas à mão (ex.: `20261007120000_money_cents_show_snapshot`, `20261007130000_token_hash_composite_indexes`). Confira se o resultado bate com o schema: `npx prisma migrate diff --from-empty --to-schema prisma/schema.prisma --script`.
 - TLS do Postgres é configurável por env (`DATABASE_SSL_REJECT_UNAUTHORIZED`, `PGSSLMODE`, `sslmode` na URL) — ver `lib/prisma.ts`.
