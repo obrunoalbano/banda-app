@@ -56,7 +56,22 @@ O comando mostra o banco de destino, recusa banco remoto sem `--confirm-remote`,
 - Publicar = verificar agora. **Reverificação** sugerida após 180 dias (`needsReverification`, selo "Reverificar").
 - O Explorar Palcos (bandas) mostrará só `PUBLISHED` — ver `docs/modulos-marketing.md` §4.
 
-## 6. Checklist ao estender o painel
+## 6. Importação em lote de palcos
+Script `scripts/import-stages.mjs` (normalização em `lib/stage-import.ts`, com teste). Use para bases **próprias da equipe** (ou com licença de reúso) — a origem fica registrada em cada palco (`sourceNote`).
+
+```bash
+npm run stages:import -- --file venues.json --dry-run                                   # relatório, não grava
+node scripts/with-local-db.mjs node scripts/import-stages.mjs --file venues.json --admin-email voce@empresa.com   # banco local
+npm run stages:import -- --file venues.json --admin-email voce@empresa.com --confirm-remote                      # produção
+```
+- Formato: lista ou `{ venues: [...] }` com `id, name, type, state, city, phone, whatsapp, instagram, imageUrl, verified, lastActivity, created_at`.
+- Normaliza: tipo (Bar, Pub, Casa de Shows, Espaço Cultural, Teatro…), **"Cidade (Bairro)" → cidade + bairro**, telefones `(11) 99999-0000`, Instagram `@perfil`, imagem só https, `lastActivity` (ano, timestamp ou data).
+- Descarta sem nome/cidade/UF válida; ignora duplicados (nome + cidade + bairro + UF, sem acento/caixa).
+- `--status PUBLISHED` (padrão) ou `DRAFT` para os novos. Publicado: só quem tem `verified=1` na origem recebe `verifiedAt`; os demais entram na fila **Reverificar**.
+- **Reimportar** a mesma origem (`--source`, padrão `base-equipe`) atualiza os dados pelo `externalId` sem duplicar e **sem mexer na curadoria** (situação/verificação).
+- Arquivos de dados ficam fora do git (`/venues.json`, `/data/` no `.gitignore`) — contêm contatos.
+
+## 7. Checklist ao estender o painel
 - [ ] Página nova em `app/admin/(painel)/…` (o layout já exige superadmin) com `requireAdminId()`.
 - [ ] Rota de API em `app/api/admin/…` com `withAdmin`.
 - [ ] Nada de dado de negócio das bandas (casas, cachês, contatos) exposto sem necessidade — o painel administra **contas**, não o conteúdo delas.

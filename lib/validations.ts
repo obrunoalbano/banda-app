@@ -254,6 +254,7 @@ const stageBaseSchema = z.object({
   type: z.enum(StageType),
   city: requiredText("Cidade é obrigatória").pipe(z.string().max(120)),
   state: uf,
+  neighborhood: optionalText(120),
   genres: genresList.optional(),
   instagram: instagramHandle,
   website: optionalText(300).refine(
@@ -261,6 +262,11 @@ const stageBaseSchema = z.object({
     "Informe o site completo, começando com https://",
   ),
   publicPhone: optionalText(40),
+  whatsapp: optionalText(40),
+  imageUrl: optionalText(1000).refine(
+    (v) => v == null || /^https:\/\/[^\s]+$/i.test(v),
+    "Informe a URL completa da imagem, começando com https://",
+  ),
   publicEmail: z
     .union([email(), z.literal("")])
     .optional()

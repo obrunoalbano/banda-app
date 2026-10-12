@@ -34,6 +34,10 @@ yarn-error.log*
 .env*
 !.env.example
 
+# bases de dados brutas para importação (contêm contatos — nunca versionar)
+/venues.json
+/data/
+
 # banco Postgres local de desenvolvimento (npm run db:local)
 /.local-db/
 

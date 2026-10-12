@@ -11,18 +11,7 @@
  */
 import { randomInt, randomUUID } from "node:crypto";
 import bcrypt from "bcryptjs";
-import { config as loadEnv } from "dotenv";
-import pg from "pg";
-
-loadEnv({ path: ".env.local", override: false, quiet: true });
-loadEnv({ path: ".env", override: false, quiet: true });
-
-const args = process.argv.slice(2);
-const arg = (name) => {
-  const i = args.indexOf(`--${name}`);
-  return i >= 0 ? args[i + 1] : undefined;
-};
-const flag = (name) => args.includes(`--${name}`);
+import { argValue as arg, connectDb, hasFlag as flag } from "./db.mjs";
 
 const email = arg("email")?.trim().toLowerCase();
 const name = arg("name")?.trim();
@@ -31,33 +20,12 @@ if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
   process.exit(1);
 }
 
-const rawUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
-if (!rawUrl) {
-  console.error("DATABASE_URL não definida.");
-  process.exit(1);
-}
-const url = new URL(rawUrl);
-const isLocal = ["127.0.0.1", "localhost"].includes(url.hostname);
-console.log(`Banco: ${url.hostname}:${url.port || 5432} ${isLocal ? "(local)" : "(REMOTO)"}`);
-if (!isLocal && !flag("confirm-remote")) {
-  console.error("Banco remoto: repita o comando com --confirm-remote se tem certeza.");
-  process.exit(1);
-}
-
-// TLS: mesmo comportamento de lib/prisma.ts para o pooler do Supabase.
-const insecure = process.env.DATABASE_SSL_REJECT_UNAUTHORIZED === "false";
-url.searchParams.delete("sslmode");
-url.searchParams.delete("pgbouncer");
-url.searchParams.delete("connection_limit");
-const ssl = isLocal ? false : { rejectUnauthorized: !insecure };
-
 const ALPHABET = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKMNPQRSTUVWXYZ23456789";
 const chars = Array.from({ length: 12 }, () => ALPHABET[randomInt(ALPHABET.length)]);
 const tempPassword = `${chars.slice(0, 4).join("")}-${chars.slice(4, 8).join("")}-${chars.slice(8).join("")}`;
 const passwordHash = bcrypt.hashSync(tempPassword, 12);
 
-const client = new pg.Client({ connectionString: url.toString(), ssl });
-await client.connect();
+const client = await connectDb();
 try {
   const existing = await client.query(`SELECT id FROM "AdminUser" WHERE email = $1`, [email]);
   if (existing.rowCount) {

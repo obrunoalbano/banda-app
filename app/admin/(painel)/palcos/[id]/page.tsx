@@ -4,7 +4,7 @@ import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
-import { formatDateTimeShort } from "@/lib/format";
+import { formatDateOnly, formatDateTimeShort } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireAdminId } from "@/lib/session";
 import { needsReverification, STAGE_STATUS_LABELS, STAGE_STATUS_TONES, STAGE_TYPE_LABELS } from "@/lib/stages";
@@ -31,7 +31,7 @@ export default async function PalcoDetalhePage({ params }: PageProps) {
     <div className={containerClass}>
       <PageHeader
         title={stage.name}
-        description={`${STAGE_TYPE_LABELS[stage.type]} · ${stage.city}/${stage.state}`}
+        description={`${STAGE_TYPE_LABELS[stage.type]} · ${stage.neighborhood ? `${stage.neighborhood}, ` : ""}${stage.city}/${stage.state}`}
         back={{ href: "/admin/palcos", label: "Voltar aos palcos" }}
       >
         <Badge tone={STAGE_STATUS_TONES[stage.status]}>{STAGE_STATUS_LABELS[stage.status]}</Badge>
@@ -48,7 +48,9 @@ export default async function PalcoDetalhePage({ params }: PageProps) {
                 ? `Verificado em ${formatDateTimeShort(stage.verifiedAt)}${stage.verifiedBy ? ` por ${stage.verifiedBy.name}` : ""}.`
                 : "Ainda não verificado."}{" "}
               Cadastrado em {formatDateTimeShort(stage.createdAt)}
-              {stage.createdBy ? ` por ${stage.createdBy.name}` : ""}.
+              {stage.createdBy ? ` por ${stage.createdBy.name}` : ""}
+              {stage.externalSource ? ` · importado de "${stage.externalSource}" (id ${stage.externalId})` : ""}
+              {stage.lastActivityAt ? ` · última atividade conhecida: ${formatDateOnly(stage.lastActivityAt)}` : ""}.
             </p>
             <StageActions id={stage.id} status={stage.status} name={stage.name} />
           </div>

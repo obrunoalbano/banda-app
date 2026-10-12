@@ -16,10 +16,13 @@ export type StageFormData = {
   type: StageType;
   city: string;
   state: string;
+  neighborhood: string | null;
   genres: string[];
   instagram: string | null;
   website: string | null;
   publicPhone: string | null;
+  whatsapp: string | null;
+  imageUrl: string | null;
   publicEmail: string | null;
   capacity: number | null;
   notes: string | null;
@@ -38,10 +41,13 @@ export function StageForm({ mode, stage }: { mode: "create" | "edit"; stage?: St
     type: stage?.type ?? ("BAR" as StageType),
     state: stage?.state ?? "",
     city: stage?.city ?? "",
+    neighborhood: stage?.neighborhood ?? "",
     genres: stage?.genres.join(", ") ?? "",
     instagram: stage?.instagram ?? "",
     website: stage?.website ?? "",
     publicPhone: stage?.publicPhone ?? "",
+    whatsapp: stage?.whatsapp ?? "",
+    imageUrl: stage?.imageUrl ?? "",
     publicEmail: stage?.publicEmail ?? "",
     capacity: stage?.capacity ? String(stage.capacity) : "",
     notes: stage?.notes ?? "",
@@ -97,6 +103,13 @@ export function StageForm({ mode, stage }: { mode: "create" | "edit"; stage?: St
         />
         <CitySelectFields state={form.state} city={form.city} onChange={set} />
         <TextField
+          label="Bairro/região"
+          className="sm:col-span-2"
+          value={form.neighborhood}
+          onChange={(e) => set({ neighborhood: e.target.value })}
+          hint="Opcional. Ex.: Vila Madalena, Lapa."
+        />
+        <TextField
           label="Estilos que programa"
           className="sm:col-span-2"
           value={form.genres}
@@ -118,16 +131,29 @@ export function StageForm({ mode, stage }: { mode: "create" | "edit"; stage?: St
           placeholder="https://"
         />
         <PhoneField
-          label="Telefone/WhatsApp comercial"
+          label="WhatsApp comercial"
+          value={form.whatsapp}
+          onValueChange={(whatsapp) => set({ whatsapp })}
+          hint="Canal do estabelecimento — não cadastre número pessoal."
+        />
+        <PhoneField
+          label="Telefone comercial"
           value={form.publicPhone}
           onValueChange={(publicPhone) => set({ publicPhone })}
-          hint="Só canal do estabelecimento — não cadastre telefone pessoal."
         />
         <TextField
           label="Email comercial"
           type="email"
           value={form.publicEmail}
           onChange={(e) => set({ publicEmail: e.target.value })}
+        />
+        <TextField
+          label="Imagem (URL)"
+          className="sm:col-span-2"
+          type="url"
+          value={form.imageUrl}
+          onChange={(e) => set({ imageUrl: e.target.value })}
+          placeholder="https://"
         />
         <TextAreaField
           label="Programação e observações"

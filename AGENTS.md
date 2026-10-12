@@ -96,7 +96,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa.
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
-- **Stage** — palco da base curada (Explorar Palcos), global. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
+- **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl`, `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Band** (conta): `disabledAt` (desativada pelo painel; corta acesso na hora) e `mustChangePassword` (senha provisória).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
 
@@ -186,6 +186,7 @@ npm run test         # Vitest
 npm run build        # prisma generate + next build
 
 npm run admin:create -- --email … --name …   # primeiro superadmin (painel /admin)
+npm run stages:import -- --file <json> --dry-run   # importação em lote de palcos (docs/admin.md §6)
 
 # Banco LOCAL (PGlite, .local-db/) — valide migrations e features sem tocar em produção:
 npm run db:local          # sobe o banco (deixe rodando)
@@ -208,5 +209,5 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` redireciona para `/casas`.
 - Débitos de UX detalhados: seção 12 de `docs/design-system.md`.
 - Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Pendente: tela Explorar Palcos das bandas, EPK (Supabase Storage), Abordagem com IA (Claude com cota).
-- Painel: sem log de auditoria das ações da equipe; sem importação de palcos por CSV; superadmin não redefine senha de outro admin pela tela (usar `npm run admin:create -- --reset`).
+- Painel: sem log de auditoria das ações da equipe; importação em lote só por script (sem upload no painel); superadmin não redefine senha de outro admin pela tela (usar `npm run admin:create -- --reset`).
 - Integrações — fase 3 (iCal, redirecionamento de slug antigo, webhooks, email de novo lead, captcha): `docs/integracoes.md`.

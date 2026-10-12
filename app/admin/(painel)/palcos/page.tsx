@@ -45,6 +45,7 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
         { city: { contains: q, mode: "insensitive" } },
+        { neighborhood: { contains: q, mode: "insensitive" } },
       ],
     }),
   };
@@ -56,7 +57,7 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
     prisma.stage.findMany({
       where,
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true, type: true, city: true, state: true, status: true, verifiedAt: true },
+      select: { id: true, name: true, type: true, city: true, neighborhood: true, state: true, status: true, verifiedAt: true },
       ...pageArgs(page),
     }),
     prisma.stage.groupBy({ by: ["status"], _count: true }),
@@ -87,7 +88,7 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
 
       {total > 0 ? (
         <FilterBar clearHref="/admin/palcos">
-          <FilterField id="f-q" label="Nome ou cidade">
+          <FilterField id="f-q" label="Nome, cidade ou bairro">
             <input id="f-q" name="q" defaultValue={q} className={inputSmClass} placeholder="Buscar…" />
           </FilterField>
           <FilterField id="f-status" label="Situação" minWidth={150}>
@@ -145,6 +146,7 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
                 <Td label="Tipo">{STAGE_TYPE_LABELS[s.type]}</Td>
                 <Td label="Cidade">
                   {s.city}/{s.state}
+                  {s.neighborhood ? <span className="block text-xs text-fg-subtle">{s.neighborhood}</span> : null}
                 </Td>
                 <Td label="Situação">
                   <Badge tone={STAGE_STATUS_TONES[s.status]}>{STAGE_STATUS_LABELS[s.status]}</Badge>

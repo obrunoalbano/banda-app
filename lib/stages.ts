@@ -8,6 +8,7 @@ export const STAGE_TYPE_LABELS: Record<StageType, string> = {
   CENTRO_CULTURAL: "Centro cultural",
   RESTAURANTE: "Restaurante",
   ESPACO_DE_EVENTOS: "Espaço de eventos",
+  TEATRO: "Teatro",
   OUTRO: "Outro",
 };
 

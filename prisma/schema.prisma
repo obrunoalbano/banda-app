@@ -140,6 +140,7 @@ enum StageType {
   CENTRO_CULTURAL
   RESTAURANTE
   ESPACO_DE_EVENTOS
+  TEATRO
   OUTRO
 }
 
@@ -157,14 +158,25 @@ model Stage {
   type          StageType
   city          String
   state         String
+  /// Bairro/região dentro da cidade (opcional).
+  neighborhood  String?
   /// Estilos que o palco costuma programar (ex.: "rock", "sertanejo").
   genres        String[]    @default([])
   instagram     String?
   website       String?
-  /// Telefone/WhatsApp comercial do estabelecimento.
+  /// Telefone comercial do estabelecimento.
   publicPhone   String?
+  /// WhatsApp comercial do estabelecimento (canal de contato principal).
+  whatsapp      String?
   publicEmail   String?
   capacity      Int?
+  /// Foto/imagem de capa (URL).
+  imageUrl      String?
+  /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
+  lastActivityAt DateTime?
+  /// Origem de importação em lote (ex.: "base-equipe") + id na origem — reimportar atualiza em vez de duplicar.
+  externalSource String?
+  externalId     String?
   /// O que programa, dias de música ao vivo, observações da curadoria.
   notes         String?
   /// De onde veio a informação (site, Instagram, ligação…) — para correções/remoções.
@@ -178,6 +190,7 @@ model Stage {
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
 
+  @@unique([externalSource, externalId])
   @@index([status, state, city])
   @@index([updatedAt])
 }
