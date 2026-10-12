@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { ShowPaymentStatus, StageStatus, StageType, VenueSendStatus } from "@/app/generated/prisma/enums";
+import { DealStep, ShowPaymentStatus, StageStatus, StageType, VenueSendStatus } from "@/app/generated/prisma/enums";
 import { MAX_CENTS } from "@/lib/money";
 import { slugError } from "@/lib/slug";
 import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
@@ -74,9 +74,20 @@ export const venueCreateSchema = z.object({
   valorCacheCents: centsSchema.optional().nullable(),
   instagram: optionalText(200),
   sendStatus: z.enum(VenueSendStatus).optional(),
+  /** Negociação ganha no Fluxo de contatos que originou a casa (só na criação). */
+  dealId: z.string().trim().min(1).max(64).optional(),
 });
 
-export const venueUpdateSchema = venueCreateSchema.partial();
+export const venueUpdateSchema = venueCreateSchema.omit({ dealId: true }).partial();
+
+/** Incluir no Fluxo de contatos: um contato OU um palco do Explorar Palcos. */
+export const dealCreateSchema = z.union([
+  z.strictObject({ leadId: z.string().trim().min(1).max(64) }),
+  z.strictObject({ stageId: z.string().trim().min(1).max(64) }),
+]);
+
+/** Mover de etapa. */
+export const dealUpdateSchema = z.object({ step: z.enum(DealStep) });
 
 const showBaseSchema = z.object({
   venueId: optionalText(64),

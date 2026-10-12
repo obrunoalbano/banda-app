@@ -1,3 +1,4 @@
+import { AddToFlowButton } from "@/components/deals/AddToFlowButton";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -20,6 +21,7 @@ export default async function ContatoDetalhePage({ params }: PageProps) {
   const { id } = await params;
   const lead = await prisma.lead.findFirst({ where: { id, bandId } });
   if (!lead) notFound();
+  const deal = await prisma.deal.findFirst({ where: { bandId, leadId: lead.id }, select: { id: true, step: true } });
 
   const wa = whatsappHref(lead.whatsapp);
   const metadataStr = lead.metadata == null ? null : JSON.stringify(lead.metadata, null, 2);
@@ -43,6 +45,10 @@ export default async function ContatoDetalhePage({ params }: PageProps) {
           </>
         }
       />
+
+      <div className="mb-6">
+        <AddToFlowButton origin={{ leadId: lead.id }} deal={deal} />
+      </div>
 
       <DetailList className="max-w-3xl">
         <DetailItem label="Email" wide>

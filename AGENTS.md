@@ -33,7 +33,9 @@ app/
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
-    contatos/              Lead: lista (paginada), detalhe, editar
+    contatos/              Lead: lista (paginada, coluna Fluxo), detalhe ("Adicionar ao fluxo"), editar
+    fluxo/                 Fluxo de contatos: quadro por etapa (Deal) — docs/modulos-marketing.md §4.4
+    explorar/              Explorar Palcos: diretório curado (só PUBLISHED), "Adicionar ao fluxo"
     integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
       agenda/              Integrações → Agenda: agenda pública (ativar, slug, divulgar)
       contato/             Integrações → Contatos: status, formulário pronto, domínios, token de servidor
@@ -45,7 +47,7 @@ app/
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste), band/password (POST)
     admin/*                SUPERADMIN (withAdmin): stages, bands (+reset-password), admins, password
     venues (POST), venues/[id] (PATCH, DELETE)
-    explorar/[stageId] (POST)  adiciona palco do diretório às casas da banda (idempotente)
+    deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
@@ -61,7 +63,8 @@ components/
                            Button, Badge, Card, Alert, fields, PageHeader, DetailList, Table, FilterBar,
                            Pagination, EmptyState, CodeBlock, ConfirmButton, StatusPage, Brand, AuthLayout
   public/                  PublicShowList, EmbedAutoResize (página pública e widget)
-  explore/                 StageCard, ExploreFilterForm, AddStageButton (Explorar Palcos)
+  explore/                 StageCard, ExploreFilterForm (Explorar Palcos)
+  deals/                   DealBoard (client, estado local), DealCard, DealActions, DealStepBadge, AddToFlowButton
   *Form.tsx                formulários client (POST/PATCH na API)
   DashboardShell.tsx       menu lateral (gaveta no mobile) + header
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
@@ -71,7 +74,8 @@ lib/
   access.ts                regras de acesso por rota e papel (proxy.ts) — função pura com teste
   passwords.ts             senha provisória + hash · change-password.ts: troca da própria senha
   stages.ts                labels/tons de Stage, reverificação
-  explore.ts               Explorar Palcos: filtros, where (sempre PUBLISHED), ordem, palco → casa
+  explore.ts               Explorar Palcos: filtros, where (sempre PUBLISHED), ordem
+  deals.ts                 Fluxo de contatos: etapas/labels/tons, origem, canAddToVenues, pré-preenchimento da casa
   validations.ts           schemas Zod que validam E normalizam
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas)
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
@@ -102,6 +106,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Band** (conta): `disabledAt` (desativada pelo painel; corta acesso na hora) e `mustChangePassword` (senha provisória).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
+- **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
 
 Todas as entidades pertencem a uma banda (`bandId`, `onDelete: Cascade`). Exceção: `Show.venueId` é `onDelete: NoAction` — **casa com shows não pode ser apagada** (a API devolve 409 e a UI desabilita o botão). Não troque para `Restrict`: quebraria o cascade Band → Venue/Show.
 
@@ -169,7 +174,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`): Administrativo (Casas, Shows) · Financeiro (em breve) · Marketing (Contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações, Minha banda). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`): Administrativo (Casas, Shows) · Financeiro (em breve) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações, Minha banda). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 
 ## Banco e migrations
@@ -212,6 +217,6 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - Escritas via route handlers + `fetch`; migrar para Server Actions (`useActionState`) é opcional, mas manteria `/api/leads/ingest` como REST.
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` redireciona para `/casas`.
 - Débitos de UX detalhados: seção 12 de `docs/design-system.md`.
-- Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Feito: Explorar Palcos das bandas (`/explorar`, `docs/modulos-marketing.md` §4.2.1). Pendente: EPK (Supabase Storage), Abordagem com IA (Claude com cota).
+- Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Feito: Explorar Palcos das bandas (`/explorar`, §4.2.1) e Fluxo de contatos (`/fluxo`, §4.4). Pendente: EPK (Supabase Storage), Abordagem com IA (Claude com cota).
 - Painel: sem log de auditoria das ações da equipe; importação em lote só por script (sem upload no painel); superadmin não redefine senha de outro admin pela tela (usar `npm run admin:create -- --reset`).
 - Integrações — fase 3 (iCal, redirecionamento de slug antigo, webhooks, email de novo lead, captcha): `docs/integracoes.md`.

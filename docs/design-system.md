@@ -96,7 +96,7 @@ Escala do Tailwind (múltiplos de 4px). Valores padronizados:
 
 | Contexto | Valor |
 | --- | --- |
-| Container de página | `containerClass` = `mx-auto max-w-5xl px-4 py-8` (`containerNarrowClass` = `max-w-3xl`) |
+| Container de página | `containerClass` = `mx-auto max-w-5xl px-4 py-8` (`containerNarrowClass` = `max-w-3xl`, `containerWideClass` = `max-w-7xl` para quadros) |
 | Cabeçalho → conteúdo | `mb-8` (no `PageHeader`) |
 | Entre seções/cards | `gap-6` |
 | Campos de formulário | grid `gap-4` (`sm:grid-cols-2`, campos largos com `sm:col-span-2`); largura máx. do form `max-w-xl` |
@@ -139,7 +139,7 @@ Tamanhos: **16px** dentro de botões (automático), **20px** no menu, **24px** e
 | --- | --- | --- |
 | `Button` | Ações em formulários e na página (submit, gerar, aplicar). | `variant` `primary`·`secondary`·`ghost`·`danger`·`danger-solid`; `size` `sm`(32px)·`md`(40px)·`lg`(48px); `icon`; `loading`; `type` padrão `"button"` |
 | `ButtonLink` | Navegação com cara de botão ("Nova casa", "Alterar", "Entrar"). | mesmas `variant`/`size`/`icon` + props de `next/link` |
-| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason` |
+| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason`, `size` |
 | `ConfirmDeleteButton` | Remover um registro via `DELETE` na API. | `endpoint`, `redirectTo`, `itemLabel` (ex.: `a casa "Bar X"`), `disabledReason` |
 
 Hierarquia de variantes: `primary` = a ação principal da área (uma só) · `secondary` = alternativas (Cancelar, Mês atual) · `ghost` = ações discretas (Limpar, Copiar, itens de toolbar) · `danger` = abre fluxo destrutivo · `danger-solid` = confirma a destruição (só dentro do modal).
@@ -188,7 +188,7 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | `Brand` / `PRODUCT_NAME` | Marca (ícone + "Agenda da banda"). Nunca escreva o nome do produto à mão. |
 | `AuthLayout` | Telas públicas de autenticação (marca + card + link alternativo no rodapé). |
 
-Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`, `toneClass`.
+Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`/`containerWideClass`, `toneClass`.
 
 ---
 
@@ -230,6 +230,9 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 ### Diretório em cards (`/explorar`)
 Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (`aria-live`, `formatInteger`) + `<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">` de cards (`StageCard`: `<article>` com imagem 4:3 — placeholder com ícone se faltar —, selos, `h2` com o nome, ações no rodapé com `mt-auto` para alinhar entre cards) + `Pagination` com `pageSize` próprio (24, múltiplo de 2 e 3). Ação principal do card ocupa a largura (`w-full`) e, depois de feita, vira link para o resultado ("Nas suas casas").
 
+### Quadro por etapas (`/fluxo`)
+`containerWideClass` (7xl) + `PageHeader` + colunas `<section aria-labelledby>` (`grid md:grid-cols-2 xl:grid-cols-4`, fundo `bg-surface-muted`) com selo da etapa e contagem no `h2`; cards `<article>` (`h3`) com selo de origem, mudança de etapa por `<select>` rotulado (acessível, sem arrastar), ações secundárias `size="sm"`. Âncora `#<prefixo>-<id>` com `target:ring-2 target:ring-focus` para "Ver no …". Estado de quadro interativo fica no client (atualização imediata) em vez de `router.refresh()`.
+
 ### Público
 - **Landing:** `Brand` no topo, h1 grande, 2 CTAs (`lg`), 3 cards de recurso com ícones das entidades.
 - **Login / cadastro:** `AuthLayout` (título, descrição, form com botão `w-full`, link alternativo no `footer`).
@@ -248,7 +251,7 @@ Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (
 
 ## 6. Padrões de interação
 
-- **Navegação:** menu lateral por módulos — *Administrativo* (Casas, Shows), *Financeiro* (em breve), *Marketing* (Contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Recurso ainda não lançado aparece **desabilitado** (sem link, `aria-disabled`) com "Em breve" numa segunda linha abaixo do nome (nomes longos não são cortados); módulo inteiro não lançado mostra só o título com o selo. Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
+- **Navegação:** menu lateral por módulos — *Administrativo* (Casas, Shows), *Financeiro* (em breve), *Marketing* (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Recurso ainda não lançado aparece **desabilitado** (sem link, `aria-disabled`) com "Em breve" numa segunda linha abaixo do nome (nomes longos não são cortados); módulo inteiro não lançado mostra só o título com o selo. Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
 - **Envio de formulário:** botão com `loading` (spinner + "Salvando…"), erro da API em `Alert` no topo, validação nativa (`required`, `type`, `minLength`) + Zod no servidor.
 - **Confirmação:** ações irreversíveis ou com efeito externo usam `ConfirmButton` (nunca `window.confirm`/`alert`). O título é uma pergunta curta; a descrição explica a consequência; o botão de confirmação repete o verbo.
 - **Bloqueio explicado:** quando uma ação não é permitida, desabilite e explique com `disabledReason` (ex.: casa com shows não pode ser removida).

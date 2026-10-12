@@ -45,5 +45,6 @@ export {
   BadgeCheck as VerifiedIcon,
   Archive as ArchiveIcon,
   Send as PublishIcon,
+  SquareKanban as DealIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

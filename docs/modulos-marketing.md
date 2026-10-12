@@ -12,7 +12,7 @@ Engenharia reversa (nível de produto) do **Palcos do Brasil** e o desenho da no
 | --- | --- | --- |
 | **Administrativo** | Casas, Shows | ✅ |
 | **Financeiro** | — | Em breve |
-| **Marketing** | Contatos ✅ · Redes Sociais (em breve) · **EPK Profissional** · **Explorar Palcos** ✅ · **Abordagem com IA** | EPK e Abordagem em desenho (este documento) |
+| **Marketing** | Contatos ✅ · **Fluxo de contatos** ✅ · Redes Sociais (em breve) · **EPK Profissional** · **Explorar Palcos** ✅ · **Abordagem com IA** | EPK e Abordagem em desenho (este documento) |
 | **Configurações** | Integrações (Agenda, Contatos), Minha banda | ✅ |
 
 Navegação em `NAV_GROUPS` (`components/DashboardShell.tsx`). Recurso não lançado = `soon: true` (aparece desabilitado com "Em breve"); módulo inteiro não lançado = `soon: { icon }` no grupo. URLs não têm prefixo de módulo (`/casas`, `/epk`, `/explorar`, `/abordagem`) — o módulo é só agrupamento visual.
@@ -113,10 +113,20 @@ Cobertura medida no OpenStreetMap (Brasil, out/2026): **16.661 bares/pubs**, **8
 - **`/explorar`** (`app/(dashboard)/explorar/page.tsx`, Server Component): filtros na URL — busca (`q`: nome, bairro ou cidade), `uf`, `cidade` (só com UF; trocar a UF reenvia o form e recarrega as cidades — `ExploreFilterForm`), `tipo`, `verificados=1`, `whatsapp=1`. Grade de cards (`StageCard`), 24 por página.
 - Regras em `lib/explore.ts` (com teste): `buildStageWhere` **sempre** fixa `status: PUBLISHED`; ordem = verificados primeiro → atividade mais recente → nome; `exploreStageSelect` = só campos institucionais.
 - Card: miniatura (`imageThumbUrl`; sem foto → ícone), tipo, selo **Verificado** (data no `title`), bairro · cidade/UF, "atividade registrada em mês/ano", observações, estilos, botões **WhatsApp** (`wa.me`) e **Instagram**.
-- **"Adicionar às minhas casas"** → `POST /api/explorar/[stageId]` (`withBand`): cria `Venue` com `stageId`, status *Não enviado*, telefone = WhatsApp ou telefone comercial, email comercial, responsável vazio (LGPD — a banda completa). **Idempotente**: `@@unique([bandId, stageId])`; repetir (ou duas requisições simultâneas) devolve a mesma casa (`created: false`). O botão vira **"Nas suas casas"** (link para `/casas/[id]`); o detalhe da casa mostra "Origem: Explorar Palcos".
-- `Venue.stageId` é `onDelete: SetNull`: apagar/arquivar palco não mexe na casa da banda (que é dela).
-- Rate limit por banda: `explore` (300 páginas/10 min — acima disso a página mostra aviso) e `exploreAdd` (60 adições/h).
+- Ação do card: **"Adicionar ao fluxo"** (Fluxo de contatos, §4.4). Já no fluxo → selo "No fluxo: <etapa>" + "Ver no fluxo"; já virou casa → "Nas suas casas". A casa só é criada quando a negociação é **ganha** (§4.4).
+- `Venue.stageId` (`@@unique([bandId, stageId])`, `onDelete: SetNull`) liga a casa ao palco: apagar/arquivar palco não mexe na casa da banda (que é dela).
+- Rate limit por banda: `explore` (300 páginas/10 min — acima disso a página mostra aviso) e `dealAdd` (60 inclusões no fluxo/h).
 - Pendente: estilo (gêneros quase vazios na base), "Gerar abordagem" (Abordagem com IA), reportar dado errado, agregados por UF.
+
+### 4.4 Fluxo de contatos (CRM simples) — `/fluxo`
+Quadro com **etapas fixas** (por enquanto): *Primeiro contato → Proposta → Perdeu → Ganhou* (`DealStep`; labels/tons em `lib/deals.ts`, selo `DealStepBadge`).
+- **Modelo `Deal`** (por banda): `step`, `source` (`CONTATO` | `EXPLORADOR` — exibido como selo "Contato"/"Explorar Palcos"), `leadId?`/`stageId?` (origem), `venueId?` (casa criada), cópia de `name`/`city`/`state` (a origem pode ser apagada: FKs `SetNull`), `stepChangedAt`. **No máximo uma negociação por contato e por palco** (`@@unique([bandId, leadId])`, `@@unique([bandId, stageId])`).
+- **Incluir:** botão "Adicionar ao fluxo" no detalhe do contato e no card do Explorar → `POST /api/deals` `{ leadId }` ou `{ stageId }` (contato da banda; palco `PUBLISHED`). Idempotente (inclusive concorrente). Entra em *Primeiro contato*.
+- **Sinalização:** lista de Contatos tem coluna **Fluxo** (selo da etapa); detalhe do contato e card do Explorar mostram "No fluxo: <etapa>" + "Ver no fluxo" (âncora `/fluxo#negociacao-<id>`, card destacado com `:target`).
+- **Mover:** select "Etapa" no card → `PATCH /api/deals/[id]` `{ step }` (atualiza `stepChangedAt`). **Tirar do fluxo:** `DELETE` (contato, palco e casa ficam).
+- **Ganhou → "Adicionar às minhas casas"** (só nessa etapa e enquanto não houver casa — `canAddToVenues`): abre `/casas/nova?negociacao=<id>` com o formulário **pré-preenchido** (palco: nome, WhatsApp/telefone, email, cidade/UF, Instagram; contato: responsável = nome da pessoa, email, WhatsApp, cidade). `POST /api/venues` com `dealId` revalida no servidor (409 se não ganhou ou já virou casa), cria a casa (com `stageId` se veio do Explorar; se o palco já tinha casa, só vincula) e grava `deal.venueId` na mesma transação. Depois o card mostra "Ver casa" e o detalhe da casa, "Origem: Fluxo de contatos (…)".
+- **Quadro** (`DealBoard`, client): as 50 mais recentes por etapa (`DEAL_COLUMN_LIMIT`) + total. Estado local: mover/tirar atualiza na hora **sem `router.refresh()`** — um prefetch disparado antes da mudança pode chegar depois e repor dado antigo.
+- Próximos passos possíveis: etapas configuráveis, anotações/histórico por negociação, valor proposto, arrastar e soltar, lembretes.
 
 ### 4.3 LGPD
 Estabelecimento (nome, endereço comercial, Instagram/site/telefone comercial) ≈ dado de empresa: pode ir para o diretório curado. **Nome e telefone pessoal de responsável são dados pessoais**: não entram no diretório; ficam só na `Venue` privada da banda. Registrar a fonte de cada informação da curadoria (para atender pedidos de correção/remoção).

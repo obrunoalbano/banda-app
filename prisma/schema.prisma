@@ -35,6 +35,7 @@ model Band {
   venues           Venue[]
   shows            Show[]
   leads            Lead[]
+  deals            Deal[]
 }
 
 enum VenueSendStatus {
@@ -68,6 +69,7 @@ model Venue {
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   shows       Show[]
+  deals       Deal[]
 
   @@unique([bandId, stageId])
   @@index([bandId, updatedAt])
@@ -118,6 +120,7 @@ model Lead {
   metadata    Json?
   source      String?
   createdAt   DateTime @default(now())
+  deals       Deal[]
 
   @@index([bandId, createdAt])
 }
@@ -198,8 +201,57 @@ model Stage {
   updatedAt     DateTime    @updatedAt
   /// Casas das bandas criadas a partir deste palco (sinal de interesse para a curadoria).
   venues        Venue[]
+  /// Negociações de bandas com este palco (Fluxo de contatos).
+  deals         Deal[]
 
   @@unique([externalSource, externalId])
   @@index([status, state, city])
   @@index([updatedAt])
+}
+
+/// Etapa do Fluxo de contatos (fixas por enquanto). Ordem do quadro = ordem aqui.
+enum DealStep {
+  PRIMEIRO_CONTATO
+  PROPOSTA
+  PERDEU
+  GANHOU
+}
+
+/// De onde a negociação veio.
+enum DealSource {
+  CONTATO
+  EXPLORADOR
+}
+
+/// Negociação no Fluxo de contatos (CRM simples): um contato (Lead) ou um palco do
+/// Explorar Palcos acompanhado por etapas. No máximo uma por contato/palco por banda.
+model Deal {
+  id            String     @id @default(cuid())
+  bandId        String
+  band          Band       @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  step          DealStep   @default(PRIMEIRO_CONTATO)
+  source        DealSource
+  /// Origem CONTATO. SetNull: apagar o contato mantém a negociação (nome copiado em `name`).
+  leadId        String?
+  lead          Lead?      @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  /// Origem EXPLORADOR.
+  stageId       String?
+  stage         Stage?     @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  /// Casa criada quando a negociação foi ganha ("Adicionar às minhas casas").
+  venueId       String?
+  venue         Venue?     @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  /// Cópia do nome/cidade da origem no momento da inclusão (a origem pode ser apagada).
+  name          String
+  city          String?
+  state         String?
+  stepChangedAt DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([bandId, leadId])
+  @@unique([bandId, stageId])
+  @@index([bandId, step, stepChangedAt])
+  @@index([leadId])
+  @@index([stageId])
+  @@index([venueId])
 }
