@@ -11,7 +11,7 @@ export const PATCH = withAdmin<Params>(async (request, { adminId, params: { id }
   if (!parsed.ok) return parsed.response;
   const { verify, ...data } = parsed.data;
 
-  const existing = await prisma.stage.findUnique({ where: { id }, select: { status: true } });
+  const existing = await prisma.stage.findUnique({ where: { id }, select: { status: true, imageUrl: true } });
   if (!existing) return jsonError(404, "Palco não encontrado");
 
   const publishing = data.status === "PUBLISHED" && existing.status !== "PUBLISHED";
@@ -21,6 +21,8 @@ export const PATCH = withAdmin<Params>(async (request, { adminId, params: { id }
       ...data,
       // Publicar ou "marcar como verificado" registra quem verificou e quando.
       ...((verify || publishing) && { verifiedAt: new Date(), verifiedById: adminId }),
+      // Imagem de origem trocada → miniatura antiga descartada (regerada por `npm run stages:images`).
+      ...(data.imageUrl !== undefined && data.imageUrl !== existing.imageUrl && { imageThumbUrl: null }),
     },
   });
   return NextResponse.json({ id });

@@ -72,22 +72,22 @@ npm run stages:import -- --file venues.json --admin-email voce@empresa.com --con
 - Arquivos de dados ficam fora do git (`/venues.json`, `/data/` no `.gitignore`) — contêm contatos.
 
 ### 6.1 Imagens dos palcos
-Imagens ficam **no nosso storage**, otimizadas: capa WebP até 800px (`imageUrl`, ~40 KB) + miniatura 400×300 (`imageThumbUrl`, ~15 KB) — ~70% menores que os originais. `imageThumbUrl` preenchido = imagem já migrada.
+Servimos **só a miniatura** otimizada no nosso storage: WebP 400×300, ~16 KB (`imageThumbUrl`) — ~90 MB para ~5,7 mil palcos (originais: ~1,3 GB). `imageUrl` é o **link de origem** (bucket da equipe): nunca exibido, usado para gerar/regerar a miniatura.
 
 ```bash
 # 1) importar aceitando só imagens do bucket da equipe (as de terceiros são descartadas)
 npm run stages:import -- --file venues.json --image-hosts <bucket>.r2.dev …
-# 2) copiar/otimizar (retomável; pula o que já migrou)
+# 2) gerar miniaturas (retomável; pula quem já tem)
 npm run stages:images -- --hosts <bucket>.r2.dev --dry-run
 npm run stages:images -- --hosts <bucket>.r2.dev --drop-others --clear-broken --confirm-remote   # produção
 node scripts/with-local-db.mjs node scripts/migrate-stage-images.mjs --hosts <bucket>.r2.dev --limit 100  # local
 ```
 - **Destino:** `--storage local` (padrão no banco local) grava em `.local-media/` (fora do git), servido em `/media/…` só em desenvolvimento (ou com `SERVE_LOCAL_MEDIA=1`, ligado pelo `with-local-db.mjs`). `--storage supabase` (padrão no banco remoto) usa o **Supabase Storage**, bucket público `media` (criado automaticamente) — requer `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no `.env.local` (chave de serviço: nunca no navegador nem no git).
-- Caminho `stages/<id>/cover-<hash>.webp`: o hash muda quando a imagem muda (sem cache antigo na CDN).
+- Caminho `stages/<id>/thumb-<hash>.webp`: o hash muda quando a imagem muda (sem cache antigo na CDN; cache de 1 ano).
+- **Imagem de origem trocada** (reimportação ou edição no painel) → `imageThumbUrl` volta a `null` e a próxima execução gera de novo.
 - `--drop-others`: remove links de outros hosts (direito de imagem incerto). `--clear-broken`: remove links que dão 404/410.
 - Concorrência padrão 6 (o `r2.dev` tem limite de tráfego; o script espera e tenta de novo). ~7 imagens/s.
-- Reimportar o JSON **não** sobrescreve imagem já migrada.
-- Exibição: `components/admin/StageThumb.tsx` (`next/image` com `unoptimized` — os arquivos já são otimizados; não consome a otimização da Vercel).
+- Exibição: `components/admin/StageThumb.tsx` (`next/image` com `unoptimized` — o arquivo já é otimizado; não consome a otimização da Vercel). Sem miniatura → placeholder com ícone.
 
 ## 7. Checklist ao estender o painel
 - [ ] Página nova em `app/admin/(painel)/…` (o layout já exige superadmin) com `requireAdminId()`.

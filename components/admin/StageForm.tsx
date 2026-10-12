@@ -148,12 +148,13 @@ export function StageForm({ mode, stage }: { mode: "create" | "edit"; stage?: St
           onChange={(e) => set({ publicEmail: e.target.value })}
         />
         <TextField
-          label="Imagem (URL)"
+          label="Imagem de origem (URL)"
           className="sm:col-span-2"
           type="url"
           value={form.imageUrl}
           onChange={(e) => set({ imageUrl: e.target.value })}
           placeholder="https://"
+          hint="Não é exibida: a miniatura otimizada é gerada a partir dela (npm run stages:images)."
         />
         <TextAreaField
           label="Programação e observações"

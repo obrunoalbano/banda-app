@@ -1,6 +1,7 @@
 /**
- * Copia as imagens dos palcos para o nosso storage em versões otimizadas (WebP):
- * capa até 800px (imageUrl) + miniatura 400×300 (imageThumbUrl). Retomável: pula o que já migrou.
+ * Gera a MINIATURA otimizada de cada palco (WebP 400×300, ~15 KB) a partir do link de origem
+ * (`imageUrl`) e grava no nosso storage (`imageThumbUrl`). Só a miniatura é servida.
+ * Retomável: pula o que já tem miniatura.
  *
  *   node scripts/migrate-stage-images.mjs --hosts <bucket-da-equipe> --dry-run
  *   node scripts/with-local-db.mjs node scripts/migrate-stage-images.mjs --hosts <host> --limit 50     # local
@@ -15,7 +16,7 @@
  */
 import { createHash } from "node:crypto";
 import sharp from "sharp";
-import { imageHost, isAllowedImageHost, STAGE_IMAGE, stageImagePaths } from "../lib/stage-images.ts";
+import { imageHost, isAllowedImageHost, STAGE_IMAGE, stageThumbPath } from "../lib/stage-images.ts";
 import { argValue, connectDb, hasFlag } from "./db.mjs";
 import { createStorage } from "./storage.mjs";
 
@@ -82,28 +83,18 @@ async function download(url) {
 async function processStage(stage) {
   try {
     const original = await download(stage.imageUrl);
-    const img = sharp(original, { failOn: "error" }).rotate(); // respeita EXIF
-    const cover = await img
-      .clone()
-      .resize({ width: STAGE_IMAGE.cover.maxSide, height: STAGE_IMAGE.cover.maxSide, fit: "inside", withoutEnlargement: true })
-      .webp({ quality: STAGE_IMAGE.cover.quality })
-      .toBuffer();
-    const thumb = await img
-      .clone()
+    const thumb = await sharp(original, { failOn: "error" })
+      .rotate() // respeita EXIF
       .resize({ width: STAGE_IMAGE.thumb.width, height: STAGE_IMAGE.thumb.height, fit: "cover" })
       .webp({ quality: STAGE_IMAGE.thumb.quality })
       .toBuffer();
     const hash = createHash("sha256").update(original).digest("hex");
-    const paths = stageImagePaths(stage.id, hash);
-    const [coverUrl, thumbUrl] = await Promise.all([storage.put(paths.cover, cover), storage.put(paths.thumb, thumb)]);
-    await client.query(`UPDATE "Stage" SET "imageUrl" = $1, "imageThumbUrl" = $2, "updatedAt" = now() WHERE id = $3`, [
-      coverUrl,
-      thumbUrl,
-      stage.id,
-    ]);
+    const thumbUrl = await storage.put(stageThumbPath(stage.id, hash), thumb);
+    // imageUrl (origem) não muda: permite reprocessar se a miniatura mudar de tamanho no futuro.
+    await client.query(`UPDATE "Stage" SET "imageThumbUrl" = $1, "updatedAt" = now() WHERE id = $2`, [thumbUrl, stage.id]);
     migrated++;
     bytesIn += original.length;
-    bytesOut += cover.length + thumb.length;
+    bytesOut += thumb.length;
   } catch (error) {
     const reason = error.reason ?? (error.message?.includes("Input buffer") ? "imagem inválida" : error.message?.slice(0, 60));
     failures[reason] = (failures[reason] ?? 0) + 1;
@@ -128,7 +119,7 @@ await Promise.all(
 const mb = (n) => (n / 1024 / 1024).toFixed(1);
 console.log(
   `\nConcluído em ${((Date.now() - started) / 1000).toFixed(0)}s: ${migrated} migradas · ` +
-    `${mb(bytesIn)} MB originais → ${mb(bytesOut)} MB otimizados (capa + miniatura)`,
+    `${mb(bytesIn)} MB originais → ${mb(bytesOut)} MB em miniaturas`,
 );
 if (Object.keys(failures).length) console.log("Falhas:", failures, hasFlag("clear-broken") ? "(links quebrados removidos)" : "");
 await client.end();

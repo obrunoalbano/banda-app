@@ -140,8 +140,9 @@ try {
          name = EXCLUDED.name, type = EXCLUDED.type, city = EXCLUDED.city, state = EXCLUDED.state,
          neighborhood = EXCLUDED.neighborhood,
          instagram = EXCLUDED.instagram, "publicPhone" = EXCLUDED."publicPhone", whatsapp = EXCLUDED.whatsapp,
-         -- Imagem já copiada para o nosso storage (imageThumbUrl) não volta para o link original.
-         "imageUrl" = CASE WHEN "Stage"."imageThumbUrl" IS NOT NULL THEN "Stage"."imageUrl" ELSE EXCLUDED."imageUrl" END,
+         "imageUrl" = EXCLUDED."imageUrl",
+         -- Imagem de origem mudou → descarta a miniatura (a próxima migração gera de novo).
+         "imageThumbUrl" = CASE WHEN "Stage"."imageUrl" IS DISTINCT FROM EXCLUDED."imageUrl" THEN NULL ELSE "Stage"."imageThumbUrl" END,
          "lastActivityAt" = EXCLUDED."lastActivityAt",
          "sourceNote" = EXCLUDED."sourceNote", "updatedAt" = EXCLUDED."updatedAt"
        RETURNING (xmax = 0) AS inserted`,

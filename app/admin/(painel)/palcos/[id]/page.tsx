@@ -1,4 +1,5 @@
 import { StageActions } from "@/components/admin/StageActions";
+import { StageThumb } from "@/components/admin/StageThumb";
 import { StageForm } from "@/components/admin/StageForm";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
@@ -9,7 +10,6 @@ import { prisma } from "@/lib/prisma";
 import { requireAdminId } from "@/lib/session";
 import { needsReverification, STAGE_STATUS_LABELS, STAGE_STATUS_TONES, STAGE_TYPE_LABELS } from "@/lib/stages";
 import type { Metadata } from "next";
-import Image from "next/image";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "Palco" };
@@ -42,22 +42,14 @@ export default async function PalcoDetalhePage({ params }: PageProps) {
       </PageHeader>
 
       <div className="flex flex-col gap-8">
-        {stage.imageUrl ? (
-          <figure className="flex flex-col gap-2">
-            {/* Capa (WebP ~800px já otimizada). Imagem ainda não migrada aparece pelo link original. */}
-            <Image
-              src={stage.imageUrl}
-              alt={`Foto de ${stage.name}`}
-              width={800}
-              height={600}
-              unoptimized
-              className="h-auto max-h-80 w-full max-w-xl rounded-lg border border-line object-cover"
-            />
-            {!stage.imageThumbUrl ? (
-              <figcaption className="text-xs text-fg-subtle">Imagem ainda não copiada para o nosso storage.</figcaption>
-            ) : null}
-          </figure>
-        ) : null}
+        <figure className="flex flex-col gap-2">
+          <StageThumb src={stage.imageThumbUrl} size="lg" />
+          {!stage.imageThumbUrl && stage.imageUrl ? (
+            <figcaption className="text-xs text-fg-subtle">
+              Imagem de origem ainda não processada (npm run stages:images).
+            </figcaption>
+          ) : null}
+        </figure>
 
         <Card title="Curadoria">
           <div className="flex flex-col gap-4">

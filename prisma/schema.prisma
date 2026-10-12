@@ -170,9 +170,9 @@ model Stage {
   whatsapp      String?
   publicEmail   String?
   capacity      Int?
-  /// Foto de capa (URL). Após `stages:images`, aponta para o nosso storage (WebP ~800px).
+  /// Link de ORIGEM da imagem (ex.: bucket da equipe). Nunca exibido — usado para (re)processar.
   imageUrl      String?
-  /// Miniatura (WebP 400×300) no nosso storage — listas e cards. null = imagem ainda não migrada.
+  /// Única imagem servida: miniatura WebP 400×300 no nosso storage. null = ainda não processada.
   imageThumbUrl String?
   /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
   lastActivityAt DateTime?

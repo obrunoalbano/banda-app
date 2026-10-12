@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { imageHost, isAllowedImageHost, stageImagePaths } from "./stage-images";
+import { imageHost, isAllowedImageHost, stageThumbPath } from "./stage-images";
 
 describe("imagens de palco", () => {
   const team = ["pub-abc.r2.dev"];
@@ -10,11 +10,8 @@ describe("imagens de palco", () => {
     expect(isAllowedImageHost("https://media-cdn.tripadvisor.com/x.jpg", team)).toBe(false);
     expect(isAllowedImageHost(null, team)).toBe(false);
   });
-  it("caminhos seguros e com hash", () => {
-    expect(stageImagePaths("cm1abc", "0123456789abcdef")).toEqual({
-      cover: "stages/cm1abc/cover-0123456789.webp",
-      thumb: "stages/cm1abc/thumb-0123456789.webp",
-    });
-    expect(stageImagePaths("../etc", "zz12ab").cover).toBe("stages/etc/cover-12ab.webp");
+  it("caminho seguro e com hash", () => {
+    expect(stageThumbPath("cm1abc", "0123456789abcdef")).toBe("stages/cm1abc/thumb-0123456789.webp");
+    expect(stageThumbPath("../etc", "zz12ab")).toBe("stages/etc/thumb-12ab.webp");
   });
 });

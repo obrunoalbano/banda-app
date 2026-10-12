@@ -1,6 +1,7 @@
 /**
- * Regras das imagens de palco (cópia otimizada no nosso storage). Módulo PURO — usado por
- * scripts/migrate-stage-images.mjs e scripts/import-stages.mjs; coberto por teste.
+ * Regras das imagens de palco. Servimos SÓ a miniatura otimizada no nosso storage
+ * (`imageThumbUrl`, WebP 400×300); `imageUrl` guarda o link de ORIGEM (nunca exibido), usado
+ * para (re)processar. Módulo PURO — usado pelos scripts de importação/migração; coberto por teste.
  */
 
 /** Host da URL (minúsculo) ou null se inválida. */
@@ -19,16 +20,15 @@ export function isAllowedImageHost(url: string | null | undefined, allowedHosts:
   return !!host && allowedHosts.map((h) => h.toLowerCase()).includes(host);
 }
 
-/** Caminhos no storage. `hash` no nome evita cache antigo da CDN quando a imagem muda. */
-export function stageImagePaths(stageId: string, hash: string): { cover: string; thumb: string } {
+/** Caminho da miniatura no storage. `hash` no nome evita cache antigo da CDN quando a imagem muda. */
+export function stageThumbPath(stageId: string, hash: string): string {
   const safeId = stageId.replace(/[^a-zA-Z0-9_-]/g, "");
   const h = hash.replace(/[^a-f0-9]/g, "").slice(0, 10);
-  return { cover: `stages/${safeId}/cover-${h}.webp`, thumb: `stages/${safeId}/thumb-${h}.webp` };
+  return `stages/${safeId}/thumb-${h}.webp`;
 }
 
-/** Parâmetros de otimização (ver docs/admin.md). */
+/** Parâmetros de otimização (ver docs/admin.md §6.1). */
 export const STAGE_IMAGE = {
-  cover: { maxSide: 800, quality: 78 },
-  thumb: { width: 400, height: 300, quality: 70 },
+  thumb: { width: 400, height: 300, quality: 72 },
   maxDownloadBytes: 15 * 1024 * 1024,
 } as const;
