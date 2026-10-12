@@ -34,7 +34,9 @@ app/
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
     contatos/              Lead: lista (paginada), detalhe, editar
-    integracoes/           agenda pública (ativar, slug, divulgar) + token de ingestão de leads
+    integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
+      agenda/              Integrações → Agenda: agenda pública (ativar, slug, divulgar)
+      contato/             Integrações → Contatos: formulário de contato (token de ingestão)
     banda/                 dados da conta
   api/                     só ESCRITA (leitura é feita direto nos Server Components)
     auth/[...nextauth]     next-auth
@@ -142,7 +144,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Nova seção no menu: `NAV_GROUPS` em `components/DashboardShell.tsx` (`matchNova: false` se houver sub-rota `nova`).
+- Nova seção no menu: `NAV_GROUPS` em `components/DashboardShell.tsx` (`matchNova: false` se houver sub-rota `nova`; `children` para submenu, ex.: Integrações → Agenda, Contatos — cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 
 ## Banco e migrations
@@ -160,7 +162,15 @@ npm run dev
 npm run check        # lint + typecheck + testes (mesmo que o CI)
 npm run test         # Vitest
 npm run build        # prisma generate + next build
+
+# Banco LOCAL (PGlite, .local-db/) — valide migrations e features sem tocar em produção:
+npm run db:local          # sobe o banco (deixe rodando)
+npm run db:local:migrate  # prisma migrate deploy no banco local
+npm run db:local:seed     # banda demo: demo@local.test / senha-local-123, agenda /b/banda-demo
+npm run dev:local         # next dev apontando para o banco local
 ```
+
+**Antes de `npm run db:deploy` em produção, rode a migration no banco local** (`db:local:migrate`) e valide o fluxo com `dev:local`. `scripts/with-local-db.mjs <cmd>` roda qualquer comando apontando para o banco local. O `.env.local` aponta para o Supabase de produção — nunca rode seed/testes destrutivos sem o wrapper local.
 
 CI: `.github/workflows/ci.yml` (lint, typecheck, testes, `prisma validate`, build) em push/PR para `main`.
 Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de negócio, extraia para `lib/` e teste lá.

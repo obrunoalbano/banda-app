@@ -171,6 +171,9 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | Componente | Uso |
 | --- | --- |
 | `PageHeader` | Topo de toda página do dashboard: `title` (h1), `description`, `back` {href,label}, `actions`, `children` (badges). |
+| `PageHeader` `eyebrow` | Em sub-páginas de um item com submenu, o nome da seção-mãe acima do título (ex.: `eyebrow="Integrações"`). |
+
+> **Server × client:** componentes (inclusive ícones) e funções **não podem** ser passados como props de um Server Component para um Client Component — o Next quebra com "Functions cannot be passed directly to Client Components". Componentes do DS que precisam de estado do navegador seguem o padrão: o componente principal é server (renderiza ícones/conteúdo) e só a parte interativa mínima é client. Em client components, passe ícones já renderizados (`children`) ou use-os dentro de outro client component.
 | `Card` | Agrupar uma seção: `title` (h2; `titleAs="h3"` quando o card está dentro de uma seção com h2 próprio), `description`, `actions`, `muted`. |
 | `DetailList` + `DetailItem` | Tela de detalhe em grid 2 colunas. `wide`, `preserveLines`, `numeric`. Vazio vira "—". |
 | `ExternalLink` | `mailto:`, `wa.me`, Instagram, ingressos; `icon` opcional à esquerda (ex.: `EmailIcon`). Links `http(s)` já ganham o ícone de link externo no fim e abrem em nova aba com aviso para leitor de tela — não passe `ExternalLinkIcon` como `icon`. |
@@ -221,8 +224,8 @@ PageHeader  back ("Voltar à listagem" na criação, "Voltar aos detalhes" na ed
 ```
 Após salvar: `router.push` para o detalhe + `router.refresh()`.
 
-### Configuração (`/integracoes`, `/banda`)
-`PageHeader` + um `Card` por assunto. Sucesso de salvamento sem navegação → `Alert tone="success"` no topo do form.
+### Configuração (`/integracoes/*`, `/banda`)
+`PageHeader` + um `Card` por assunto. Quando uma seção tem sub-páginas independentes (ex.: cada integração), use **submenu no menu lateral** (`children` do item em `NAV_GROUPS`): uma rota por sub-página, cada uma com `PageHeader eyebrow="<seção>"`, e a rota raiz redirecionando para a primeira (em `next.config.ts`, redirect HTTP). Nova integração = nova rota em `app/(dashboard)/integracoes/<nome>/` + novo filho em `NAV_GROUPS`. Sucesso de salvamento sem navegação → `Alert tone="success"` no topo do form.
 
 ### Público
 - **Landing:** `Brand` no topo, h1 grande, 2 CTAs (`lg`), 3 cards de recurso com ícones das entidades.
@@ -242,7 +245,7 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 
 ## 6. Padrões de interação
 
-- **Navegação:** menu lateral em dois grupos — *Gestão* (Casas, Shows, Contatos) e *Configurações* (Integrações, Minha banda). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
+- **Navegação:** menu lateral em dois grupos — *Gestão* (Casas, Shows, Contatos) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
 - **Envio de formulário:** botão com `loading` (spinner + "Salvando…"), erro da API em `Alert` no topo, validação nativa (`required`, `type`, `minLength`) + Zod no servidor.
 - **Confirmação:** ações irreversíveis ou com efeito externo usam `ConfirmButton` (nunca `window.confirm`/`alert`). O título é uma pergunta curta; a descrição explica a consequência; o botão de confirmação repete o verbo.
 - **Bloqueio explicado:** quando uma ação não é permitida, desabilite e explique com `disabledReason` (ex.: casa com shows não pode ser removida).

@@ -17,6 +17,21 @@ npm run dev                  # http://localhost:3000
 
 Gere o `AUTH_SECRET` com `openssl rand -base64 32`. Uma variável por linha, com aspas fechadas.
 
+## Validar localmente sem tocar em produção
+
+Banco Postgres local (PGlite, dados em `.local-db/`, fora do git). Não precisa de Docker.
+
+```bash
+npm run db:local           # terminal 1 — sobe o banco (deixe rodando; Ctrl+C para parar)
+npm run db:local:migrate   # terminal 2 — aplica as migrations (o mesmo prisma migrate deploy de produção)
+npm run db:local:seed      # banda de exemplo (recria a cada execução)
+npm run dev:local          # app em http://localhost:3000 usando o banco local
+```
+
+- Login de exemplo: `demo@local.test` / `senha-local-123` · agenda pública: `/b/banda-demo`.
+- `npm run dev` (sem `:local`) continua usando o banco do `.env.local`. Só um `next dev` pode rodar por vez nesta pasta.
+- Começar do zero: pare o banco e apague `.local-db/`.
+
 ## Scripts
 
 | Script | O que faz |

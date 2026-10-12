@@ -11,7 +11,7 @@ Como a banda conecta o app ao mundo externo. Leia antes de mexer em `app/b/`, `a
 
 ## 1. Agenda de shows
 
-### 1.1 Como a banda usa (tela **Integrações**)
+### 1.1 Como a banda usa (menu Integrações → **Agenda**, `/integracoes/agenda`)
 1. **Ativa** a agenda pública (opt-in, `Band.publicAgendaEnabled`).
 2. Opcionalmente ajusta o **endereço** (`Band.slug`, ex.: `os-incriveis`).
 3. Divulga por um (ou mais) dos três formatos:
@@ -103,7 +103,8 @@ app/api/band/public-agenda/route.ts      liga/desliga + slug (autenticado)
 public/embed.js                          script de auto-altura para sites externos
 components/public/PublicShowList.tsx     lista usada pela página e pelo widget
 components/public/EmbedAutoResize.tsx    envia a altura do widget
-components/PublicAgendaPanel.tsx         card de configuração em Integrações
+app/(dashboard)/integracoes/agenda/      página de configuração (submenu Integrações → Agenda)
+components/PublicAgendaPanel.tsx         painel de configuração da agenda
 lib/public-agenda.ts                     toPublicShow, JSON-LD (privacidade — com teste)
 lib/public-agenda-query.ts               getPublicAgenda (opt-in, isPublic, futuro)
 lib/slug.ts · lib/band-slug.ts           regras e geração de slug
@@ -114,7 +115,7 @@ proxy.ts                                 libera /b/*, /embed/*, /embed.js, /api/
 
 ## 2. Formulário de contato (leads)
 
-### 2.1 Hoje
+### 2.1 Hoje (menu Integrações → **Contatos**, `/integracoes/contato`)
 - `POST /api/leads/ingest` com token **secreto** da banda (`Authorization: Bearer` ou `X-Lead-Token`), guardado só como hash (`Band.leadIngestTokenHash`).
 - Pensado para o **backend** do site (o token não pode ir para o navegador).
 - CORS só para origens em `LEADS_INGEST_ALLOWED_ORIGINS` (variável **global** de ambiente).
