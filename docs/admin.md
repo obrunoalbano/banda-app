@@ -71,6 +71,24 @@ npm run stages:import -- --file venues.json --admin-email voce@empresa.com --con
 - **Reimportar** a mesma origem (`--source`, padrão `base-equipe`) atualiza os dados pelo `externalId` sem duplicar e **sem mexer na curadoria** (situação/verificação).
 - Arquivos de dados ficam fora do git (`/venues.json`, `/data/` no `.gitignore`) — contêm contatos.
 
+### 6.1 Imagens dos palcos
+Imagens ficam **no nosso storage**, otimizadas: capa WebP até 800px (`imageUrl`, ~40 KB) + miniatura 400×300 (`imageThumbUrl`, ~15 KB) — ~70% menores que os originais. `imageThumbUrl` preenchido = imagem já migrada.
+
+```bash
+# 1) importar aceitando só imagens do bucket da equipe (as de terceiros são descartadas)
+npm run stages:import -- --file venues.json --image-hosts <bucket>.r2.dev …
+# 2) copiar/otimizar (retomável; pula o que já migrou)
+npm run stages:images -- --hosts <bucket>.r2.dev --dry-run
+npm run stages:images -- --hosts <bucket>.r2.dev --drop-others --clear-broken --confirm-remote   # produção
+node scripts/with-local-db.mjs node scripts/migrate-stage-images.mjs --hosts <bucket>.r2.dev --limit 100  # local
+```
+- **Destino:** `--storage local` (padrão no banco local) grava em `.local-media/` (fora do git), servido em `/media/…` só em desenvolvimento (ou com `SERVE_LOCAL_MEDIA=1`, ligado pelo `with-local-db.mjs`). `--storage supabase` (padrão no banco remoto) usa o **Supabase Storage**, bucket público `media` (criado automaticamente) — requer `SUPABASE_URL` e `SUPABASE_SERVICE_ROLE_KEY` no `.env.local` (chave de serviço: nunca no navegador nem no git).
+- Caminho `stages/<id>/cover-<hash>.webp`: o hash muda quando a imagem muda (sem cache antigo na CDN).
+- `--drop-others`: remove links de outros hosts (direito de imagem incerto). `--clear-broken`: remove links que dão 404/410.
+- Concorrência padrão 6 (o `r2.dev` tem limite de tráfego; o script espera e tenta de novo). ~7 imagens/s.
+- Reimportar o JSON **não** sobrescreve imagem já migrada.
+- Exibição: `components/admin/StageThumb.tsx` (`next/image` com `unoptimized` — os arquivos já são otimizados; não consome a otimização da Vercel).
+
 ## 7. Checklist ao estender o painel
 - [ ] Página nova em `app/admin/(painel)/…` (o layout já exige superadmin) com `requireAdminId()`.
 - [ ] Rota de API em `app/api/admin/…` com `withAdmin`.

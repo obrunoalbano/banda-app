@@ -40,5 +40,6 @@ export async function connectDb() {
     ssl: isLocal ? false : { rejectUnauthorized: !insecure },
   });
   await client.connect();
+  client.host = url.hostname;
   return client;
 }

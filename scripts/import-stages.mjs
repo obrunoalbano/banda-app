@@ -10,6 +10,7 @@
  *   --status PUBLISHED|DRAFT  situação dos NOVOS palcos (padrão PUBLISHED)
  *   --source-note "<texto>"   fonte registrada em cada palco (padrão: base própria da equipe + arquivo + data)
  *   --admin-email <email>  quem fica como responsável pelo cadastro/verificação
+ *   --image-hosts <h1,h2>  só aceita imagens desses hosts (ex.: bucket da equipe); as demais são descartadas
  *
  * Reimportar a mesma origem ATUALIZA os dados (nome, contatos, imagem…) mas NÃO mexe na curadoria
  * (situação, verificação): um palco arquivado pela equipe continua arquivado.
@@ -20,6 +21,7 @@ import { randomUUID } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { basename } from "node:path";
 import { dedupeKey, toStageImportRow } from "../lib/stage-import.ts";
+import { isAllowedImageHost } from "../lib/stage-images.ts";
 import { argValue, connectDb, hasFlag } from "./db.mjs";
 
 const file = argValue("file");
@@ -44,6 +46,9 @@ if (!Array.isArray(raws)) {
   process.exit(1);
 }
 
+const imageHosts = (argValue("image-hosts") ?? "").split(",").map((h) => h.trim()).filter(Boolean);
+let droppedImages = 0;
+
 const rows = [];
 const rejected = {};
 const seen = new Map();
@@ -60,6 +65,11 @@ for (const raw of raws) {
     continue;
   }
   seen.set(key, true);
+  // Imagens de terceiros (direito de imagem incerto) ficam de fora quando --image-hosts é usado.
+  if (imageHosts.length && r.row.imageUrl && !isAllowedImageHost(r.row.imageUrl, imageHosts)) {
+    r.row.imageUrl = null;
+    droppedImages++;
+  }
   rows.push(r.row);
 }
 
@@ -70,6 +80,7 @@ console.log(`Válidos: ${rows.length} · duplicados ignorados: ${duplicates} · 
 console.log("Por tipo:", top(count((r) => r.type)));
 console.log("Por UF (top 10):", top(count((r) => r.state)));
 console.log(`Com bairro separado da cidade: ${rows.filter((r) => r.neighborhood).length}`);
+if (imageHosts.length) console.log(`Imagens de outros hosts descartadas: ${droppedImages} (aceitos: ${imageHosts.join(", ")})`);
 console.log(
   `Com WhatsApp: ${rows.filter((r) => r.whatsapp).length} · telefone: ${rows.filter((r) => r.publicPhone).length} · ` +
     `Instagram: ${rows.filter((r) => r.instagram).length} · imagem: ${rows.filter((r) => r.imageUrl).length} · ` +
@@ -129,7 +140,9 @@ try {
          name = EXCLUDED.name, type = EXCLUDED.type, city = EXCLUDED.city, state = EXCLUDED.state,
          neighborhood = EXCLUDED.neighborhood,
          instagram = EXCLUDED.instagram, "publicPhone" = EXCLUDED."publicPhone", whatsapp = EXCLUDED.whatsapp,
-         "imageUrl" = EXCLUDED."imageUrl", "lastActivityAt" = EXCLUDED."lastActivityAt",
+         -- Imagem já copiada para o nosso storage (imageThumbUrl) não volta para o link original.
+         "imageUrl" = CASE WHEN "Stage"."imageThumbUrl" IS NOT NULL THEN "Stage"."imageUrl" ELSE EXCLUDED."imageUrl" END,
+         "lastActivityAt" = EXCLUDED."lastActivityAt",
          "sourceNote" = EXCLUDED."sourceNote", "updatedAt" = EXCLUDED."updatedAt"
        RETURNING (xmax = 0) AS inserted`,
       params,

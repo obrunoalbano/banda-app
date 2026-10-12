@@ -37,6 +37,7 @@ yarn-error.log*
 # bases de dados brutas para importação (contêm contatos — nunca versionar)
 /venues.json
 /data/
+/.local-media/
 
 # banco Postgres local de desenvolvimento (npm run db:local)
 /.local-db/

@@ -170,8 +170,10 @@ model Stage {
   whatsapp      String?
   publicEmail   String?
   capacity      Int?
-  /// Foto/imagem de capa (URL).
+  /// Foto de capa (URL). Após `stages:images`, aponta para o nosso storage (WebP ~800px).
   imageUrl      String?
+  /// Miniatura (WebP 400×300) no nosso storage — listas e cards. null = imagem ainda não migrada.
+  imageThumbUrl String?
   /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
   lastActivityAt DateTime?
   /// Origem de importação em lote (ex.: "base-equipe") + id na origem — reimportar atualiza em vez de duplicar.

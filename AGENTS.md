@@ -187,6 +187,7 @@ npm run build        # prisma generate + next build
 
 npm run admin:create -- --email … --name …   # primeiro superadmin (painel /admin)
 npm run stages:import -- --file <json> --dry-run   # importação em lote de palcos (docs/admin.md §6)
+npm run stages:images -- --hosts <bucket> --dry-run  # copia/otimiza imagens dos palcos p/ o storage (docs/admin.md §6.1)
 
 # Banco LOCAL (PGlite, .local-db/) — valide migrations e features sem tocar em produção:
 npm run db:local          # sobe o banco (deixe rodando)

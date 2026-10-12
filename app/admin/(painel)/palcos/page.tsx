@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
 import { containerClass, inputSmClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
+import { StageThumb } from "@/components/admin/StageThumb";
 import { BRAZIL_UFS } from "@/lib/brazil-states";
 import { formatDateOnly } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
@@ -57,7 +58,17 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
     prisma.stage.findMany({
       where,
       orderBy: { updatedAt: "desc" },
-      select: { id: true, name: true, type: true, city: true, neighborhood: true, state: true, status: true, verifiedAt: true },
+      select: {
+        id: true,
+        name: true,
+        type: true,
+        city: true,
+        neighborhood: true,
+        state: true,
+        status: true,
+        verifiedAt: true,
+        imageThumbUrl: true,
+      },
       ...pageArgs(page),
     }),
     prisma.stage.groupBy({ by: ["status"], _count: true }),
@@ -139,7 +150,8 @@ export default async function AdminPalcosPage({ searchParams }: PageProps) {
             {stages.map((s) => (
               <Tr key={s.id}>
                 <Td label="Nome" strong>
-                  <Link href={`/admin/palcos/${s.id}`} className="hover:underline">
+                  <Link href={`/admin/palcos/${s.id}`} className="flex items-center gap-3 hover:underline">
+                    <StageThumb src={s.imageThumbUrl} />
                     {s.name}
                   </Link>
                 </Td>
