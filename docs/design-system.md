@@ -140,6 +140,7 @@ Tamanhos: **16px** dentro de botões (automático), **20px** no menu, **24px** e
 | `Button` | Ações em formulários e na página (submit, gerar, aplicar). | `variant` `primary`·`secondary`·`ghost`·`danger`·`danger-solid`; `size` `sm`(32px)·`md`(40px)·`lg`(48px); `icon`; `loading`; `type` padrão `"button"` |
 | `ButtonLink` | Navegação com cara de botão ("Nova casa", "Alterar", "Entrar"). | mesmas `variant`/`size`/`icon` + props de `next/link` |
 | `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason`, `size` |
+| `Sheet` | Painel lateral modal com detalhes de um item sem sair da tela (ex.: card do Fluxo de contatos). Controlado: `open`/`onClose`; Esc, X e clique fora passam pelo estado do pai; ao abrir, o foco vai para o título. | `open`, `onClose`, `title`, `description`, `children` |
 | `ConfirmDeleteButton` | Remover um registro via `DELETE` na API. | `endpoint`, `redirectTo`, `itemLabel` (ex.: `a casa "Bar X"`), `disabledReason` |
 
 Hierarquia de variantes: `primary` = a ação principal da área (uma só) · `secondary` = alternativas (Cancelar, Mês atual) · `ghost` = ações discretas (Limpar, Copiar, itens de toolbar) · `danger` = abre fluxo destrutivo · `danger-solid` = confirma a destruição (só dentro do modal).
@@ -231,7 +232,7 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (`aria-live`, `formatInteger`) + `<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">` de cards (`StageCard`: `<article>` com imagem 4:3 — placeholder com ícone se faltar —, selos, `h2` com o nome, ações no rodapé com `mt-auto` para alinhar entre cards) + `Pagination` com `pageSize` próprio (24, múltiplo de 2 e 3). Ação principal do card ocupa a largura (`w-full`) e, depois de feita, vira link para o resultado ("Nas suas casas").
 
 ### Quadro por etapas (`/fluxo`)
-`containerWideClass` (7xl) + `PageHeader` + colunas `<section aria-labelledby>` (`grid md:grid-cols-2 xl:grid-cols-4`, fundo `bg-surface-muted`) com selo da etapa e contagem no `h2`; cards `<article>` (`h3`) com selo de origem, mudança de etapa por `<select>` rotulado (acessível, sem arrastar), ações secundárias `size="sm"`. Âncora `#<prefixo>-<id>` com `target:ring-2 target:ring-focus` para "Ver no …". Estado de quadro interativo fica no client (atualização imediata) em vez de `router.refresh()`.
+`containerWideClass` (7xl) + `PageHeader` + colunas `<section aria-labelledby>` (`grid md:grid-cols-2 xl:grid-cols-4`, fundo `bg-surface-muted`) com selo da etapa e contagem no `h2`; cards `<article>` (`h3`) compactos com selo de origem; **arrastar e soltar** entre colunas (mouse e toque com `@dnd-kit/core`; coluna de destino `bg-info-bg`) e, para teclado, botão "esticado" no card que abre um `Sheet` com o `<select>` de etapa e os detalhes. Âncora `#<prefixo>-<id>` com `target:ring-2 target:ring-focus` para "Ver no …". Estado de quadro interativo fica no client (atualização imediata) em vez de `router.refresh()`.
 
 ### Público
 - **Landing:** `Brand` no topo, h1 grande, 2 CTAs (`lg`), 3 cards de recurso com ícones das entidades.

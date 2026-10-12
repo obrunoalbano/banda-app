@@ -64,7 +64,7 @@ components/
                            Pagination, EmptyState, CodeBlock, ConfirmButton, StatusPage, Brand, AuthLayout
   public/                  PublicShowList, EmbedAutoResize (página pública e widget)
   explore/                 StageCard, ExploreFilterForm (Explorar Palcos)
-  deals/                   DealBoard (client, estado local), DealCard, DealActions, DealStepBadge, AddToFlowButton
+  deals/                   DealBoard (client: arrastar e soltar com @dnd-kit/core, estado local), DealCard, DealDetails (painel), DealStepBadge, AddToFlowButton
   *Form.tsx                formulários client (POST/PATCH na API)
   DashboardShell.tsx       menu lateral (gaveta no mobile) + header
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
@@ -106,7 +106,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Band** (conta): `disabledAt` (desativada pelo painel; corta acesso na hora) e `mustChangePassword` (senha provisória).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
-- **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
+- **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), `notes` (observações da banda), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
 
 Todas as entidades pertencem a uma banda (`bandId`, `onDelete: Cascade`). Exceção: `Show.venueId` é `onDelete: NoAction` — **casa com shows não pode ser apagada** (a API devolve 409 e a UI desabilita o botão). Não troque para `Restrict`: quebraria o cascade Band → Venue/Show.
 

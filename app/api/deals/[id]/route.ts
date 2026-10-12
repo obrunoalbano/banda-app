@@ -5,17 +5,21 @@ import { dealUpdateSchema } from "@/lib/validations";
 
 type Params = { id: string };
 
-/** Move a negociação de etapa. */
+/** Move a negociação de etapa e/ou salva as observações. */
 export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }) => {
   const parsed = await parseBody(request, dealUpdateSchema);
   if (!parsed.ok) return parsed.response;
+  const { step, notes } = parsed.data;
 
   const { count } = await prisma.deal.updateMany({
     where: { id, bandId },
-    data: { step: parsed.data.step, stepChangedAt: new Date() },
+    data: {
+      ...(step !== undefined && { step, stepChangedAt: new Date() }),
+      ...(notes !== undefined && { notes }),
+    },
   });
   if (count === 0) return jsonError(404, "Negociação não encontrada");
-  return NextResponse.json({ id, step: parsed.data.step });
+  return NextResponse.json({ id, ...parsed.data });
 });
 
 /** Tira do fluxo (o contato, o palco e a casa criada continuam onde estão). */

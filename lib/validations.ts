@@ -86,8 +86,10 @@ export const dealCreateSchema = z.union([
   z.strictObject({ stageId: z.string().trim().min(1).max(64) }),
 ]);
 
-/** Mover de etapa. */
-export const dealUpdateSchema = z.object({ step: z.enum(DealStep) });
+/** Mover de etapa e/ou editar observações ("" apaga). */
+export const dealUpdateSchema = z
+  .object({ step: z.enum(DealStep).optional(), notes: optionalText(5000) })
+  .refine((d) => d.step !== undefined || d.notes !== undefined, "Nada para alterar");
 
 const showBaseSchema = z.object({
   venueId: optionalText(64),
