@@ -27,6 +27,9 @@ export default async function EditarShowPage({ params }: PageProps) {
         privateState: true,
         cacheCents: true,
         paymentStatus: true,
+        isPublic: true,
+        ticketUrl: true,
+        cancelledAt: true,
       },
     }),
     prisma.venue.findMany({
@@ -40,7 +43,11 @@ export default async function EditarShowPage({ params }: PageProps) {
   return (
     <div className={containerClass}>
       <PageHeader title="Alterar show" back={{ href: `/shows/${show.id}`, label: "Voltar aos detalhes" }} />
-      <ShowForm mode="edit" venues={venues} show={{ ...show, date: toDateOnlyString(show.date) }} />
+      <ShowForm
+        mode="edit"
+        venues={venues}
+        show={{ ...show, date: toDateOnlyString(show.date), cancelled: show.cancelledAt !== null }}
+      />
     </div>
   );
 }

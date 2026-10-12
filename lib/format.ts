@@ -21,6 +21,15 @@ const dateTimeFullFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: APP_TIME_ZONE,
 });
 const monthNameFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
+const monthShortFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+const weekdayShortFmt = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: "UTC" });
+const dateLongFmt = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 /** Data pura (UTC 00:00) → "15/12/2026". */
 export function formatDateOnly(date: Date): string {
@@ -78,4 +87,22 @@ export function instagramHref(value: string | null | undefined): string | null {
   const handle = v.replace(/^@/, "").replace(/^(www\.)?instagram\.com\//i, "").replace(/\/+$/, "");
   if (!/^[A-Za-z0-9._]{1,30}$/.test(handle)) return null;
   return `https://instagram.com/${handle}`;
+}
+
+/** Remove o ponto final de abreviações do Intl ("dez." → "dez"). */
+const stripDot = (s: string) => s.replace(/\.$/, "");
+
+/**
+ * Data pura "YYYY-MM-DD" em partes para o bloco de data da agenda:
+ * { day: "15", month: "dez", weekday: "ter", long: "terça-feira, 15 de dezembro de 2026" }.
+ */
+export function dateParts(ymd: string): { day: string; month: string; weekday: string; long: string } {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return {
+    day: String(d),
+    month: stripDot(monthShortFmt.format(date)),
+    weekday: stripDot(weekdayShortFmt.format(date)),
+    long: dateLongFmt.format(date),
+  };
 }

@@ -6,8 +6,23 @@ import { getToken } from "next-auth/jwt";
  * Proxy (antigo middleware no Next ≤15). Protege tudo por padrão:
  * páginas sem sessão → /login; API sem sessão → 401. Rotas públicas são listadas abaixo.
  */
+/**
+ * Superfícies públicas da integração de agenda (sem sessão, nem decodifica o JWT):
+ * página /b/<slug>, widgets /embed/…, script /embed.js e API /api/public/….
+ */
+function isPublicIntegrationPath(path: string): boolean {
+  return (
+    path.startsWith("/b/") ||
+    path.startsWith("/embed/") ||
+    path === "/embed.js" ||
+    path.startsWith("/api/public/")
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
+  if (isPublicIntegrationPath(path)) return NextResponse.next();
+
   const secret = process.env.AUTH_SECRET;
   if (!secret) {
     console.error("AUTH_SECRET não definido");

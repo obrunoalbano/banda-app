@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { parseDateOnly, resolveShowCache, resolveShowLocation, toDateOnlyString } from "./shows";
+import {
+  parseDateOnly,
+  resolveCancelledAt,
+  resolveShowCache,
+  resolveShowLocation,
+  resolveShowVisibility,
+  toDateOnlyString,
+  todayDateOnly,
+} from "./shows";
 
 describe("parseDateOnly", () => {
   it("gera UTC 00:00", () => {
@@ -63,5 +71,41 @@ describe("resolveShowCache (snapshot)", () => {
   });
   it("virar evento particular sem valor mantém o atual", () => {
     expect(resolveShowCache({ inputCents: undefined, currentCents: 100, venueChanged: true, venueCacheCents: undefined })).toBe(100);
+  });
+});
+
+
+describe("resolveShowVisibility (padrão da agenda pública)", () => {
+  it("criação: casa pública, particular oculto", () => {
+    expect(resolveShowVisibility({ inputIsPublic: undefined, venueId: "v1" })).toBe(true);
+    expect(resolveShowVisibility({ inputIsPublic: undefined, venueId: null })).toBe(false);
+  });
+  it("valor informado vence", () => {
+    expect(resolveShowVisibility({ inputIsPublic: true, venueId: null })).toBe(true);
+    expect(resolveShowVisibility({ inputIsPublic: false, venueId: "v1" })).toBe(false);
+  });
+  it("edição: mantém o atual; virar particular oculta por privacidade", () => {
+    expect(resolveShowVisibility({ inputIsPublic: undefined, currentIsPublic: false, venueId: "v1" })).toBe(false);
+    expect(resolveShowVisibility({ inputIsPublic: undefined, currentIsPublic: true, venueId: null })).toBe(false);
+  });
+});
+
+describe("resolveCancelledAt", () => {
+  const now = new Date("2026-10-12T12:00:00Z");
+  const before = new Date("2026-10-01T12:00:00Z");
+  it("cancelar marca agora e preserva data anterior", () => {
+    expect(resolveCancelledAt(true, null, now)).toEqual(now);
+    expect(resolveCancelledAt(true, before, now)).toEqual(before);
+  });
+  it("reativar limpa; omitido mantém", () => {
+    expect(resolveCancelledAt(false, before, now)).toBeNull();
+    expect(resolveCancelledAt(undefined, before, now)).toEqual(before);
+  });
+});
+
+describe("todayDateOnly", () => {
+  it("usa o fuso de São Paulo (01:00 UTC ainda é o dia anterior)", () => {
+    expect(todayDateOnly(new Date("2026-10-12T01:00:00Z")).toISOString()).toBe("2026-10-11T00:00:00.000Z");
+    expect(todayDateOnly(new Date("2026-10-12T15:00:00Z")).toISOString()).toBe("2026-10-12T00:00:00.000Z");
   });
 });

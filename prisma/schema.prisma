@@ -16,6 +16,10 @@ model Band {
   phone            String
   email            String   @unique
   passwordHash     String
+  /// Identificador público (URL da agenda: /b/<slug>). Editável; trocar quebra widgets instalados.
+  slug             String   @unique
+  /// Opt-in: agenda pública (página /b/<slug>, widget e API pública de shows).
+  publicAgendaEnabled Boolean @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())
@@ -74,6 +78,12 @@ model Show {
   date            DateTime
   time            String
   paymentStatus   ShowPaymentStatus  @default(AGUARDANDO_PAGAMENTO)
+  /// Aparece na agenda pública. Padrão definido na API: show em casa = true, evento particular = false.
+  isPublic        Boolean            @default(false)
+  /// Link de ingressos exibido na agenda pública.
+  ticketUrl       String?
+  /// Show cancelado continua listado (como "Cancelado") em vez de sumir.
+  cancelledAt     DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 

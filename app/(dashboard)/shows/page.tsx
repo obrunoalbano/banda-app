@@ -3,6 +3,7 @@ import { ShowsFilterForm } from "@/components/ShowsFilterForm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
+import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
 import { AddIcon, ShowIcon } from "@/components/ui/icons";
 import { containerClass, linkClass } from "@/components/ui/styles";
@@ -115,6 +116,7 @@ export default async function ShowsPage({ searchParams }: PageProps) {
             time: true,
             cacheCents: true,
             paymentStatus: true,
+            cancelledAt: true,
             privateCity: true,
             privateState: true,
             venue: { select: { name: true, city: true, state: true } },
@@ -191,6 +193,11 @@ export default async function ShowsPage({ searchParams }: PageProps) {
                   <Link href={`/shows/${show.id}`} className="hover:underline">
                     {show.venue?.name ?? "Evento Particular"}
                   </Link>
+                  {show.cancelledAt ? (
+                    <span className="ml-2 align-middle">
+                      <Badge tone="danger">Cancelado</Badge>
+                    </span>
+                  ) : null}
                 </Td>
                 <Td label="Cidade">{show.venue?.city ?? show.privateCity}</Td>
                 <Td label="UF">{show.venue?.state ?? show.privateState}</Td>

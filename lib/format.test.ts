@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  dateParts,
   formatDateOnly,
   formatDateTimeShort,
   instagramHref,
@@ -49,5 +50,17 @@ describe("links", () => {
     expect(instagramHref("instagram.com/casa/")).toBe("https://instagram.com/casa");
     expect(instagramHref("https://instagram.com/x")).toBe("https://instagram.com/x");
     expect(instagramHref("nome com espaço")).toBeNull();
+  });
+});
+
+
+describe("dateParts (bloco de data da agenda)", () => {
+  it("partes em pt-BR sem ponto final", () => {
+    expect(dateParts("2026-12-15")).toEqual({
+      day: "15",
+      month: "dez",
+      weekday: "ter",
+      long: "terça-feira, 15 de dezembro de 2026",
+    });
   });
 });

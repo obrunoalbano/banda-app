@@ -4,104 +4,86 @@
  * Design system — tokens semânticos. Documentação: docs/design-system.md
  *
  * Componentes usam SÓ estes nomes (bg-surface, text-fg-muted, border-line…), nunca
- * paleta crua (zinc-500, red-600…) nem variantes dark:. O tema escuro é resolvido aqui,
- * trocando o valor das variáveis — mudar a identidade visual = mudar este arquivo.
+ * paleta crua (zinc-500, red-600…) nem variantes dark:.
+ *
+ * Tema: cada token é `light-dark(<claro>, <escuro>)`. O tema efetivo vem de `color-scheme`:
+ * - padrão: segue o sistema operacional (`color-scheme: light dark` no :root);
+ * - `data-theme="light" | "dark"` em qualquer elemento força o tema daquele trecho
+ *   (usado nos widgets embutíveis, ?tema=claro|escuro).
  */
 
 :root {
   /* Superfícies */
-  --canvas: #ffffff; /* fundo da página */
-  --surface: #ffffff; /* cards, tabelas, inputs, dialog */
-  --surface-muted: #fafafa; /* menu lateral, cabeçalho de tabela, barra de filtros */
-  --surface-sunken: #f4f4f5; /* hover, código, skeleton */
+  --canvas: light-dark(#ffffff, #09090b); /* fundo da página */
+  --surface: light-dark(#ffffff, #09090b); /* cards, tabelas, inputs, dialog */
+  --surface-muted: light-dark(#fafafa, #111113); /* menu lateral, cabeçalho de tabela, barra de filtros */
+  --surface-sunken: light-dark(#f4f4f5, #1f1f23); /* hover, código, skeleton */
 
   /* Texto */
-  --fg: #18181b; /* texto principal, títulos */
-  --fg-muted: #52525b; /* descrições, texto secundário */
-  --fg-subtle: #6b6b74; /* labels de detalhe, placeholders, metadados (mín. AA 4.5:1) */
+  --fg: light-dark(#18181b, #fafafa); /* texto principal, títulos */
+  --fg-muted: light-dark(#52525b, #a1a1aa); /* descrições, texto secundário */
+  --fg-subtle: light-dark(#6b6b74, #8b8b94); /* labels de detalhe, placeholders, metadados (mín. AA 4.5:1) */
 
   /* Bordas */
-  --line: #e4e4e7; /* divisórias, cards */
-  --line-strong: #d4d4d8; /* inputs, botão secundário */
+  --line: light-dark(#e4e4e7, #27272a); /* divisórias, cards */
+  --line-strong: light-dark(#d4d4d8, #52525b); /* inputs, botão secundário */
 
   /* Ação principal (monocromática — trocar aqui para dar cor à marca) */
-  --primary: #18181b;
-  --primary-hover: #27272a;
-  --on-primary: #ffffff;
+  --primary: light-dark(#18181b, #f4f4f5);
+  --primary-hover: light-dark(#27272a, #d4d4d8);
+  --on-primary: light-dark(#ffffff, #18181b);
 
   /* Ação destrutiva sólida */
-  --danger: #dc2626;
-  --danger-hover: #b91c1c;
-  --on-danger: #ffffff;
+  --danger: light-dark(#dc2626, #dc2626);
+  --danger-hover: light-dark(#b91c1c, #b91c1c);
+  --on-danger: light-dark(#ffffff, #ffffff);
 
   /* Foco (outline de teclado) */
-  --focus: #71717a;
+  --focus: light-dark(#71717a, #a1a1aa);
+
+  /* Tons de feedback: -bg (fundo suave), -fg (texto sobre -bg), -line (borda) */
+  --neutral-bg: light-dark(#f4f4f5, #27272a);
+  --neutral-fg: light-dark(#3f3f46, #e4e4e7);
+  --neutral-line: light-dark(#e4e4e7, #3f3f46);
+  --info-bg: light-dark(#e0f2fe, #082f49);
+  --info-fg: light-dark(#0c4a6e, #bae6fd);
+  --info-line: light-dark(#bae6fd, #0c4a6e);
+  --success-bg: light-dark(#d1fae5, #052e1f);
+  --success-fg: light-dark(#064e3b, #a7f3d0);
+  --success-line: light-dark(#a7f3d0, #065f46);
+  --warning-bg: light-dark(#fef3c7, #2d1d05);
+  --warning-fg: light-dark(#78350f, #fde68a);
+  --warning-line: light-dark(#fde68a, #78350f);
+  --danger-bg: light-dark(#fef2f2, #2a0f12);
+  --danger-fg: light-dark(#991b1b, #fecaca);
+  --danger-line: light-dark(#fecaca, #7f1d1d);
 
   /* Fundo escurecido atrás de modal/gaveta (igual nos dois temas) */
   --overlay: rgb(0 0 0 / 0.5);
 
-  /* Tons de feedback: -bg (fundo suave), -fg (texto sobre -bg), -line (borda) */
-  --neutral-bg: #f4f4f5;
-  --neutral-fg: #3f3f46;
-  --neutral-line: #e4e4e7;
-  --info-bg: #e0f2fe;
-  --info-fg: #0c4a6e;
-  --info-line: #bae6fd;
-  --success-bg: #d1fae5;
-  --success-fg: #064e3b;
-  --success-line: #a7f3d0;
-  --warning-bg: #fef3c7;
-  --warning-fg: #78350f;
-  --warning-line: #fde68a;
-  --danger-bg: #fef2f2;
-  --danger-fg: #991b1b;
-  --danger-line: #fecaca;
+  color-scheme: light dark;
+}
 
+[data-theme="light"] {
   color-scheme: light;
 }
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --canvas: #09090b;
-    --surface: #09090b;
-    --surface-muted: #111113;
-    --surface-sunken: #1f1f23;
+[data-theme="dark"] {
+  color-scheme: dark;
+}
 
-    --fg: #fafafa;
-    --fg-muted: #a1a1aa;
-    --fg-subtle: #8b8b94;
-
-    --line: #27272a;
-    --line-strong: #52525b;
-
-    --primary: #f4f4f5;
-    --primary-hover: #d4d4d8;
-    --on-primary: #18181b;
-
-    --danger: #dc2626;
-    --danger-hover: #b91c1c;
-    --on-danger: #ffffff;
-
-    --focus: #a1a1aa;
-
-    --neutral-bg: #27272a;
-    --neutral-fg: #e4e4e7;
-    --neutral-line: #3f3f46;
-    --info-bg: #082f49;
-    --info-fg: #bae6fd;
-    --info-line: #0c4a6e;
-    --success-bg: #052e1f;
-    --success-fg: #a7f3d0;
-    --success-line: #065f46;
-    --warning-bg: #2d1d05;
-    --warning-fg: #fde68a;
-    --warning-line: #78350f;
-    --danger-bg: #2a0f12;
-    --danger-fg: #fecaca;
-    --danger-line: #7f1d1d;
-
-    color-scheme: dark;
-  }
+/*
+ * Widgets embutíveis (app/embed/…): o tema escolhido no ?tema= vale para a página inteira
+ * do iframe (inclusive o fundo do body), e ?fundo=transparente deixa o site hospedeiro aparecer.
+ */
+:root:has([data-embed][data-theme="light"]) {
+  color-scheme: light;
+}
+:root:has([data-embed][data-theme="dark"]) {
+  color-scheme: dark;
+}
+:root:has([data-embed-transparent]) body {
+  background: transparent;
 }
 
 @theme inline {

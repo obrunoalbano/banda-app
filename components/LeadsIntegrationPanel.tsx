@@ -59,6 +59,7 @@ export function LeadsIntegrationPanel({ baseUrl, ingestPath, initialHasToken }: 
   return (
     <div className="flex flex-col gap-6">
       <Card
+        titleAs="h3"
         title="Token de acesso"
         description="O site envia este token em cada requisição. Guarde-o no backend do site, nunca no código do navegador."
       >
@@ -98,6 +99,7 @@ export function LeadsIntegrationPanel({ baseUrl, ingestPath, initialHasToken }: 
       </Card>
 
       <Card
+        titleAs="h3"
         title="Como enviar leads"
         description={
           <>

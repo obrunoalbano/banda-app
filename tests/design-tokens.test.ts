@@ -8,16 +8,13 @@ import { describe, expect, it } from "vitest";
  */
 
 const css = readFileSync(join(__dirname, "..", "app", "globals.css"), "utf8");
-const [lightPart, darkAndRest] = css.split("@media (prefers-color-scheme: dark)");
-const darkPart = darkAndRest.split("@theme")[0];
 
-function readTokens(block: string): Record<string, string> {
-  return Object.fromEntries([...block.matchAll(/--([a-z-]+):\s*(#[0-9a-f]{6})/gi)].map((m) => [m[1], m[2]]));
-}
+/** Lê `--token: light-dark(#claro, #escuro)` do :root. */
+const pairsByToken = [...css.matchAll(/--([a-z-]+):\s*light-dark\((#[0-9a-f]{6}),\s*(#[0-9a-f]{6})\)/gi)];
 
 const themes = {
-  claro: readTokens(lightPart),
-  escuro: { ...readTokens(lightPart), ...readTokens(darkPart) },
+  claro: Object.fromEntries(pairsByToken.map((m) => [m[1], m[2]])),
+  escuro: Object.fromEntries(pairsByToken.map((m) => [m[1], m[3]])),
 };
 
 function luminance(hex: string): number {
@@ -52,6 +49,13 @@ const PAIRS: [string, string, number][] = [
   ["danger-fg", "danger-bg", 4.5],
   ["focus", "canvas", 3],
 ];
+
+it("todos os tokens de cor usam light-dark()", () => {
+  // Evita token novo declarado só para um tema (escaparia deste teste).
+  const plainHex = [...css.matchAll(/^\s*--([a-z-]+):\s*#[0-9a-f]{3,8};/gim)].map((m) => m[1]);
+  expect(plainHex).toEqual([]);
+  expect(pairsByToken.length).toBeGreaterThan(20);
+});
 
 describe.each(Object.entries(themes))("tokens do tema %s", (_name, tokens) => {
   it.each(PAIRS)("%s sobre %s ≥ %s:1", (fg, bg, min) => {

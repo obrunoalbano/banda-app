@@ -33,9 +33,12 @@ Gere o `AUTH_SECRET` com `openssl rand -base64 32`. Uma variável por linha, com
 1. Configure `DATABASE_URL` (pooler do Supabase, modo transaction, porta 6543) e `AUTH_SECRET`. `DIRECT_URL` só é usada pelo Prisma CLI.
 2. Antes de publicar código que depende de schema novo, rode `npm run db:deploy` apontando para o banco de produção (faça backup antes de migrations que alteram dados). O `DIRECT_URL` deve ser o pooler em modo **session** (porta 5432), não a conexão direta `db.<ref>.supabase.co`, que é só IPv6 (erro P1001 em redes sem IPv6).
 
-## Integração de leads
+## Integrações
 
-Na tela **Integrações** a banda gera um token e recebe a URL `POST /api/leads/ingest`. O site envia o JSON com `Authorization: Bearer <token>`; o lead aparece em **Contatos**. Detalhes do contrato em [AGENTS.md](AGENTS.md#ingestão-de-leads-apileadsingest).
+- **Agenda pública:** a banda ativa em **Integrações** e divulga a página `/b/<slug>`, o widget (iframe + `embed.js`) ou a API `GET /api/public/v1/bands/<slug>/shows`.
+- **Formulário de contato:** o site envia `POST /api/leads/ingest` com `Authorization: Bearer <token>`; o lead aparece em **Contatos**.
+
+Contratos, privacidade e próximas fases: [docs/integracoes.md](docs/integracoes.md).
 
 ## Para quem vai desenvolver
 

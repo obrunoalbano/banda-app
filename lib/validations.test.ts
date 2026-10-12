@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   leadIngestSchema,
   normalizeLeadIngestBody,
+  publicAgendaSchema,
   registerBandSchema,
   showCreateSchema,
   venueCreateSchema,
@@ -78,5 +79,25 @@ describe("ingestão de leads (contrato externo)", () => {
   });
   it("string vazia vira null", () => {
     expect(leadIngestSchema.parse({ name: "M", email: "m@x.com", city: "" }).city).toBeNull();
+  });
+});
+
+
+describe("campos públicos do show", () => {
+  const base = { date: "2026-12-15", time: "21:00", venueId: "v1" };
+  it("ticketUrl precisa ser http(s); vazio vira null", () => {
+    expect(showCreateSchema.safeParse({ ...base, ticketUrl: "ingressos.com" }).success).toBe(false);
+    expect(showCreateSchema.safeParse({ ...base, ticketUrl: "javascript:alert(1)" }).success).toBe(false);
+    const ok = showCreateSchema.parse({ ...base, ticketUrl: "https://sympla.com.br/evento" });
+    expect(ok.ticketUrl).toBe("https://sympla.com.br/evento");
+    expect(showCreateSchema.parse({ ...base, ticketUrl: "" }).ticketUrl).toBeNull();
+  });
+});
+
+describe("publicAgendaSchema", () => {
+  it("normaliza e valida o slug", () => {
+    expect(publicAgendaSchema.parse({ slug: "  Os-Incriveis " }).slug).toBe("os-incriveis");
+    expect(publicAgendaSchema.safeParse({ slug: "api" }).success).toBe(false);
+    expect(publicAgendaSchema.safeParse({ slug: "os incriveis" }).success).toBe(false);
   });
 });
