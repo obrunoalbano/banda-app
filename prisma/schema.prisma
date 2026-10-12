@@ -62,12 +62,17 @@ model Venue {
   valorCacheCents Int?
   instagram   String?
   sendStatus  VenueSendStatus   @default(NAO_ENVIADO)
+  /// Palco do diretório (Explorar Palcos) de onde a casa veio. Uma banda não adiciona o mesmo palco duas vezes.
+  stageId     String?
+  stage       Stage?            @relation(fields: [stageId], references: [id], onDelete: SetNull)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   shows       Show[]
 
+  @@unique([bandId, stageId])
   @@index([bandId, updatedAt])
   @@index([bandId, city])
+  @@index([stageId])
 }
 
 model Show {
@@ -191,6 +196,8 @@ model Stage {
   createdById   String?
   createdAt     DateTime    @default(now())
   updatedAt     DateTime    @updatedAt
+  /// Casas das bandas criadas a partir deste palco (sinal de interesse para a curadoria).
+  venues        Venue[]
 
   @@unique([externalSource, externalId])
   @@index([status, state, city])

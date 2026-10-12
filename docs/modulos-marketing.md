@@ -12,7 +12,7 @@ Engenharia reversa (nível de produto) do **Palcos do Brasil** e o desenho da no
 | --- | --- | --- |
 | **Administrativo** | Casas, Shows | ✅ |
 | **Financeiro** | — | Em breve |
-| **Marketing** | Contatos ✅ · Redes Sociais (em breve) · **EPK Profissional** · **Explorar Palcos** · **Abordagem com IA** | 3 em desenho (este documento) |
+| **Marketing** | Contatos ✅ · Redes Sociais (em breve) · **EPK Profissional** · **Explorar Palcos** ✅ · **Abordagem com IA** | EPK e Abordagem em desenho (este documento) |
 | **Configurações** | Integrações (Agenda, Contatos), Minha banda | ✅ |
 
 Navegação em `NAV_GROUPS` (`components/DashboardShell.tsx`). Recurso não lançado = `soon: true` (aparece desabilitado com "Em breve"); módulo inteiro não lançado = `soon: { icon }` no grupo. URLs não têm prefixo de módulo (`/casas`, `/epk`, `/explorar`, `/abordagem`) — o módulo é só agrupamento visual.
@@ -109,6 +109,15 @@ Cobertura medida no OpenStreetMap (Brasil, out/2026): **16.661 bares/pubs**, **8
 - Tela da banda `/explorar`: só palcos `published`; filtros (UF, cidade, tipo, estilo), cards com "verificado em mês/ano", ações "Adicionar às minhas casas" (cria `Venue` com `stageId`) e "Gerar abordagem". Agregados por UF com supressão de grupos < 5.
 - **Sempre autenticado** (nunca expor a base sem login — erro observado no concorrente); rate limit por banda e paginação para impedir raspagem; sem exportação em massa.
 
+### 4.2.1 Implementado (tela da banda)
+- **`/explorar`** (`app/(dashboard)/explorar/page.tsx`, Server Component): filtros na URL — busca (`q`: nome, bairro ou cidade), `uf`, `cidade` (só com UF; trocar a UF reenvia o form e recarrega as cidades — `ExploreFilterForm`), `tipo`, `verificados=1`, `whatsapp=1`. Grade de cards (`StageCard`), 24 por página.
+- Regras em `lib/explore.ts` (com teste): `buildStageWhere` **sempre** fixa `status: PUBLISHED`; ordem = verificados primeiro → atividade mais recente → nome; `exploreStageSelect` = só campos institucionais.
+- Card: miniatura (`imageThumbUrl`; sem foto → ícone), tipo, selo **Verificado** (data no `title`), bairro · cidade/UF, "atividade registrada em mês/ano", observações, estilos, botões **WhatsApp** (`wa.me`) e **Instagram**.
+- **"Adicionar às minhas casas"** → `POST /api/explorar/[stageId]` (`withBand`): cria `Venue` com `stageId`, status *Não enviado*, telefone = WhatsApp ou telefone comercial, email comercial, responsável vazio (LGPD — a banda completa). **Idempotente**: `@@unique([bandId, stageId])`; repetir (ou duas requisições simultâneas) devolve a mesma casa (`created: false`). O botão vira **"Nas suas casas"** (link para `/casas/[id]`); o detalhe da casa mostra "Origem: Explorar Palcos".
+- `Venue.stageId` é `onDelete: SetNull`: apagar/arquivar palco não mexe na casa da banda (que é dela).
+- Rate limit por banda: `explore` (300 páginas/10 min — acima disso a página mostra aviso) e `exploreAdd` (60 adições/h).
+- Pendente: estilo (gêneros quase vazios na base), "Gerar abordagem" (Abordagem com IA), reportar dado errado, agregados por UF.
+
 ### 4.3 LGPD
 Estabelecimento (nome, endereço comercial, Instagram/site/telefone comercial) ≈ dado de empresa: pode ir para o diretório curado. **Nome e telefone pessoal de responsável são dados pessoais**: não entram no diretório; ficam só na `Venue` privada da banda. Registrar a fonte de cada informação da curadoria (para atender pedidos de correção/remoção).
 
@@ -140,4 +149,4 @@ Estabelecimento (nome, endereço comercial, Instagram/site/telefone comercial) �
 - **D1 — Fonte do Explorar Palcos:** ✅ **curadoria própria** (equipe cadastra e verifica; área `/admin/palcos` para curadores).
 - **D2 — Storage de fotos do EPK:** ✅ **Supabase Storage** (bucket público só para imagens do EPK; upload via servidor com chave de serviço; limite de tamanho/tipo).
 - **D3 — IA:** ✅ **Claude (API da Anthropic) com cota por banda** + fallback de templates sem IA. Requer `ANTHROPIC_API_KEY`.
-- **D4 — Ordem de construção:** ✅ começar pelo **painel superadmin** (`docs/admin.md`) com cadastro de palcos (modelo `Stage` implementado) e de usuários; em seguida a tela Explorar Palcos das bandas.
+- **D4 — Ordem de construção:** ✅ começar pelo **painel superadmin** (`docs/admin.md`) com cadastro de palcos (modelo `Stage` implementado) e de usuários; em seguida a tela Explorar Palcos das bandas (✅ §4.2.1).

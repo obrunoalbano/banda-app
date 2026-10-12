@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   dateParts,
+  formatInteger,
+  formatMonthYear,
   formatRelative,
   formatDateOnly,
   formatDateTimeShort,
@@ -78,5 +80,19 @@ describe("formatRelative", () => {
     [65 * 86400_000, "há 2 meses"],
   ])("%sms → %s", (ms, expected) => {
     expect(formatRelative(ago(ms), now)).toBe(expected);
+  });
+});
+
+describe("formatMonthYear", () => {
+  it("mês abreviado/ano no fuso de São Paulo", () => {
+    expect(formatMonthYear(new Date("2026-10-12T15:00:00Z"))).toBe("out/2026");
+    // 1º/jan 01:00 UTC ainda é 31/dez em São Paulo
+    expect(formatMonthYear(new Date("2026-01-01T01:00:00Z"))).toBe("dez/2025");
+  });
+});
+
+describe("formatInteger", () => {
+  it("separador de milhar pt-BR", () => {
+    expect(formatInteger(5775)).toBe("5.775");
   });
 });

@@ -57,6 +57,10 @@ export const RATE_LIMITS = {
   publicLeadBand: { limit: 100, windowMs: 60 * 60_000 },
   /** Leads de teste disparados pela tela de Integrações. */
   testLead: { limit: 5, windowMs: 10 * 60_000 },
+  /** Páginas do Explorar Palcos por banda (anti-raspagem da base curada). */
+  explore: { limit: 300, windowMs: 10 * 60_000 },
+  /** "Adicionar às minhas casas" por banda. */
+  exploreAdd: { limit: 60, windowMs: 60 * 60_000 },
   /** Leituras da API pública de agenda por IP (a CDN absorve a maior parte). */
   publicAgenda: { limit: 120, windowMs: 60_000 },
 } as const;
