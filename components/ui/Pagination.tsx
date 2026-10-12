@@ -1,4 +1,6 @@
-import Link from "next/link";
+import { ButtonLink } from "./Button";
+import { NextIcon, PrevIcon } from "./icons";
+import { buttonClass } from "./styles";
 
 export const PAGE_SIZE = 50;
 
@@ -41,33 +43,34 @@ export function Pagination({
   };
   const from = (page - 1) * pageSize + 1;
   const to = Math.min(page * pageSize, total);
-  const linkCls =
-    "rounded-md border border-zinc-300 px-3 py-1.5 text-sm font-medium text-zinc-800 hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800";
-  const disabledCls =
-    "rounded-md border border-zinc-200 px-3 py-1.5 text-sm text-zinc-400 dark:border-zinc-800 dark:text-zinc-600";
+  const disabled = `${buttonClass("secondary", "sm")} pointer-events-none opacity-50`;
 
   return (
-    <nav
-      aria-label="Paginação"
-      className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-zinc-600 dark:text-zinc-400"
-    >
-      <span>
+    <nav aria-label="Paginação" className="mt-4 flex flex-wrap items-center justify-between gap-3 text-sm text-fg-muted">
+      <span className="tabular">
         {from}–{to} de {total}
       </span>
       <div className="flex gap-2">
         {page > 1 ? (
-          <Link href={href(page - 1)} className={linkCls} rel="prev">
-            ← Anterior
-          </Link>
+          <ButtonLink href={href(page - 1)} variant="secondary" size="sm" icon={PrevIcon} rel="prev">
+            Anterior
+          </ButtonLink>
         ) : (
-          <span className={disabledCls}>← Anterior</span>
+          <span className={disabled} aria-disabled="true">
+            <PrevIcon aria-hidden />
+            Anterior
+          </span>
         )}
         {page < pages ? (
-          <Link href={href(page + 1)} className={linkCls} rel="next">
-            Próxima →
-          </Link>
+          <ButtonLink href={href(page + 1)} variant="secondary" size="sm" rel="next">
+            Próxima
+            <NextIcon aria-hidden />
+          </ButtonLink>
         ) : (
-          <span className={disabledCls}>Próxima →</span>
+          <span className={disabled} aria-disabled="true">
+            Próxima
+            <NextIcon aria-hidden />
+          </span>
         )}
       </div>
     </nav>

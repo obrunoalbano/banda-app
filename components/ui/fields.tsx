@@ -3,7 +3,7 @@
 import { useId } from "react";
 import { centsFromDigits, formatCentsPlain } from "@/lib/money";
 import { maskPhoneBr } from "@/lib/format";
-import { inputClass, labelClass } from "./styles";
+import { hintClass, inputClass, labelClass } from "./styles";
 
 /*
  * Campos de formulário com <label htmlFor> ligado ao controle (acessibilidade).
@@ -12,21 +12,28 @@ import { inputClass, labelClass } from "./styles";
 
 type WrapperProps = { label: string; hint?: React.ReactNode; className?: string };
 
+/** Campos obrigatórios recebem " *" no label (o `required` nativo cuida da validação). */
 function FieldWrapper({
   id,
   label,
   hint,
   className,
+  required,
   children,
-}: WrapperProps & { id: string; children: React.ReactNode }) {
+}: WrapperProps & { id: string; required?: boolean; children: React.ReactNode }) {
   return (
     <div className={`flex flex-col gap-1 ${className ?? ""}`}>
       <label htmlFor={id} className={labelClass}>
         {label}
+        {required ? (
+          <span className="text-fg-subtle" aria-hidden>
+            {" "}*
+          </span>
+        ) : null}
       </label>
       {children}
       {hint ? (
-        <p id={`${id}-hint`} className="text-xs text-zinc-500">
+        <p id={`${id}-hint`} className={hintClass}>
           {hint}
         </p>
       ) : null}
@@ -39,7 +46,7 @@ type InputProps = Omit<React.InputHTMLAttributes<HTMLInputElement>, "className" 
 export function TextField({ label, hint, className, ...props }: WrapperProps & InputProps) {
   const id = useId();
   return (
-    <FieldWrapper id={id} label={label} hint={hint} className={className}>
+    <FieldWrapper id={id} label={label} hint={hint} className={className} required={props.required}>
       <input
         id={id}
         aria-describedby={hint ? `${id}-hint` : undefined}
@@ -88,9 +95,15 @@ export function CurrencyField({
   }) {
   const id = useId();
   return (
-    <FieldWrapper id={id} label={props.label} hint={props.hint} className={props.className}>
+    <FieldWrapper
+      id={id}
+      label={props.label}
+      hint={props.hint}
+      className={props.className}
+      required={props.required}
+    >
       <div className="relative">
-        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-zinc-500">
+        <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-sm text-fg-subtle">
           R$
         </span>
         <input
@@ -122,7 +135,7 @@ export function SelectField({
 }: WrapperProps & SelectProps) {
   const id = useId();
   return (
-    <FieldWrapper id={id} label={label} hint={hint} className={className}>
+    <FieldWrapper id={id} label={label} hint={hint} className={className} required={props.required}>
       <select
         id={id}
         aria-describedby={hint ? `${id}-hint` : undefined}
@@ -140,7 +153,7 @@ type TextAreaProps = Omit<React.TextareaHTMLAttributes<HTMLTextAreaElement>, "cl
 export function TextAreaField({ label, hint, className, ...props }: WrapperProps & TextAreaProps) {
   const id = useId();
   return (
-    <FieldWrapper id={id} label={label} hint={hint} className={className}>
+    <FieldWrapper id={id} label={label} hint={hint} className={className} required={props.required}>
       <textarea
         id={id}
         aria-describedby={hint ? `${id}-hint` : undefined}

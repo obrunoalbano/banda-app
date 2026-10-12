@@ -5,6 +5,9 @@ import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
 import { toDateOnlyString } from "@/lib/shows";
 import { notFound } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Alterar show" };
 
 type PageProps = { params: Promise<{ id: string }> };
 

@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Agenda da banda",
+  title: { template: "%s · Agenda da banda", default: "Agenda da banda" },
   description: "Gerencie casas de show, agenda de shows e contatos da sua banda",
 };
 

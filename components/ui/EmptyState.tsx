@@ -1,24 +1,37 @@
-import Link from "next/link";
-import { linkClass } from "./styles";
+import { ButtonLink } from "./Button";
+import type { Icon } from "./icons";
+import { AddIcon } from "./icons";
 
+/**
+ * Estado vazio de listagem. Diga o que está vazio e ofereça o próximo passo.
+ * `action.primary` = criar o primeiro item (botão); senão, link discreto (ex.: "Limpar filtros").
+ */
 export function EmptyState({
-  message,
+  icon: IconCmp,
+  title,
+  description,
   action,
 }: {
-  message: string;
-  action?: { href: string; label: string };
+  icon?: Icon;
+  title: string;
+  description?: React.ReactNode;
+  action?: { href: string; label: string; primary?: boolean };
 }) {
   return (
-    <p className="rounded-lg border border-dashed border-zinc-300 p-8 text-center text-sm text-zinc-600 dark:border-zinc-700 dark:text-zinc-400">
-      {message}
+    <div className="flex flex-col items-center rounded-lg border border-dashed border-line-strong px-6 py-12 text-center">
+      {IconCmp ? <IconCmp className="size-10 text-fg-subtle" aria-hidden strokeWidth={1.5} /> : null}
+      <p className="mt-3 text-sm font-medium text-fg">{title}</p>
+      {description ? <p className="mt-1 max-w-sm text-sm text-fg-muted">{description}</p> : null}
       {action ? (
-        <>
-          {" "}
-          <Link href={action.href} className={linkClass}>
-            {action.label}
-          </Link>
-        </>
+        <ButtonLink
+          href={action.href}
+          variant={action.primary ? "primary" : "secondary"}
+          icon={action.primary ? AddIcon : undefined}
+          className="mt-5"
+        >
+          {action.label}
+        </ButtonLink>
       ) : null}
-    </p>
+    </div>
   );
 }

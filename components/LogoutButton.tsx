@@ -1,5 +1,11 @@
 import { signOut } from "@/auth";
+import { LogoutIcon } from "@/components/ui/icons";
+import { buttonClass, cx } from "@/components/ui/styles";
 
+/**
+ * Sair (server action). Dentro do DashboardShell, o texto some quando o menu está
+ * recolhido (`group-data-[collapsed=true]`), ficando só o ícone com aria-label.
+ */
 export function LogoutButton() {
   return (
     <form
@@ -10,9 +16,14 @@ export function LogoutButton() {
     >
       <button
         type="submit"
-        className="rounded-md border border-zinc-300 bg-white px-3 py-1.5 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:bg-zinc-900 dark:text-zinc-100 dark:hover:bg-zinc-800"
+        title="Sair"
+        className={cx(
+          buttonClass("ghost", "sm"),
+          "w-full justify-start group-data-[collapsed=true]:w-8 group-data-[collapsed=true]:justify-center group-data-[collapsed=true]:px-0",
+        )}
       >
-        Sair
+        <LogoutIcon aria-hidden />
+        <span className="group-data-[collapsed=true]:sr-only">Sair</span>
       </button>
     </form>
   );

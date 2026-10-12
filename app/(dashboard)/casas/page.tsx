@@ -4,12 +4,17 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
-import { buttonPrimaryClass, containerClass, linkClass } from "@/components/ui/styles";
+import { ButtonLink } from "@/components/ui/Button";
+import { AddIcon, VenueIcon } from "@/components/ui/icons";
+import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Casas de show" };
 
 const STATUS_VALUES = new Set<string>(Object.values(VenueSendStatus));
 
@@ -62,9 +67,9 @@ export default async function CasasPage({ searchParams }: PageProps) {
         title="Casas de show"
         description="Listagem com status de envio, detalhes e edição."
         actions={
-          <Link href="/casas/nova" className={buttonPrimaryClass}>
+          <ButtonLink href="/casas/nova" icon={AddIcon}>
             Nova casa
-          </Link>
+          </ButtonLink>
         }
       />
 
@@ -78,17 +83,20 @@ export default async function CasasPage({ searchParams }: PageProps) {
 
       {totalBandVenues === 0 ? (
         <EmptyState
-          message="Nenhuma casa cadastrada."
-          action={{ href: "/casas/nova", label: "Cadastrar a primeira" }}
+          icon={VenueIcon}
+          title="Nenhuma casa cadastrada"
+          description="Cadastre as casas de show para acompanhar contatos, cachê e o envio da sua proposta."
+          action={{ href: "/casas/nova", label: "Cadastrar a primeira casa", primary: true }}
         />
       ) : venues.length === 0 ? (
         <EmptyState
-          message="Nenhuma casa corresponde aos filtros."
+          title="Nenhuma casa corresponde aos filtros"
           action={{ href: "/casas", label: "Limpar filtros" }}
         />
       ) : (
         <>
           <Table
+            caption="Casas de show cadastradas"
             headers={[
               { label: "Nome" },
               { label: "Cidade" },
@@ -100,14 +108,20 @@ export default async function CasasPage({ searchParams }: PageProps) {
           >
             {venues.map((v) => (
               <Tr key={v.id}>
-                <Td strong>{v.name}</Td>
-                <Td>{v.city}</Td>
-                <Td>{v.state}</Td>
-                <Td>{formatCents(v.valorCacheCents)}</Td>
-                <Td>
+                <Td label="Nome" strong>
+                  <Link href={`/casas/${v.id}`} className="hover:underline">
+                    {v.name}
+                  </Link>
+                </Td>
+                <Td label="Cidade">{v.city}</Td>
+                <Td label="UF">{v.state}</Td>
+                <Td label="Cachê ref." numeric>
+                  {formatCents(v.valorCacheCents)}
+                </Td>
+                <Td label="Status">
                   <StatusBadge status={v.sendStatus} />
                 </Td>
-                <Td align="right">
+                <Td label="Ações" align="right">
                   <Link href={`/casas/${v.id}`} className={linkClass}>
                     Detalhes
                   </Link>

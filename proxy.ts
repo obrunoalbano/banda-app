@@ -40,7 +40,9 @@ export async function proxy(request: NextRequest) {
   const isPublic =
     path === "/" ||
     path === "/login" ||
-    path === "/cadastro";
+    path === "/cadastro" ||
+    // Galeria do design system: só existe em desenvolvimento (a página dá 404 em produção).
+    (process.env.NODE_ENV !== "production" && path === "/design-system");
 
   if (isPublic) return NextResponse.next();
 

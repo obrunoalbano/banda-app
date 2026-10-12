@@ -1,6 +1,10 @@
+import type { Icon } from "./icons";
+import { ExternalLinkIcon } from "./icons";
+import { cx } from "./styles";
+
 /** Lista de detalhes (<dl>) em grid de 2 colunas. */
 export function DetailList({ children, className }: { children: React.ReactNode; className?: string }) {
-  return <dl className={`grid gap-4 sm:grid-cols-2 ${className ?? "max-w-xl"}`}>{children}</dl>;
+  return <dl className={cx("grid gap-x-6 gap-y-5 sm:grid-cols-2", className ?? "max-w-xl")}>{children}</dl>;
 }
 
 /** Item da lista. Valor vazio (`null`/`undefined`/"") mostra "—". */
@@ -9,6 +13,7 @@ export function DetailItem({
   children,
   wide,
   preserveLines,
+  numeric,
 }: {
   label: string;
   children?: React.ReactNode;
@@ -16,30 +21,51 @@ export function DetailItem({
   wide?: boolean;
   /** Mantém quebras de linha (textos longos). */
   preserveLines?: boolean;
+  /** Valores numéricos (dinheiro, datas) com algarismos alinhados. */
+  numeric?: boolean;
 }) {
   const empty = children === null || children === undefined || children === "";
   return (
     <div className={wide ? "sm:col-span-2" : undefined}>
-      <dt className="text-xs font-medium uppercase tracking-wide text-zinc-500">{label}</dt>
+      <dt className="text-xs font-medium uppercase tracking-wide text-fg-subtle">{label}</dt>
       <dd
-        className={`mt-1 break-words text-zinc-900 dark:text-zinc-100 ${preserveLines ? "whitespace-pre-wrap" : ""}`}
+        className={cx(
+          "mt-1 break-words text-fg",
+          preserveLines && "whitespace-pre-wrap",
+          numeric && "tabular",
+        )}
       >
-        {empty ? <span className="text-zinc-500">—</span> : children}
+        {empty ? <span className="text-fg-subtle">—</span> : children}
       </dd>
     </div>
   );
 }
 
-/** Link externo (mailto:, wa.me, Instagram) com o texto original. */
-export function ExternalLink({ href, children }: { href: string; children: React.ReactNode }) {
+/** Link de contato/externo (mailto:, wa.me, Instagram) com ícone opcional. */
+export function ExternalLink({
+  href,
+  icon: IconCmp,
+  children,
+}: {
+  href: string;
+  icon?: Icon;
+  children: React.ReactNode;
+}) {
   const external = href.startsWith("http");
   return (
     <a
       href={href}
-      className="underline decoration-zinc-400 underline-offset-2 hover:decoration-zinc-900 dark:hover:decoration-zinc-100"
+      className="inline-flex items-center gap-1.5 underline decoration-line-strong underline-offset-2 hover:decoration-fg"
       {...(external && { target: "_blank", rel: "noopener noreferrer" })}
     >
+      {IconCmp ? <IconCmp className="size-4 shrink-0 text-fg-subtle" aria-hidden /> : null}
       {children}
+      {external ? (
+        <>
+          <ExternalLinkIcon className="size-3 shrink-0 text-fg-subtle" aria-hidden />
+          <span className="sr-only">(abre em nova aba)</span>
+        </>
+      ) : null}
     </a>
   );
 }

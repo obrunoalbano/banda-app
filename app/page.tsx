@@ -1,36 +1,66 @@
+import { ButtonLink } from "@/components/ui/Button";
+import { Brand } from "@/components/ui/Brand";
+import { LeadIcon, ShowIcon, VenueIcon, type Icon } from "@/components/ui/icons";
 import { getSession } from "@/lib/session";
-import Link from "next/link";
 import { redirect } from "next/navigation";
+
+const FEATURES: { icon: Icon; title: string; description: string }[] = [
+  {
+    icon: VenueIcon,
+    title: "Casas de show",
+    description: "Contatos, cachê de referência e status do envio da sua proposta.",
+  },
+  {
+    icon: ShowIcon,
+    title: "Agenda de shows",
+    description: "Datas, cachê de cada show e o que já foi pago.",
+  },
+  {
+    icon: LeadIcon,
+    title: "Contatos do site",
+    description: "Pedidos de orçamento chegam direto do formulário do seu site.",
+  },
+];
 
 export default async function Home() {
   const session = await getSession();
   if (session) redirect("/casas");
 
   return (
-    <div className="flex flex-1 flex-col items-center justify-center gap-10 px-6 py-20">
-      <div className="max-w-lg text-center">
-        <h1 className="text-3xl font-semibold tracking-tight text-zinc-900 dark:text-zinc-50">
-          Agenda da banda
-        </h1>
-        <p className="mt-3 text-lg leading-relaxed text-zinc-600 dark:text-zinc-400">
-          Organize casas de show, agenda de shows com cachê e pagamento, e os contatos que chegam
-          pelo seu site, tudo em um só lugar.
-        </p>
-      </div>
-      <div className="flex flex-wrap items-center justify-center gap-4">
-        <Link
-          href="/login"
-          className="rounded-md bg-zinc-900 px-6 py-3 text-sm font-medium text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
-        >
+    <div className="flex flex-1 flex-col">
+      <header className="mx-auto flex w-full max-w-5xl items-center justify-between px-4 py-5">
+        <Brand />
+        <ButtonLink href="/login" variant="ghost">
           Entrar
-        </Link>
-        <Link
-          href="/cadastro"
-          className="rounded-md border border-zinc-300 px-6 py-3 text-sm font-medium text-zinc-800 transition hover:bg-zinc-50 dark:border-zinc-600 dark:text-zinc-100 dark:hover:bg-zinc-800"
-        >
-          Cadastrar banda
-        </Link>
-      </div>
+        </ButtonLink>
+      </header>
+
+      <main className="mx-auto flex w-full max-w-5xl flex-1 flex-col items-center px-4 py-16 text-center sm:py-24">
+        <h1 className="max-w-2xl text-4xl font-semibold tracking-tight text-fg sm:text-5xl">
+          A agenda da sua banda em um só lugar
+        </h1>
+        <p className="mt-4 max-w-xl text-lg leading-relaxed text-fg-muted">
+          Organize casas de show, shows com cachê e pagamento, e os contatos que chegam pelo seu site.
+        </p>
+        <div className="mt-8 flex flex-wrap justify-center gap-3">
+          <ButtonLink href="/cadastro" size="lg">
+            Cadastrar minha banda
+          </ButtonLink>
+          <ButtonLink href="/login" size="lg" variant="secondary">
+            Já tenho conta
+          </ButtonLink>
+        </div>
+
+        <ul className="mt-16 grid w-full gap-4 text-left sm:grid-cols-3">
+          {FEATURES.map(({ icon: FeatureIcon, title, description }) => (
+            <li key={title} className="rounded-lg border border-line bg-surface p-5">
+              <FeatureIcon className="size-6 text-fg-subtle" aria-hidden strokeWidth={1.5} />
+              <h2 className="mt-3 text-base font-semibold text-fg">{title}</h2>
+              <p className="mt-1 text-sm text-fg-muted">{description}</p>
+            </li>
+          ))}
+        </ul>
+      </main>
     </div>
   );
 }

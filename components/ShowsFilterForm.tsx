@@ -1,5 +1,6 @@
-import Link from "next/link";
-import { buttonPrimaryClass, buttonSecondaryClass, inputSmClass as inputClass } from "@/components/ui/styles";
+import { ButtonLink } from "@/components/ui/Button";
+import { FilterBar, FilterField } from "@/components/ui/FilterBar";
+import { inputSmClass } from "@/components/ui/styles";
 
 type SelectOption = { value: string; label: string };
 
@@ -14,7 +15,6 @@ type ShowsFilterFormProps = {
   mesShortcutHref: string;
 };
 
-
 export function ShowsFilterForm({
   venues,
   yearOptions,
@@ -27,15 +27,16 @@ export function ShowsFilterForm({
   const mesDisabled = defaultAno === "";
 
   return (
-    <form
-      method="get"
-      className="mb-6 flex flex-col gap-3 rounded-lg border border-zinc-200 bg-zinc-50/80 p-4 dark:border-zinc-800 dark:bg-zinc-900/40 sm:flex-row sm:flex-wrap sm:items-end"
+    <FilterBar
+      clearHref="/shows"
+      extraActions={
+        <ButtonLink href={mesShortcutHref} variant="secondary">
+          Mês atual
+        </ButtonLink>
+      }
     >
-      <div className="flex min-w-[180px] flex-1 flex-col gap-1">
-        <label htmlFor="filtro-casa" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          Casa de show
-        </label>
-        <select id="filtro-casa" name="casaId" defaultValue={defaultVenueId} className={inputClass}>
+      <FilterField id="filtro-casa" label="Casa de show">
+        <select id="filtro-casa" name="casaId" defaultValue={defaultVenueId} className={inputSmClass}>
           <option value="">Todas</option>
           {venues.map((v) => (
             <option key={v.id} value={v.id}>
@@ -43,52 +44,31 @@ export function ShowsFilterForm({
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex min-w-[140px] flex-1 flex-col gap-1">
-        <label htmlFor="filtro-ano" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          Ano
-        </label>
-        <select id="filtro-ano" name="ano" defaultValue={defaultAno} className={inputClass}>
+      </FilterField>
+      <FilterField id="filtro-ano" label="Ano" minWidth={140}>
+        <select id="filtro-ano" name="ano" defaultValue={defaultAno} className={inputSmClass}>
           {yearOptions.map((o) => (
             <option key={o.value || "todos-ano"} value={o.value}>
               {o.label}
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex min-w-[160px] flex-1 flex-col gap-1">
-        <label htmlFor="filtro-mes" className="text-xs font-medium text-zinc-600 dark:text-zinc-400">
-          Mês
-        </label>
+      </FilterField>
+      <FilterField id="filtro-mes" label={mesDisabled ? "Mês (escolha o ano e aplique)" : "Mês"} minWidth={160}>
         <select
           id="filtro-mes"
           name="mes"
           defaultValue={defaultMes}
-          className={inputClass}
+          className={inputSmClass}
           disabled={mesDisabled}
-          aria-disabled={mesDisabled}
         >
           {monthOptions.map((o) => (
-            <option key={`${o.value || "todos-mes"}`} value={o.value}>
+            <option key={o.value || "todos-mes"} value={o.value}>
               {o.label}
             </option>
           ))}
         </select>
-      </div>
-      <div className="flex flex-wrap gap-2 sm:pb-0.5">
-        <button
-          type="submit"
-          className={buttonPrimaryClass}
-        >
-          Aplicar
-        </button>
-        <Link
-          href={mesShortcutHref}
-          className={buttonSecondaryClass}
-        >
-          Mês atual
-        </Link>
-      </div>
-    </form>
+      </FilterField>
+    </FilterBar>
   );
 }

@@ -1,10 +1,9 @@
 "use client";
 
 import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import { PhoneField, TextField } from "@/components/ui/fields";
-import { buttonPrimaryClass, linkClass } from "@/components/ui/styles";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
@@ -22,7 +21,7 @@ export function RegisterForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full max-w-md flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <Alert>{error}</Alert>}
       <TextField
         label="Nome da banda"
@@ -57,15 +56,9 @@ export function RegisterForm() {
         onChange={(e) => set({ password: e.target.value })}
         hint="Mínimo de 8 caracteres"
       />
-      <button type="submit" disabled={loading} className={`mt-2 ${buttonPrimaryClass} py-2.5`}>
+      <Button type="submit" loading={loading} className="mt-2 w-full">
         {loading ? "Cadastrando…" : "Cadastrar banda"}
-      </button>
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-        Já tem conta?{" "}
-        <Link href="/login" className={linkClass}>
-          Entrar
-        </Link>
-      </p>
+      </Button>
     </form>
   );
 }

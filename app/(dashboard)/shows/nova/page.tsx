@@ -3,6 +3,9 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Novo show" };
 
 export default async function NovoShowPage() {
   const bandId = await requireBandId();

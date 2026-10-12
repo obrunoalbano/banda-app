@@ -4,6 +4,9 @@ import { containerClass } from "@/components/ui/styles";
 import { getPublicBaseUrl } from "@/lib/public-base-url";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Integrações" };
 
 export default async function IntegracoesPage() {
   const bandId = await requireBandId();
@@ -19,7 +22,7 @@ export default async function IntegracoesPage() {
         description={
           <>
             Conecte formulários e sites externos para receber leads na área de{" "}
-            <span className="font-medium text-zinc-800 dark:text-zinc-200">Contatos</span>.
+            <span className="font-medium text-fg">Contatos</span>.
           </>
         }
       />
