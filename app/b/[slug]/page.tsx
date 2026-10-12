@@ -1,7 +1,10 @@
 import { PublicShowList } from "@/components/public/PublicShowList";
 import { Brand } from "@/components/ui/Brand";
 import { ShowIcon } from "@/components/ui/icons";
+import { ButtonLink } from "@/components/ui/Button";
+import { LeadIcon } from "@/components/ui/icons";
 import { jsonLdScript, toMusicEventJsonLd } from "@/lib/public-agenda";
+import { getPublicBand } from "@/lib/public-band";
 import { getPublicAgenda } from "@/lib/public-agenda-query";
 import { getPublicBaseUrl } from "@/lib/public-base-url";
 import type { Metadata } from "next";
@@ -22,7 +25,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 
 /** Página pública da agenda da banda (opt-in em Integrações). Link para bio do Instagram etc. */
 export default async function PublicAgendaPage({ params }: PageProps) {
-  const agenda = await getPublicAgenda((await params).slug.toLowerCase());
+  const slug = (await params).slug.toLowerCase();
+  const [agenda, publicBand] = await Promise.all([getPublicAgenda(slug), getPublicBand(slug)]);
   if (!agenda) notFound();
 
   const baseUrl = await getPublicBaseUrl();
@@ -38,6 +42,11 @@ export default async function PublicAgendaPage({ params }: PageProps) {
         </p>
         <h1 className="mt-2 text-3xl font-semibold tracking-tight text-fg sm:text-4xl">{agenda.band.name}</h1>
         <p className="mt-2 text-fg-muted">Próximas apresentações. Horários no fuso local de cada cidade.</p>
+        {publicBand?.leadFormEnabled ? (
+          <ButtonLink href={`/b/${agenda.band.slug}/contato`} icon={LeadIcon} className="mt-6">
+            Pedir orçamento
+          </ButtonLink>
+        ) : null}
 
         <section aria-label="Próximos shows" className="mt-8">
           <PublicShowList shows={agenda.shows} />

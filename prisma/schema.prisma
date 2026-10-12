@@ -20,6 +20,10 @@ model Band {
   slug             String   @unique
   /// Opt-in: agenda pública (página /b/<slug>, widget e API pública de shows).
   publicAgendaEnabled Boolean @default(false)
+  /// Opt-in: formulário de contato público (página /b/<slug>/contato, widget e POST público).
+  leadFormEnabled  Boolean  @default(false)
+  /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
+  leadAllowedOrigins String[] @default([])
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())

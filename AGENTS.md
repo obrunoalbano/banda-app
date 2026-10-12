@@ -36,19 +36,21 @@ app/
     contatos/              Lead: lista (paginada), detalhe, editar
     integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
       agenda/              Integrações → Agenda: agenda pública (ativar, slug, divulgar)
-      contato/             Integrações → Contatos: formulário de contato (token de ingestão)
+      contato/             Integrações → Contatos: status, formulário pronto, domínios, token de servidor
     banda/                 dados da conta
   api/                     só ESCRITA (leitura é feita direto nos Server Components)
     auth/[...nextauth]     next-auth
     register               cadastro público (rate limit por IP)
-    band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug)
+    band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
+    band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste)
     venues (POST), venues/[id] (PATCH, DELETE)
     shows (POST), shows/[id] (PATCH, DELETE)
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
     public/v1/bands/[slug]/shows  PÚBLICO — API da agenda (GET, CORS *, cache CDN)
-  b/[slug]/                PÚBLICO — página da agenda da banda (opt-in)
-  embed/[slug]/shows/      PÚBLICO — widget da agenda para iframe em sites externos
+    public/v1/bands/[slug]/leads  PÚBLICO — envio do formulário (origem do app ou domínio cadastrado, anti-spam)
+  b/[slug]/                PÚBLICO — página da agenda da banda (opt-in); contato/ = formulário público
+  embed/[slug]/shows|contato/  PÚBLICO — widgets (agenda e formulário) para iframe em sites externos
   design-system/           galeria viva do design system (só em dev: /design-system)
   not-found.tsx            404 global
 components/
@@ -70,6 +72,9 @@ lib/
   public-agenda.ts         toPublicShow (saída pública de show — PRIVACIDADE), JSON-LD
   public-agenda-query.ts   getPublicAgenda (opt-in, isPublic, só futuros)
   slug.ts / band-slug.ts   regras e geração do slug público da banda
+  public-lead.ts           regras do envio público: classifyOrigin, spamVerdict (com teste)
+  lead-form-token.ts       token anti-robô do formulário (HMAC com AUTH_SECRET)
+  origins.ts               normalização de domínios autorizados
 proxy.ts                   proteção de rotas (páginas → redirect /login, API → 401)
 prisma/schema.prisma       modelo de dados
 docs/design-system.md      tokens, componentes, modelos de página, microcopy, acessibilidade
@@ -80,7 +85,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 ## Modelo de dados (resumo)
 
-- **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública).
+- **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador).
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa.
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
@@ -133,6 +138,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - `/api/leads/ingest`: token em `Authorization: Bearer` ou `X-Lead-Token` (lookup por `leadIngestTokenHash`); aliases legados `phone`→`whatsapp`, `message`→`eventDescription` (teste em `lib/validations.test.ts`); CORS só para `LEADS_INGEST_ALLOWED_ORIGINS`; rate limit 60/min por token.
 - `GET /api/public/v1/bands/<slug>/shows`, widget `/embed/<slug>/shows?tema&fundo&limite` e `public/embed.js` (mensagem `agenda-banda:resize`) são usados por sites de terceiros: **só adicione** campos/parâmetros; mudança incompatível = nova versão (`/v2`).
 - Agenda desligada ou slug inexistente → mesmo 404 (não revela existência).
+- Formulário público (`POST /api/public/v1/bands/<slug>/leads`): só aceita `Origin` do próprio app ou de `leadAllowedOrigins`; anti-spam por honeypot `website` + token de formulário (`lib/lead-form-token.ts`, ≥ 3 s) + rate limit; spam responde 201 sem gravar. Páginas com formulário usam `await connection()` (token por request). Detalhes em `docs/integracoes.md` §2.
 
 ### UI — design system
 **Leia `docs/design-system.md` antes de criar ou alterar qualquer tela.** Resumo das regras obrigatórias:
@@ -183,4 +189,4 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - Escritas via route handlers + `fetch`; migrar para Server Actions (`useActionState`) é opcional, mas manteria `/api/leads/ingest` como REST.
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` redireciona para `/casas`.
 - Débitos de UX detalhados: seção 12 de `docs/design-system.md`.
-- Integrações — fase 2 (formulário público com chave pública, domínios por banda, anti-spam, widget de contato) e fase 3 (iCal, redirecionamento de slug antigo, webhooks, email): `docs/integracoes.md`.
+- Integrações — fase 3 (iCal, redirecionamento de slug antigo, webhooks, email de novo lead, captcha): `docs/integracoes.md`.

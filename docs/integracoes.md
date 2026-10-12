@@ -5,7 +5,7 @@ Como a banda conecta o app ao mundo externo. Leia antes de mexer em `app/b/`, `a
 | Integração | Direção | Estado |
 | --- | --- | --- |
 | **Agenda de shows** — publicar shows no site/redes da banda | app → mundo (leitura pública) | ✅ Fase 1 implementada |
-| **Formulário de contato** — receber pedidos de orçamento do site | mundo → app (escrita autenticada) | ✅ API com token secreto · ⏳ Fase 2 (formulário público) |
+| **Formulário de contato** — receber pedidos de orçamento do site | mundo → app (escrita) | ✅ Fase 2 implementada (formulário público + token de servidor) |
 
 ---
 
@@ -115,28 +115,70 @@ proxy.ts                                 libera /b/*, /embed/*, /embed.js, /api/
 
 ## 2. Formulário de contato (leads)
 
-### 2.1 Hoje (menu Integrações → **Contatos**, `/integracoes/contato`)
-- `POST /api/leads/ingest` com token **secreto** da banda (`Authorization: Bearer` ou `X-Lead-Token`), guardado só como hash (`Band.leadIngestTokenHash`).
-- Pensado para o **backend** do site (o token não pode ir para o navegador).
-- CORS só para origens em `LEADS_INGEST_ALLOWED_ORIGINS` (variável **global** de ambiente).
-- Aliases legados `phone`→`whatsapp`, `message`→`eventDescription` (contrato — há teste).
-- Rate limit 60/min por token.
+### 2.1 Como a banda usa (menu Integrações → **Contatos**, `/integracoes/contato`)
+Três formas, da mais simples à mais técnica — todas caem em **Contatos**:
 
-### 2.2 Fase 2 (planejada)
-Problema: a maioria das bandas não tem backend (Wix/WordPress/HTML) e a lista de origens é global (exige redeploy por banda).
+| Forma | Como | Para quem |
+| --- | --- | --- |
+| **Formulário pronto** (recomendado) | Página `/b/<slug>/contato` (link para bio/WhatsApp) e widget `/embed/<slug>/contato` (iframe + `embed.js`) | Qualquer banda; não precisa de programador |
+| **Formulário do seu site** | `POST /api/public/v1/bands/<slug>/leads` direto do navegador, de um **domínio cadastrado** | Sites com formulário próprio (snippet HTML pronto na tela) |
+| **Integração pelo servidor** | `POST /api/leads/ingest` com token secreto | Backends/serverless |
 
-1. **Chave pública** por banda (`Band.leadFormPublicKey`, pode ir no HTML) + **domínios permitidos por banda** no banco, editáveis na tela (substitui a env global para o fluxo público). O token secreto continua para integrações server-to-server.
-2. **Anti-spam** no fluxo público: honeypot, tempo mínimo de preenchimento, rate limit por IP + banda; ponto de extensão para Cloudflare Turnstile.
-3. **Formulário hospedado** em `/b/<slug>/contato` (e seção na página pública) e **widget** `/embed/<slug>/contato` reutilizando o mesmo protocolo de auto-altura.
-4. **Status na tela:** último lead recebido, total do mês, botão "Enviar lead de teste".
-5. Rota nova versionada: `POST /api/public/v1/bands/<slug>/leads` (chave pública). `/api/leads/ingest` permanece como está.
+A tela também mostra o **status** (último contato recebido, total em 30 dias) e o botão **"Enviar lead de teste"** (`POST /api/band/lead-form/test`, cria um lead com origem `teste`).
 
----
+### 2.2 Formulário público — regras
+- **Opt-in:** `Band.leadFormEnabled` (`PATCH /api/band/lead-form`). Desligado = página/widget mostram indisponível e o POST responde 404.
+- **Origem obrigatória** (`classifyOrigin` em `lib/public-lead.ts`): o envio só é aceito se o header `Origin` for
+  - o **próprio app** (página e widget — o widget roda em iframe do app, então a origem é sempre o app), ou
+  - um domínio em `Band.leadAllowedOrigins` (até 10, normalizados por `normalizeOrigin` em `lib/origins.ts`; CORS liberado só para eles).
+  Sem `Origin` ou origem desconhecida → **403**. Integração servidor-a-servidor usa `/api/leads/ingest` (token).
+- **Anti-spam** (`spamVerdict`):
+  - **Honeypot** `website`: campo invisível; se vier preenchido, o envio é descartado.
+  - **Token de formulário** (`lib/lead-form-token.ts`): emitido ao renderizar a página/widget (HMAC com `AUTH_SECRET`, `slug.timestamp.assinatura`). Obrigatório para envios do app; **< 3 s** desde a renderização → descartado (robô); inválido ou **> 24 h** → 400 "recarregue a página". Domínios cadastrados não precisam de token (sites externos não emitem), mas se enviarem é validado.
+  - **Descarte silencioso:** honeypot e envio rápido demais respondem `201 { ok: true }` sem gravar — não ensina o robô a contornar.
+  - **Rate limit:** 10 envios / 10 min por IP + banda e 100 / hora por banda (`RATE_LIMITS.publicLeadIp/publicLeadBand`). Contam também os envios descartados.
+- Páginas com formulário usam `await connection()` (o token é por request; nunca podem ser pré-renderizadas/cacheadas).
+- `metadata` não é aceito no envio público (vetor de spam); `source` padrão: `formulario-publico` (página), `widget`, ou o hostname do domínio cadastrado.
+
+### 2.3 Contrato do envio público v1
+
+`POST /api/public/v1/bands/<slug>/leads` · `Content-Type: application/json` · header `Origin` de um domínio cadastrado
+
+```json
+{ "name": "Ana", "email": "ana@exemplo.com", "whatsapp": "(11) 99999-0000", "eventDate": "2026-12-15",
+  "city": "Santos", "eventType": "Casamento", "eventDescription": "…", "source": "site", "website": "" }
+```
+- Obrigatórios: `name`, `email`. Demais opcionais (strings; vazio vira `null`). `website` = honeypot (vazio).
+- Respostas: `201 { "ok": true }` (inclusive quando descartado como spam) · `400` dados inválidos / formulário expirado · `403` origem não autorizada · `404` formulário desligado ou slug inexistente · `429` com `Retry-After`.
+- Widget: `/embed/<slug>/contato?tema=claro|escuro|auto&fundo=transparente`, mesmo protocolo de auto-altura da agenda.
+- Evolução: só adicione campos opcionais; mudança incompatível = `/v2`.
+
+### 2.4 Integração pelo servidor (token secreto)
+- `POST /api/leads/ingest` com `Authorization: Bearer <token>` ou `X-Lead-Token` (lookup por `leadIngestTokenHash`).
+- Aliases legados `phone`→`whatsapp`, `message`→`eventDescription` (contrato — há teste). Aceita `metadata`.
+- CORS só para `LEADS_INGEST_ALLOWED_ORIGINS` (variável global, legado — para navegador, prefira o formulário público com domínios por banda). Rate limit 60/min por token.
+
+### 2.5 Arquivos
+```
+app/b/[slug]/contato/page.tsx                 página pública do formulário
+app/embed/[slug]/contato/page.tsx             widget do formulário
+app/api/public/v1/bands/[slug]/leads/         envio público (origem, anti-spam, CORS)
+app/api/band/lead-form/route.ts               opt-in + domínios (autenticado)
+app/api/band/lead-form/test/route.ts          lead de teste (autenticado)
+app/(dashboard)/integracoes/contato/          tela (status, formulário pronto, domínios, servidor)
+components/public/PublicLeadForm.tsx          formulário (honeypot + token)
+components/LeadFormPanel.tsx                  painel de configuração
+components/EmbedWidgetSection.tsx             configurador de widget (agenda e contato)
+lib/public-lead.ts                            classifyOrigin, spamVerdict, defaultLeadSource (com teste)
+lib/lead-form-token.ts · lib/origins.ts       token anti-robô e normalização de domínios (com teste)
+```
 
 ## 3. Fase 3 (ideias)
 - Feed **iCal** (`/b/<slug>/agenda.ics`) para assinar no Google Agenda/Apple.
 - **Redirecionamento** de slug antigo após troca (tabela `BandSlugHistory`).
 - **Aviso por email** a cada lead (Resend) e **webhooks** de saída (`lead.created`, `show.updated`).
+- **Captcha** (Cloudflare Turnstile) no formulário público, se o spam passar das camadas atuais — encaixa em `spamVerdict`.
+- Rate limit global (Redis/Upstash) no lugar do em memória.
 - Personalização do widget (cor de destaque, mostrar/ocultar cidade).
 - Proteção contra *clickjacking* nas páginas do app (`frame-ancestors 'none'`), mantendo `/embed/*` embutível.
 
