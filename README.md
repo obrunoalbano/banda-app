@@ -42,6 +42,7 @@ npm run dev:local          # app em http://localhost:3000 usando o banco local
 | `npm run test` / `test:watch` | testes unitários (Vitest) |
 | `npm run db:migrate` | cria/aplica migration em dev (`prisma migrate dev`) |
 | `npm run db:deploy` | aplica migrations pendentes em produção (`prisma migrate deploy`) |
+| `npm run admin:create -- --email … --name …` | cria o primeiro superadmin do painel `/admin` ([docs/admin.md](docs/admin.md)) |
 
 ## Deploy (Vercel)
 

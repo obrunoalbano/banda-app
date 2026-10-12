@@ -17,7 +17,8 @@
     "db:local": "node scripts/local-db.mjs",
     "db:local:migrate": "node scripts/with-local-db.mjs prisma migrate deploy",
     "db:local:seed": "node scripts/local-seed.mjs",
-    "dev:local": "node scripts/with-local-db.mjs next dev"
+    "dev:local": "node scripts/with-local-db.mjs next dev",
+    "admin:create": "node scripts/create-superadmin.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",

@@ -34,5 +34,16 @@ export {
   MessageCircle as WhatsappIcon,
   ExternalLink as ExternalLinkIcon,
   Filter as FilterIcon,
+  Wallet as FinanceIcon,
+  Share2 as SocialIcon,
+  IdCard as EpkIcon,
+  Compass as ExploreIcon,
+  Sparkles as AiIcon,
+  ShieldUser as ShieldIcon,
+  KeyRound as KeyIcon,
+  Ban as DisableIcon,
+  BadgeCheck as VerifiedIcon,
+  Archive as ArchiveIcon,
+  Send as PublishIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

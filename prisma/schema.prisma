@@ -24,6 +24,10 @@ model Band {
   leadFormEnabled  Boolean  @default(false)
   /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
   leadAllowedOrigins String[] @default([])
+  /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
+  disabledAt       DateTime?
+  /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
+  mustChangePassword Boolean @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())
@@ -111,4 +115,69 @@ model Lead {
   createdAt   DateTime @default(now())
 
   @@index([bandId, createdAt])
+}
+
+/// Usuário da equipe do produto (painel /admin). Separado de Band: não é cliente/tenant.
+model AdminUser {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  /// Senha provisória: obriga a trocar no próximo acesso.
+  mustChangePassword Boolean  @default(false)
+  disabledAt         DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  stagesCreated      Stage[]  @relation("StageCreatedBy")
+  stagesVerified     Stage[]  @relation("StageVerifiedBy")
+}
+
+enum StageType {
+  BAR
+  PUB
+  CASA_DE_SHOW
+  CENTRO_CULTURAL
+  RESTAURANTE
+  ESPACO_DE_EVENTOS
+  OUTRO
+}
+
+enum StageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Palco da base curada (Explorar Palcos). Global: não pertence a nenhuma banda.
+/// Só canais INSTITUCIONAIS — nada de nome/telefone pessoal de responsável (LGPD).
+model Stage {
+  id            String      @id @default(cuid())
+  name          String
+  type          StageType
+  city          String
+  state         String
+  /// Estilos que o palco costuma programar (ex.: "rock", "sertanejo").
+  genres        String[]    @default([])
+  instagram     String?
+  website       String?
+  /// Telefone/WhatsApp comercial do estabelecimento.
+  publicPhone   String?
+  publicEmail   String?
+  capacity      Int?
+  /// O que programa, dias de música ao vivo, observações da curadoria.
+  notes         String?
+  /// De onde veio a informação (site, Instagram, ligação…) — para correções/remoções.
+  sourceNote    String?
+  status        StageStatus @default(DRAFT)
+  verifiedAt    DateTime?
+  verifiedBy    AdminUser?  @relation("StageVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedById  String?
+  createdBy     AdminUser?  @relation("StageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@index([status, state, city])
+  @@index([updatedAt])
 }
