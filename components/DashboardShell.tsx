@@ -2,8 +2,14 @@
 
 import { Brand } from "@/components/ui/Brand";
 import {
+  AiIcon,
   BandIcon,
   CloseIcon,
+  EpkIcon,
+  ExploreIcon,
+  FinanceIcon,
+  ShieldIcon,
+  SocialIcon,
   CollapseIcon,
   ExpandIcon,
   IntegrationIcon,
@@ -26,16 +32,38 @@ type NavItem = {
   matchNova?: boolean;
   /** Submenu (ex.: Integrações → Agenda, Contatos). O pai fica marcado quando um filho está ativo. */
   children?: { href: string; label: string }[];
+  /** Ainda não disponível: aparece desabilitado com selo "Em breve" (sem link). */
+  soon?: boolean;
 };
 
-/** Navegação: conteúdo do dia a dia primeiro, configurações separadas embaixo. */
-const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
+type NavGroup = {
+  label: string;
+  items: NavItem[];
+  /** Módulo inteiro ainda não disponível (ex.: Financeiro): mostra só o título com "Em breve". */
+  soon?: { icon: Icon };
+};
+
+/**
+ * Navegação por módulos do produto. URLs não mudam com o módulo (só o agrupamento).
+ * Recurso novo ainda não construído → `soon: true` (visível, desabilitado). Ao lançar, remova o `soon`.
+ */
+const NAV_GROUPS: NavGroup[] = [
   {
-    label: "Gestão",
+    label: "Administrativo",
     items: [
       { href: "/casas", label: "Casas", icon: VenueIcon, matchNova: false },
       { href: "/shows", label: "Shows", icon: ShowIcon, matchNova: false },
+    ],
+  },
+  { label: "Financeiro", items: [], soon: { icon: FinanceIcon } },
+  {
+    label: "Marketing",
+    items: [
       { href: "/contatos", label: "Contatos", icon: LeadIcon },
+      { href: "/redes-sociais", label: "Redes Sociais", icon: SocialIcon, soon: true },
+      { href: "/epk", label: "EPK Profissional", icon: EpkIcon, soon: true },
+      { href: "/explorar", label: "Explorar Palcos", icon: ExploreIcon, soon: true },
+      { href: "/abordagem", label: "Abordagem com IA", icon: AiIcon, soon: true },
     ],
   },
   {
@@ -54,6 +82,49 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
     ],
   },
 ];
+
+/** Menu do painel superadmin (/admin). Mesmas regras de NAV_GROUPS. */
+const ADMIN_NAV_GROUPS: NavGroup[] = [
+  {
+    label: "Cadastros",
+    items: [
+      { href: "/admin/palcos", label: "Palcos", icon: ExploreIcon, matchNova: false },
+      {
+        href: "/admin/usuarios",
+        label: "Usuários",
+        icon: ShieldIcon,
+        children: [
+          { href: "/admin/usuarios/bandas", label: "Bandas" },
+          { href: "/admin/usuarios/administradores", label: "Administradores" },
+        ],
+      },
+    ],
+  },
+];
+
+/** Configuração por área: o shell é o mesmo, muda menu, início e perfil. */
+const VARIANTS = {
+  band: { groups: NAV_GROUPS, home: "/casas", profile: "/banda", adminBadge: false },
+  admin: { groups: ADMIN_NAV_GROUPS, home: "/admin/palcos", profile: "/admin/senha", adminBadge: true },
+} as const;
+
+/** Marca o painel superadmin (sempre visível ao lado da marca). */
+function AdminBadge() {
+  return (
+    <span className="shrink-0 rounded-full border border-info-line bg-info-bg px-1.5 text-[0.65rem] font-semibold uppercase leading-4 text-info-fg">
+      Admin
+    </span>
+  );
+}
+
+/** Selo "Em breve" do menu. */
+function SoonBadge() {
+  return (
+    <span className="ml-auto shrink-0 rounded-full border border-line px-1 text-[0.6rem] font-medium uppercase leading-4 text-fg-subtle">
+      Em breve
+    </span>
+  );
+}
 
 function navActive(pathname: string, item: NavItem): boolean {
   if (pathname === item.href) return true;
@@ -86,13 +157,16 @@ function subscribe(listener: () => void) {
 }
 
 type DashboardShellProps = {
+  /** "admin" = painel superadmin (menu e links próprios, selo "Admin" na marca). */
+  variant?: keyof typeof VARIANTS;
   userName?: string | null;
   /** Rodapé do menu (botão Sair). Use `group-data-[collapsed=true]:…` para adaptar ao menu recolhido. */
   footer: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function DashboardShell({ userName, footer, children }: DashboardShellProps) {
+export function DashboardShell({ variant = "band", userName, footer, children }: DashboardShellProps) {
+  const config = VARIANTS[variant];
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -130,13 +204,13 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
         id="dashboard-nav"
         data-collapsed={!expanded}
         className={cx(
-          "group fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col border-r border-line bg-surface-muted transition-[width,transform] duration-200 ease-out md:sticky md:top-0 md:h-screen md:translate-x-0",
+          "group fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface-muted transition-[width,transform] duration-200 ease-out md:sticky md:top-0 md:h-screen md:translate-x-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
-          expanded ? "md:w-60" : "md:w-16",
+          expanded ? "md:w-64" : "md:w-16",
         )}
       >
         <div className={cx("flex h-14 items-center border-b border-line px-3", expanded ? "justify-between" : "justify-center")}>
-          {expanded ? <Brand href="/casas" /> : null}
+          {expanded ? <Brand href={config.home} /> : null}
           <button
             type="button"
             onClick={() => (mobileOpen ? setMobileOpen(false) : writeCollapsed(!collapsed))}
@@ -151,9 +225,42 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
         </div>
 
         <nav aria-label="Principal" className="flex flex-1 flex-col gap-6 overflow-y-auto p-3">
-          {NAV_GROUPS.map((group) => (
+          {config.adminBadge ? (
+            // Deixa claro, o tempo todo, que esta é a área da equipe (não o app de uma banda).
+            <p
+              className={cx(
+                "rounded-md border border-info-line bg-info-bg text-xs font-semibold text-info-fg",
+                expanded ? "px-2.5 py-1.5" : "px-0 py-1 text-center",
+              )}
+            >
+              {expanded ? "Painel administrativo" : "ADM"}
+            </p>
+          ) : null}
+          {config.groups.map((group) => (
             <div key={group.label}>
-              {expanded ? (
+              {group.soon ? (
+                expanded ? (
+                  <p
+                    className="flex items-center px-2.5 text-xs font-medium uppercase tracking-wide text-fg-subtle"
+                    aria-disabled="true"
+                  >
+                    {group.label}
+                    <SoonBadge />
+                  </p>
+                ) : (
+                  <>
+                    <hr className="mx-2 mb-2 border-line" aria-hidden />
+                    <span
+                      className="flex h-9 items-center justify-center text-fg-subtle opacity-50"
+                      title={`${group.label} (em breve)`}
+                      aria-disabled="true"
+                    >
+                      <group.soon.icon className="size-5" aria-hidden />
+                      <span className="sr-only">{group.label} (em breve)</span>
+                    </span>
+                  </>
+                )
+              ) : expanded ? (
                 <p className="mb-1 px-2.5 text-xs font-medium uppercase tracking-wide text-fg-subtle">{group.label}</p>
               ) : (
                 <hr className="mx-2 mb-2 border-line" aria-hidden />
@@ -163,6 +270,31 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
                   const active = navActive(pathname, item);
                   const ItemIcon = item.icon;
                   const hasChildren = !!item.children?.length;
+                  if (item.soon) {
+                    return (
+                      <li key={item.href}>
+                        <span
+                          aria-disabled="true"
+                          title={`${item.label} (em breve)`}
+                          className={cx(
+                            "flex cursor-default items-center gap-3 rounded-md px-2.5 text-sm text-fg-subtle",
+                            expanded ? "py-1.5" : "h-9 justify-center px-0 opacity-50",
+                          )}
+                        >
+                          <ItemIcon className="size-5 shrink-0" aria-hidden />
+                          {expanded ? (
+                            // Nome inteiro + "Em breve" em segunda linha (nomes longos não são cortados).
+                            <span className="flex min-w-0 flex-col leading-tight">
+                              <span className="truncate">{item.label}</span>
+                              <span className="text-[0.65rem] font-medium uppercase tracking-wide">Em breve</span>
+                            </span>
+                          ) : (
+                            <span className="sr-only">{item.label} (em breve)</span>
+                          )}
+                        </span>
+                      </li>
+                    );
+                  }
                   return (
                     <li key={item.href}>
                       <Link
@@ -217,7 +349,7 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
         <div className={cx("border-t border-line p-3", !expanded && "flex flex-col items-center")}>
           {expanded && userName ? (
             <Link
-              href="/banda"
+              href={config.profile}
               className="mb-2 block truncate px-2.5 text-xs text-fg-subtle hover:text-fg"
               title={userName}
             >
@@ -241,7 +373,8 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
           >
             <MenuIcon aria-hidden />
           </button>
-          <Brand href="/casas" />
+          <Brand href={config.home} />
+          {config.adminBadge ? <AdminBadge /> : null}
         </header>
         <main id="conteudo" className="min-h-0 flex-1">
           {children}

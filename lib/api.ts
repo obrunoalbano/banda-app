@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireBandSession } from "@/lib/session";
+import { requireAdminSession, requireBandSession } from "@/lib/session";
 
 /** Resposta de erro padrão da API: `{ error }` em pt-BR (+ `details` opcional). */
 export function jsonError(
@@ -53,6 +53,20 @@ export function withBand<P = Record<string, never>>(
     if (!session) return jsonError(401, "Não autorizado");
     const params = context?.params ? await context.params : ({} as P);
     return handler(request, { bandId: session.bandId, params });
+  };
+}
+
+type AdminContext<P> = { adminId: string; params: P };
+
+/** Como `withBand`, para rotas do painel (`/api/admin/*`): exige superadmin ativo (403 caso contrário). */
+export function withAdmin<P = Record<string, never>>(
+  handler: (request: Request, ctx: AdminContext<P>) => Promise<Response>,
+) {
+  return async (request: Request, context: { params: Promise<P> }) => {
+    const session = await requireAdminSession();
+    if (!session) return jsonError(403, "Acesso restrito à equipe.");
+    const params = context?.params ? await context.params : ({} as P);
+    return handler(request, { adminId: session.adminId, params });
   };
 }
 

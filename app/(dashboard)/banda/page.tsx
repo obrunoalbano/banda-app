@@ -1,4 +1,6 @@
 import { BandForm } from "@/components/BandForm";
+import { ButtonLink } from "@/components/ui/Button";
+import { KeyIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
@@ -18,7 +20,15 @@ export default async function BandaPage() {
 
   return (
     <div className={containerClass}>
-      <PageHeader title="Dados da banda" description="Atualize as informações do seu cadastro." />
+      <PageHeader
+        title="Dados da banda"
+        description="Atualize as informações do seu cadastro."
+        actions={
+          <ButtonLink href="/banda/senha" variant="secondary" icon={KeyIcon}>
+            Alterar senha
+          </ButtonLink>
+        }
+      />
       <BandForm initial={band} />
     </div>
   );

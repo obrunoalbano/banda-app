@@ -24,6 +24,10 @@ model Band {
   leadFormEnabled  Boolean  @default(false)
   /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
   leadAllowedOrigins String[] @default([])
+  /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
+  disabledAt       DateTime?
+  /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
+  mustChangePassword Boolean @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())
@@ -111,4 +115,84 @@ model Lead {
   createdAt   DateTime @default(now())
 
   @@index([bandId, createdAt])
+}
+
+/// Usuário da equipe do produto (painel /admin). Separado de Band: não é cliente/tenant.
+model AdminUser {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  /// Senha provisória: obriga a trocar no próximo acesso.
+  mustChangePassword Boolean  @default(false)
+  disabledAt         DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  stagesCreated      Stage[]  @relation("StageCreatedBy")
+  stagesVerified     Stage[]  @relation("StageVerifiedBy")
+}
+
+enum StageType {
+  BAR
+  PUB
+  CASA_DE_SHOW
+  CENTRO_CULTURAL
+  RESTAURANTE
+  ESPACO_DE_EVENTOS
+  TEATRO
+  OUTRO
+}
+
+enum StageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Palco da base curada (Explorar Palcos). Global: não pertence a nenhuma banda.
+/// Só canais INSTITUCIONAIS — nada de nome/telefone pessoal de responsável (LGPD).
+model Stage {
+  id            String      @id @default(cuid())
+  name          String
+  type          StageType
+  city          String
+  state         String
+  /// Bairro/região dentro da cidade (opcional).
+  neighborhood  String?
+  /// Estilos que o palco costuma programar (ex.: "rock", "sertanejo").
+  genres        String[]    @default([])
+  instagram     String?
+  website       String?
+  /// Telefone comercial do estabelecimento.
+  publicPhone   String?
+  /// WhatsApp comercial do estabelecimento (canal de contato principal).
+  whatsapp      String?
+  publicEmail   String?
+  capacity      Int?
+  /// Link de ORIGEM da imagem (ex.: bucket da equipe). Nunca exibido — usado para (re)processar.
+  imageUrl      String?
+  /// Única imagem servida: miniatura WebP 400×300 no nosso storage. null = ainda não processada.
+  imageThumbUrl String?
+  /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
+  lastActivityAt DateTime?
+  /// Origem de importação em lote (ex.: "base-equipe") + id na origem — reimportar atualiza em vez de duplicar.
+  externalSource String?
+  externalId     String?
+  /// O que programa, dias de música ao vivo, observações da curadoria.
+  notes         String?
+  /// De onde veio a informação (site, Instagram, ligação…) — para correções/remoções.
+  sourceNote    String?
+  status        StageStatus @default(DRAFT)
+  verifiedAt    DateTime?
+  verifiedBy    AdminUser?  @relation("StageVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedById  String?
+  createdBy     AdminUser?  @relation("StageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+
+  @@unique([externalSource, externalId])
+  @@index([status, state, city])
+  @@index([updatedAt])
 }

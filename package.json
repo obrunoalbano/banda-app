@@ -17,7 +17,10 @@
     "db:local": "node scripts/local-db.mjs",
     "db:local:migrate": "node scripts/with-local-db.mjs prisma migrate deploy",
     "db:local:seed": "node scripts/local-seed.mjs",
-    "dev:local": "node scripts/with-local-db.mjs next dev"
+    "dev:local": "node scripts/with-local-db.mjs next dev",
+    "admin:create": "node scripts/create-superadmin.mjs",
+    "stages:import": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/import-stages.mjs",
+    "stages:images": "node --disable-warning=MODULE_TYPELESS_PACKAGE_JSON scripts/migrate-stage-images.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "^7.8.0",
@@ -44,6 +47,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.2.1",
     "prisma": "^7.5.0",
+    "sharp": "0.34.5",
     "tailwindcss": "^4",
     "typescript": "^5",
     "vite": "8.3.0",

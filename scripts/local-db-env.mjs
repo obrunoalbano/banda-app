@@ -13,4 +13,6 @@ export const LOCAL_DB_ENV = {
   DATABASE_SSL_REJECT_UNAUTHORIZED: "",
   PGSSLMODE: "disable",
   DATABASE_POOL_MAX: "1",
+  // Imagens do storage "local" (.local-media/) servidas em /media mesmo com `next start`.
+  SERVE_LOCAL_MEDIA: "1",
 };

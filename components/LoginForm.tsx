@@ -17,7 +17,13 @@ function safeCallbackUrl(raw: string | null): string {
 }
 
 function messageForAuthError(error: string | null, code: string | null): string | null {
+  if (code === "disabled_or_expired") {
+    return "Sua sessão terminou ou a conta foi desativada. Entre novamente.";
+  }
   if (!error) return null;
+  if (code === "disabled") {
+    return "Esta conta está desativada. Fale com o suporte.";
+  }
   if (code === "rate_limited") {
     return "Muitas tentativas de login. Aguarde alguns minutos e tente novamente.";
   }

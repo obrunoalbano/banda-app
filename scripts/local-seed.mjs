@@ -66,8 +66,30 @@ await client.query(
    VALUES ('demo-l1', '${BAND}', 'Maria Souza', 'maria@exemplo.test', '(11) 91234-5678', 'Casamento', 'landing')`,
 );
 
+// Superadmin de exemplo (painel /admin) e alguns palcos da base curada.
+await client.query(`DELETE FROM "AdminUser" WHERE email = 'admin@local.test'`);
+await client.query(
+  `INSERT INTO "AdminUser" (id, name, email, "passwordHash", "updatedAt") VALUES ('demo-admin', 'Admin Demo', 'admin@local.test', $1, now())`,
+  [bcrypt.hashSync("senha-admin-123", 10)],
+);
+await client.query(`DELETE FROM "Stage" WHERE id LIKE 'demo-stage-%'`);
+const stages = [
+  ["demo-stage-1", "Bar do Zé", "BAR", "Santos", "SP", "{rock,pop}", "@bardoze", "PUBLISHED"],
+  ["demo-stage-2", "Pub Rock", "PUB", "Campinas", "SP", "{rock}", "@pubrock", "PUBLISHED"],
+  ["demo-stage-3", "Centro Cultural da Vila", "CENTRO_CULTURAL", "Belo Horizonte", "MG", "{mpb,jazz}", null, "DRAFT"],
+];
+for (const [id, name, type, city, state, genres, instagram, status] of stages) {
+  await client.query(
+    `INSERT INTO "Stage" (id, name, type, city, state, genres, instagram, status, "verifiedAt", "verifiedById", "createdById", "updatedAt")
+     VALUES ($1, $2, $3::"StageType", $4, $5, $6::text[], $7, $8::"StageStatus",
+       CASE WHEN $9 THEN now() END, CASE WHEN $9 THEN 'demo-admin' END, 'demo-admin', now())`,
+    [id, name, type, city, state, genres, instagram, status, status === "PUBLISHED"],
+  );
+}
+
 await client.end();
 console.log(`Seed ok.
+  Painel admin:    http://localhost:3000/admin/login  (admin@local.test / senha-admin-123)
   Login:           demo@local.test / senha-local-123
   Agenda pública:  http://localhost:3000/b/banda-demo
   Widget:          http://localhost:3000/embed/banda-demo/shows?tema=escuro
