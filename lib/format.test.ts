@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
+  dateParts,
+  formatInteger,
+  formatMonthYear,
+  formatRelative,
   formatDateOnly,
   formatDateTimeShort,
   instagramHref,
@@ -49,5 +53,46 @@ describe("links", () => {
     expect(instagramHref("instagram.com/casa/")).toBe("https://instagram.com/casa");
     expect(instagramHref("https://instagram.com/x")).toBe("https://instagram.com/x");
     expect(instagramHref("nome com espaço")).toBeNull();
+  });
+});
+
+
+describe("dateParts (bloco de data da agenda)", () => {
+  it("partes em pt-BR sem ponto final", () => {
+    expect(dateParts("2026-12-15")).toEqual({
+      day: "15",
+      month: "dez",
+      weekday: "ter",
+      long: "terça-feira, 15 de dezembro de 2026",
+    });
+  });
+});
+
+describe("formatRelative", () => {
+  const now = new Date("2026-10-13T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+  it.each([
+    [10_000, "agora há pouco"],
+    [5 * 60_000, "há 5 minutos"],
+    [3 * 3600_000, "há 3 horas"],
+    [26 * 3600_000, "ontem"],
+    [3 * 86400_000, "há 3 dias"],
+    [65 * 86400_000, "há 2 meses"],
+  ])("%sms → %s", (ms, expected) => {
+    expect(formatRelative(ago(ms), now)).toBe(expected);
+  });
+});
+
+describe("formatMonthYear", () => {
+  it("mês abreviado/ano no fuso de São Paulo", () => {
+    expect(formatMonthYear(new Date("2026-10-12T15:00:00Z"))).toBe("out/2026");
+    // 1º/jan 01:00 UTC ainda é 31/dez em São Paulo
+    expect(formatMonthYear(new Date("2026-01-01T01:00:00Z"))).toBe("dez/2025");
+  });
+});
+
+describe("formatInteger", () => {
+  it("separador de milhar pt-BR", () => {
+    expect(formatInteger(5775)).toBe("5.775");
   });
 });

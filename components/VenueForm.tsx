@@ -6,6 +6,7 @@ import { FormActions } from "@/components/FormActions";
 import { Alert } from "@/components/ui/Alert";
 import { CurrencyField, PhoneField, SelectField, TextField } from "@/components/ui/fields";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
+import type { VenuePrefill } from "@/lib/deals";
 import { SEND_STATUS_OPTIONS } from "@/lib/send-status";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -13,19 +14,22 @@ import { useState } from "react";
 type VenueFormProps = {
   mode: "create" | "edit";
   venue?: Venue;
+  /** Criação a partir de negociação ganha no Fluxo de contatos: valores iniciais + vínculo. */
+  fromDeal?: { id: string; prefill: VenuePrefill };
 };
 
-export function VenueForm({ mode, venue }: VenueFormProps) {
+export function VenueForm({ mode, venue, fromDeal }: VenueFormProps) {
+  const prefill = fromDeal?.prefill;
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
   const [form, setForm] = useState({
-    name: venue?.name ?? "",
-    responsible: venue?.responsible ?? "",
-    phone: venue?.phone ?? "",
-    email: venue?.email ?? "",
-    city: venue?.city ?? "",
-    state: venue?.state?.toUpperCase() ?? "",
-    instagram: venue?.instagram ?? "",
+    name: venue?.name ?? prefill?.name ?? "",
+    responsible: venue?.responsible ?? prefill?.responsible ?? "",
+    phone: venue?.phone ?? prefill?.phone ?? "",
+    email: venue?.email ?? prefill?.email ?? "",
+    city: venue?.city ?? prefill?.city ?? "",
+    state: venue?.state?.toUpperCase() ?? prefill?.state ?? "",
+    instagram: venue?.instagram ?? prefill?.instagram ?? "",
     valorCacheCents: venue?.valorCacheCents ?? null,
     sendStatus: venue?.sendStatus ?? ("NAO_ENVIADO" as Venue["sendStatus"]),
   });
@@ -36,7 +40,7 @@ export function VenueForm({ mode, venue }: VenueFormProps) {
     const data = await submit<{ id: string }>(
       mode === "create" ? "/api/venues" : `/api/venues/${venue!.id}`,
       mode === "create" ? "POST" : "PATCH",
-      form,
+      fromDeal ? { ...form, dealId: fromDeal.id } : form,
     );
     if (!data) return;
     router.push(`/casas/${data.id}`);
@@ -104,7 +108,7 @@ export function VenueForm({ mode, venue }: VenueFormProps) {
       <FormActions
         loading={loading}
         submitLabel={mode === "create" ? "Cadastrar casa" : "Salvar alterações"}
-        cancelHref={mode === "create" ? "/casas" : `/casas/${venue!.id}`}
+        cancelHref={mode === "edit" ? `/casas/${venue!.id}` : fromDeal ? `/fluxo#negociacao-${fromDeal.id}` : "/casas"}
       />
     </form>
   );

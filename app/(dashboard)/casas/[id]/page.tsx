@@ -3,8 +3,9 @@ import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
-import { EditIcon, EmailIcon, ExternalLinkIcon, WhatsappIcon } from "@/components/ui/icons";
+import { EditIcon, EmailIcon, WhatsappIcon } from "@/components/ui/icons";
 import { containerClass, linkClass } from "@/components/ui/styles";
+import { DEAL_SOURCE_LABELS } from "@/lib/deals";
 import { instagramHref, whatsappHref } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
@@ -22,11 +23,15 @@ export default async function CasaDetalhePage({ params }: PageProps) {
   const { id } = await params;
   const venue = await prisma.venue.findFirst({
     where: { id, bandId },
-    include: { _count: { select: { shows: true } } },
+    include: {
+      _count: { select: { shows: true } },
+      deals: { where: { bandId }, select: { id: true, source: true }, take: 1 },
+    },
   });
   if (!venue) notFound();
 
   const showCount = venue._count.shows;
+  const originDeal = venue.deals[0];
   const wa = whatsappHref(venue.phone);
   const ig = instagramHref(venue.instagram);
 
@@ -79,7 +84,7 @@ export default async function CasaDetalhePage({ params }: PageProps) {
         <DetailItem label="Instagram" wide>
           {venue.instagram ? (
             ig ? (
-              <ExternalLink href={ig} icon={ExternalLinkIcon}>
+              <ExternalLink href={ig}>
                 {venue.instagram}
               </ExternalLink>
             ) : (
@@ -99,6 +104,16 @@ export default async function CasaDetalhePage({ params }: PageProps) {
             <span className="text-fg-subtle">Nenhum</span>
           )}
         </DetailItem>
+        {originDeal ? (
+          <DetailItem label="Origem">
+            <Link href={`/fluxo#negociacao-${originDeal.id}`} className={linkClass}>
+              Fluxo de contatos
+            </Link>{" "}
+            ({DEAL_SOURCE_LABELS[originDeal.source]})
+          </DetailItem>
+        ) : venue.stageId ? (
+          <DetailItem label="Origem">Explorar Palcos</DetailItem>
+        ) : null}
       </DetailList>
     </div>
   );

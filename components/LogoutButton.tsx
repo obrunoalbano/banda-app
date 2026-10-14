@@ -6,12 +6,12 @@ import { buttonClass, cx } from "@/components/ui/styles";
  * Sair (server action). Dentro do DashboardShell, o texto some quando o menu está
  * recolhido (`group-data-[collapsed=true]`), ficando só o ícone com aria-label.
  */
-export function LogoutButton() {
+export function LogoutButton({ redirectTo = "/login" }: { redirectTo?: string }) {
   return (
     <form
       action={async () => {
         "use server";
-        await signOut({ redirectTo: "/login" });
+        await signOut({ redirectTo });
       }}
     >
       <button

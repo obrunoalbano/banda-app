@@ -34,6 +34,14 @@ yarn-error.log*
 .env*
 !.env.example
 
+# bases de dados brutas para importação (contêm contatos — nunca versionar)
+/venues.json
+/data/
+/.local-media/
+
+# banco Postgres local de desenvolvimento (npm run db:local)
+/.local-db/
+
 # sqlite local db (qualquer caminho — evita versionar bancos criados por .env malformado)
 *.db
 *.db-journal

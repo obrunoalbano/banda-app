@@ -1,7 +1,13 @@
 import { describe, expect, it } from "vitest";
 import {
+  dealCreateSchema,
+  dealUpdateSchema,
+  venueUpdateSchema,
   leadIngestSchema,
+  leadFormSettingsSchema,
   normalizeLeadIngestBody,
+  publicAgendaSchema,
+  publicLeadSchema,
   registerBandSchema,
   showCreateSchema,
   venueCreateSchema,
@@ -78,5 +84,63 @@ describe("ingestão de leads (contrato externo)", () => {
   });
   it("string vazia vira null", () => {
     expect(leadIngestSchema.parse({ name: "M", email: "m@x.com", city: "" }).city).toBeNull();
+  });
+});
+
+
+describe("campos públicos do show", () => {
+  const base = { date: "2026-12-15", time: "21:00", venueId: "v1" };
+  it("ticketUrl precisa ser http(s); vazio vira null", () => {
+    expect(showCreateSchema.safeParse({ ...base, ticketUrl: "ingressos.com" }).success).toBe(false);
+    expect(showCreateSchema.safeParse({ ...base, ticketUrl: "javascript:alert(1)" }).success).toBe(false);
+    const ok = showCreateSchema.parse({ ...base, ticketUrl: "https://sympla.com.br/evento" });
+    expect(ok.ticketUrl).toBe("https://sympla.com.br/evento");
+    expect(showCreateSchema.parse({ ...base, ticketUrl: "" }).ticketUrl).toBeNull();
+  });
+});
+
+describe("publicAgendaSchema", () => {
+  it("normaliza e valida o slug", () => {
+    expect(publicAgendaSchema.parse({ slug: "  Os-Incriveis " }).slug).toBe("os-incriveis");
+    expect(publicAgendaSchema.safeParse({ slug: "api" }).success).toBe(false);
+    expect(publicAgendaSchema.safeParse({ slug: "os incriveis" }).success).toBe(false);
+  });
+});
+
+describe("formulário público", () => {
+  it("normaliza e deduplica domínios; ignora linhas vazias", () => {
+    const r = leadFormSettingsSchema.parse({ allowedOrigins: ["meusite.com.br", "https://meusite.com.br/contato", " ", "www.meusite.com.br"] });
+    expect(r.allowedOrigins).toEqual(["https://meusite.com.br", "https://www.meusite.com.br"]);
+  });
+  it("rejeita domínio inválido e mais de 10", () => {
+    expect(leadFormSettingsSchema.safeParse({ allowedOrigins: ["meusite"] }).success).toBe(false);
+    expect(leadFormSettingsSchema.safeParse({ allowedOrigins: Array.from({ length: 11 }, (_, i) => `s${i}.com`) }).success).toBe(false);
+  });
+  it("envio público não aceita metadata e mantém honeypot/token", () => {
+    const r = publicLeadSchema.parse({ name: "Ana", email: "A@X.COM", website: "", formToken: "t", metadata: { x: 1 } });
+    expect(r).toMatchObject({ email: "a@x.com", website: "", formToken: "t" });
+    expect("metadata" in r).toBe(false);
+  });
+});
+
+describe("Fluxo de contatos", () => {
+  it("inclui contato OU palco (nunca os dois)", () => {
+    expect(dealCreateSchema.safeParse({ leadId: "l1" }).success).toBe(true);
+    expect(dealCreateSchema.safeParse({ stageId: "s1" }).success).toBe(true);
+    expect(dealCreateSchema.safeParse({ leadId: "l1", stageId: "s1" }).success).toBe(false);
+    expect(dealCreateSchema.safeParse({}).success).toBe(false);
+  });
+  it("etapa válida", () => {
+    expect(dealUpdateSchema.safeParse({ step: "GANHOU" }).success).toBe(true);
+    expect(dealUpdateSchema.safeParse({ step: "FECHADO" }).success).toBe(false);
+    expect(dealUpdateSchema.safeParse({}).success).toBe(false);
+  });
+  it("observações: texto livre; vazio apaga", () => {
+    expect(dealUpdateSchema.parse({ notes: "  Ligar sexta  " })).toEqual({ notes: "Ligar sexta" });
+    expect(dealUpdateSchema.parse({ notes: "" })).toEqual({ notes: null });
+    expect(dealUpdateSchema.safeParse({ notes: "x".repeat(5001) }).success).toBe(false);
+  });
+  it("dealId só na criação da casa", () => {
+    expect(venueUpdateSchema.parse({ dealId: "d1", name: "X" })).toEqual({ name: "X" });
   });
 });

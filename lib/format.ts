@@ -21,6 +21,17 @@ const dateTimeFullFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: APP_TIME_ZONE,
 });
 const monthNameFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
+const relativeFmt = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
+const monthShortFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+const monthYearFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric", timeZone: APP_TIME_ZONE });
+const weekdayShortFmt = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: "UTC" });
+const dateLongFmt = new Intl.DateTimeFormat("pt-BR", {
+  weekday: "long",
+  day: "numeric",
+  month: "long",
+  year: "numeric",
+  timeZone: "UTC",
+});
 
 /** Data pura (UTC 00:00) → "15/12/2026". */
 export function formatDateOnly(date: Date): string {
@@ -78,4 +89,60 @@ export function instagramHref(value: string | null | undefined): string | null {
   const handle = v.replace(/^@/, "").replace(/^(www\.)?instagram\.com\//i, "").replace(/\/+$/, "");
   if (!/^[A-Za-z0-9._]{1,30}$/.test(handle)) return null;
   return `https://instagram.com/${handle}`;
+}
+
+/** Remove o ponto final de abreviações do Intl ("dez." → "dez"). */
+const stripDot = (s: string) => s.replace(/\.$/, "");
+
+/**
+ * Data pura "YYYY-MM-DD" em partes para o bloco de data da agenda:
+ * { day: "15", month: "dez", weekday: "ter", long: "terça-feira, 15 de dezembro de 2026" }.
+ */
+export function dateParts(ymd: string): { day: string; month: string; weekday: string; long: string } {
+  const [y, m, d] = ymd.split("-").map(Number);
+  const date = new Date(Date.UTC(y, m - 1, d));
+  return {
+    day: String(d),
+    month: stripDot(monthShortFmt.format(date)),
+    weekday: stripDot(weekdayShortFmt.format(date)),
+    long: dateLongFmt.format(date),
+  };
+}
+
+/** Tempo relativo em pt-BR: "agora há pouco", "há 5 minutos", "ontem", "há 3 dias", "há 2 meses". */
+export function formatRelative(date: Date, now: Date = new Date()): string {
+  const seconds = Math.round((date.getTime() - now.getTime()) / 1000);
+  const abs = Math.abs(seconds);
+  if (abs < 60) return "agora há pouco";
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["minute", 60],
+    ["hour", 3600],
+    ["day", 86400],
+    ["month", 2592000],
+    ["year", 31536000],
+  ];
+  let unit: Intl.RelativeTimeFormatUnit = "minute";
+  let size = 60;
+  for (const [u, s] of units) {
+    if (abs >= s) {
+      unit = u;
+      size = s;
+    }
+  }
+  return relativeFmt.format(Math.round(seconds / size), unit);
+}
+
+/** Timestamp → "out/2026" (selos de verificação/atividade). */
+export function formatMonthYear(date: Date): string {
+  const parts = monthYearFmt.formatToParts(date);
+  const month = (parts.find((p) => p.type === "month")?.value ?? "").replace(/\.$/, "");
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  return `${month}/${year}`;
+}
+
+const integerFmt = new Intl.NumberFormat("pt-BR");
+
+/** 5775 → "5.775". */
+export function formatInteger(n: number): string {
+  return integerFmt.format(n);
 }

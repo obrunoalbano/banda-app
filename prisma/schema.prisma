@@ -16,6 +16,18 @@ model Band {
   phone            String
   email            String   @unique
   passwordHash     String
+  /// Identificador público (URL da agenda: /b/<slug>). Editável; trocar quebra widgets instalados.
+  slug             String   @unique
+  /// Opt-in: agenda pública (página /b/<slug>, widget e API pública de shows).
+  publicAgendaEnabled Boolean @default(false)
+  /// Opt-in: formulário de contato público (página /b/<slug>/contato, widget e POST público).
+  leadFormEnabled  Boolean  @default(false)
+  /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
+  leadAllowedOrigins String[] @default([])
+  /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
+  disabledAt       DateTime?
+  /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
+  mustChangePassword Boolean @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash String? @unique
   createdAt        DateTime @default(now())
@@ -23,6 +35,7 @@ model Band {
   venues           Venue[]
   shows            Show[]
   leads            Lead[]
+  deals            Deal[]
 }
 
 enum VenueSendStatus {
@@ -50,12 +63,18 @@ model Venue {
   valorCacheCents Int?
   instagram   String?
   sendStatus  VenueSendStatus   @default(NAO_ENVIADO)
+  /// Palco do diretório (Explorar Palcos) de onde a casa veio. Uma banda não adiciona o mesmo palco duas vezes.
+  stageId     String?
+  stage       Stage?            @relation(fields: [stageId], references: [id], onDelete: SetNull)
   createdAt   DateTime          @default(now())
   updatedAt   DateTime          @updatedAt
   shows       Show[]
+  deals       Deal[]
 
+  @@unique([bandId, stageId])
   @@index([bandId, updatedAt])
   @@index([bandId, city])
+  @@index([stageId])
 }
 
 model Show {
@@ -74,6 +93,12 @@ model Show {
   date            DateTime
   time            String
   paymentStatus   ShowPaymentStatus  @default(AGUARDANDO_PAGAMENTO)
+  /// Aparece na agenda pública. Padrão definido na API: show em casa = true, evento particular = false.
+  isPublic        Boolean            @default(false)
+  /// Link de ingressos exibido na agenda pública.
+  ticketUrl       String?
+  /// Show cancelado continua listado (como "Cancelado") em vez de sumir.
+  cancelledAt     DateTime?
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
 
@@ -95,6 +120,140 @@ model Lead {
   metadata    Json?
   source      String?
   createdAt   DateTime @default(now())
+  deals       Deal[]
 
   @@index([bandId, createdAt])
+}
+
+/// Usuário da equipe do produto (painel /admin). Separado de Band: não é cliente/tenant.
+model AdminUser {
+  id                 String   @id @default(cuid())
+  name               String
+  email              String   @unique
+  passwordHash       String
+  /// Senha provisória: obriga a trocar no próximo acesso.
+  mustChangePassword Boolean  @default(false)
+  disabledAt         DateTime?
+  lastLoginAt        DateTime?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+  stagesCreated      Stage[]  @relation("StageCreatedBy")
+  stagesVerified     Stage[]  @relation("StageVerifiedBy")
+}
+
+enum StageType {
+  BAR
+  PUB
+  CASA_DE_SHOW
+  CENTRO_CULTURAL
+  RESTAURANTE
+  ESPACO_DE_EVENTOS
+  TEATRO
+  OUTRO
+}
+
+enum StageStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+/// Palco da base curada (Explorar Palcos). Global: não pertence a nenhuma banda.
+/// Só canais INSTITUCIONAIS — nada de nome/telefone pessoal de responsável (LGPD).
+model Stage {
+  id            String      @id @default(cuid())
+  name          String
+  type          StageType
+  city          String
+  state         String
+  /// Bairro/região dentro da cidade (opcional).
+  neighborhood  String?
+  /// Estilos que o palco costuma programar (ex.: "rock", "sertanejo").
+  genres        String[]    @default([])
+  instagram     String?
+  website       String?
+  /// Telefone comercial do estabelecimento.
+  publicPhone   String?
+  /// WhatsApp comercial do estabelecimento (canal de contato principal).
+  whatsapp      String?
+  publicEmail   String?
+  capacity      Int?
+  /// Link de ORIGEM da imagem (ex.: bucket da equipe). Nunca exibido — usado para (re)processar.
+  imageUrl      String?
+  /// Única imagem servida: miniatura WebP 400×300 no nosso storage. null = ainda não processada.
+  imageThumbUrl String?
+  /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
+  lastActivityAt DateTime?
+  /// Origem de importação em lote (ex.: "base-equipe") + id na origem — reimportar atualiza em vez de duplicar.
+  externalSource String?
+  externalId     String?
+  /// O que programa, dias de música ao vivo, observações da curadoria.
+  notes         String?
+  /// De onde veio a informação (site, Instagram, ligação…) — para correções/remoções.
+  sourceNote    String?
+  status        StageStatus @default(DRAFT)
+  verifiedAt    DateTime?
+  verifiedBy    AdminUser?  @relation("StageVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedById  String?
+  createdBy     AdminUser?  @relation("StageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById   String?
+  createdAt     DateTime    @default(now())
+  updatedAt     DateTime    @updatedAt
+  /// Casas das bandas criadas a partir deste palco (sinal de interesse para a curadoria).
+  venues        Venue[]
+  /// Negociações de bandas com este palco (Fluxo de contatos).
+  deals         Deal[]
+
+  @@unique([externalSource, externalId])
+  @@index([status, state, city])
+  @@index([updatedAt])
+}
+
+/// Etapa do Fluxo de contatos (fixas por enquanto). Ordem do quadro = ordem aqui.
+enum DealStep {
+  PRIMEIRO_CONTATO
+  PROPOSTA
+  PERDEU
+  GANHOU
+}
+
+/// De onde a negociação veio.
+enum DealSource {
+  CONTATO
+  EXPLORADOR
+}
+
+/// Negociação no Fluxo de contatos (CRM simples): um contato (Lead) ou um palco do
+/// Explorar Palcos acompanhado por etapas. No máximo uma por contato/palco por banda.
+model Deal {
+  id            String     @id @default(cuid())
+  bandId        String
+  band          Band       @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  step          DealStep   @default(PRIMEIRO_CONTATO)
+  source        DealSource
+  /// Origem CONTATO. SetNull: apagar o contato mantém a negociação (nome copiado em `name`).
+  leadId        String?
+  lead          Lead?      @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  /// Origem EXPLORADOR.
+  stageId       String?
+  stage         Stage?     @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  /// Casa criada quando a negociação foi ganha ("Adicionar às minhas casas").
+  venueId       String?
+  venue         Venue?     @relation(fields: [venueId], references: [id], onDelete: SetNull)
+  /// Cópia do nome/cidade da origem no momento da inclusão (a origem pode ser apagada).
+  name          String
+  city          String?
+  state         String?
+  /// Observações da banda sobre a negociação (texto livre).
+  notes         String?
+  stepChangedAt DateTime   @default(now())
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  @@unique([bandId, leadId])
+  @@unique([bandId, stageId])
+  @@index([bandId, step, stepChangedAt])
+  @@index([leadId])
+  @@index([stageId])
+  @@index([venueId])
 }

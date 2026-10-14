@@ -51,4 +51,16 @@ export const RATE_LIMITS = {
   register: { limit: 5, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */
   leadIngest: { limit: 60, windowMs: 60_000 },
+  /** Envios do formulário público por IP + banda. */
+  publicLeadIp: { limit: 10, windowMs: 10 * 60_000 },
+  /** Envios do formulário público por banda (teto contra ataque distribuído). */
+  publicLeadBand: { limit: 100, windowMs: 60 * 60_000 },
+  /** Leads de teste disparados pela tela de Integrações. */
+  testLead: { limit: 5, windowMs: 10 * 60_000 },
+  /** Páginas do Explorar Palcos por banda (anti-raspagem da base curada). */
+  explore: { limit: 300, windowMs: 10 * 60_000 },
+  /** Inclusões no Fluxo de contatos por banda (palcos e contatos). */
+  dealAdd: { limit: 60, windowMs: 60 * 60_000 },
+  /** Leituras da API pública de agenda por IP (a CDN absorve a maior parte). */
+  publicAgenda: { limit: 120, windowMs: 60_000 },
 } as const;

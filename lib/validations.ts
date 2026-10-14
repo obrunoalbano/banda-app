@@ -1,6 +1,8 @@
 import { z } from "zod";
-import { ShowPaymentStatus, VenueSendStatus } from "@/app/generated/prisma/enums";
+import { DealStep, ShowPaymentStatus, StageStatus, StageType, VenueSendStatus } from "@/app/generated/prisma/enums";
 import { MAX_CENTS } from "@/lib/money";
+import { slugError } from "@/lib/slug";
+import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
 
 /*
  * Os schemas já NORMALIZAM a entrada (trim, email minúsculo, UF maiúscula, "" → null).
@@ -36,6 +38,13 @@ const uf = z
   .toUpperCase()
   .regex(/^[A-Z]{2}$/, "UF inválida");
 
+/** URL http(s) opcional (ex.: link de ingressos). "" → null. */
+const optionalUrl = (maxLen: number) =>
+  optionalText(maxLen).refine(
+    (v) => v == null || /^https?:\/\/[^\s]+\.[^\s]+/i.test(v),
+    "Informe um link completo, começando com https://",
+  );
+
 /** Valor monetário em centavos (inteiro, não negativo). */
 const centsSchema = z.number().int().min(0).max(MAX_CENTS, "Valor muito alto");
 
@@ -65,9 +74,22 @@ export const venueCreateSchema = z.object({
   valorCacheCents: centsSchema.optional().nullable(),
   instagram: optionalText(200),
   sendStatus: z.enum(VenueSendStatus).optional(),
+  /** Negociação ganha no Fluxo de contatos que originou a casa (só na criação). */
+  dealId: z.string().trim().min(1).max(64).optional(),
 });
 
-export const venueUpdateSchema = venueCreateSchema.partial();
+export const venueUpdateSchema = venueCreateSchema.omit({ dealId: true }).partial();
+
+/** Incluir no Fluxo de contatos: um contato OU um palco do Explorar Palcos. */
+export const dealCreateSchema = z.union([
+  z.strictObject({ leadId: z.string().trim().min(1).max(64) }),
+  z.strictObject({ stageId: z.string().trim().min(1).max(64) }),
+]);
+
+/** Mover de etapa e/ou editar observações ("" apaga). */
+export const dealUpdateSchema = z
+  .object({ step: z.enum(DealStep).optional(), notes: optionalText(5000) })
+  .refine((d) => d.step !== undefined || d.notes !== undefined, "Nada para alterar");
 
 const showBaseSchema = z.object({
   venueId: optionalText(64),
@@ -82,6 +104,11 @@ const showBaseSchema = z.object({
   /** Omitido na criação de show em casa → herda o cachê atual da casa. */
   cacheCents: centsSchema.optional().nullable(),
   paymentStatus: z.enum(ShowPaymentStatus).optional(),
+  /** Omitido → padrão por tipo (casa = público, particular = oculto). */
+  isPublic: z.boolean().optional(),
+  ticketUrl: optionalUrl(500),
+  /** true = cancelado (mantém na agenda como "Cancelado"); false = reativa. */
+  cancelled: z.boolean().optional(),
 });
 
 /** Regra: sem casa ⇒ cidade e UF do evento particular obrigatórias. */
@@ -104,6 +131,20 @@ export const showCreateSchema = showBaseSchema.superRefine((data, ctx) => {
 });
 
 export const showUpdateSchema = showBaseSchema.partial();
+
+/** Configuração da agenda pública da banda (tela Integrações). */
+export const publicAgendaSchema = z.object({
+  enabled: z.boolean().optional(),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .superRefine((v, ctx) => {
+      const message = slugError(v);
+      if (message) ctx.addIssue({ code: "custom", message });
+    })
+    .optional(),
+});
 
 /** Aceita `phone` / `message` (legado) como alias opcionais de `whatsapp` / `eventDescription`. */
 export function normalizeLeadIngestBody(input: unknown): unknown {
@@ -137,3 +178,124 @@ const leadIngestObjectSchema = z.object({
 export const leadIngestSchema = leadIngestObjectSchema;
 
 export const leadUpdateSchema = leadIngestObjectSchema.partial();
+
+/**
+ * Envio PÚBLICO do formulário de contato (página, widget ou formulário do site da banda).
+ * Sem `metadata` (vetor de spam). `website` é o honeypot (deve vir vazio);
+ * `formToken` vem dos formulários do próprio app (anti-robô).
+ */
+export const publicLeadSchema = leadIngestObjectSchema.omit({ metadata: true }).extend({
+  website: z.string().max(500).optional(),
+  formToken: z.string().max(300).optional(),
+});
+
+/** Configuração do formulário público (tela Integrações → Contatos). */
+export const leadFormSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  allowedOrigins: z
+    .array(z.string().max(300))
+    .max(MAX_ALLOWED_ORIGINS, `Cadastre no máximo ${MAX_ALLOWED_ORIGINS} domínios.`)
+    .transform((list, ctx) => {
+      const out: string[] = [];
+      for (const raw of list) {
+        if (!raw.trim()) continue;
+        const origin = normalizeOrigin(raw);
+        if (!origin) {
+          ctx.addIssue({ code: "custom", message: `Domínio inválido: ${raw}` });
+          return z.NEVER;
+        }
+        if (!out.includes(origin)) out.push(origin);
+      }
+      return out;
+    })
+    .optional(),
+});
+
+/* ── Senha ──────────────────────────────────────────────────────────── */
+
+const newPassword = z.string().min(8, "A nova senha deve ter pelo menos 8 caracteres").max(200);
+
+/** Troca de senha pelo próprio usuário (banda ou superadmin). */
+export const changePasswordSchema = z
+  .object({ currentPassword: z.string().min(1, "Informe a senha atual"), newPassword })
+  .refine((d) => d.newPassword !== d.currentPassword, {
+    message: "A nova senha deve ser diferente da atual",
+    path: ["newPassword"],
+  });
+
+/* ── Painel superadmin ──────────────────────────────────────────────── */
+
+/** Superadmin cria conta de banda (senha provisória gerada no servidor). */
+export const adminCreateBandSchema = z.object({
+  name: requiredText("Nome da banda é obrigatório"),
+  responsible: requiredText("Responsável é obrigatório"),
+  phone: requiredText("Telefone é obrigatório"),
+  email: email(),
+});
+
+/** Superadmin ativa/desativa conta de banda. */
+export const adminUpdateBandSchema = z.object({ disabled: z.boolean() });
+
+/** Superadmin cria outro superadmin. */
+export const adminCreateAdminSchema = z.object({
+  name: requiredText("Nome é obrigatório"),
+  email: email(),
+});
+
+/** Estilos musicais: texto livre separado por vírgula → lista normalizada (minúsculas, sem repetição). */
+const genresList = z
+  .union([z.array(z.string()), z.string()])
+  .transform((v) => {
+    const list = (Array.isArray(v) ? v : v.split(","))
+      .map((g) => g.trim().toLowerCase())
+      .filter(Boolean)
+      .map((g) => g.slice(0, 40));
+    return [...new Set(list)].slice(0, 15);
+  });
+
+/** Instagram: "@casa", "casa" ou URL → "@casa". */
+const instagramHandle = optionalText(200).transform((v) => {
+  // Ausente continua ausente (PATCH parcial não pode apagar o campo); vazio vira null.
+  if (v === undefined) return undefined;
+  if (!v) return null;
+  const handle = v.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, "");
+  return handle ? `@${handle}` : null;
+});
+
+const stageBaseSchema = z.object({
+  name: requiredText("Nome do palco é obrigatório").pipe(z.string().max(200)),
+  type: z.enum(StageType),
+  city: requiredText("Cidade é obrigatória").pipe(z.string().max(120)),
+  state: uf,
+  neighborhood: optionalText(120),
+  genres: genresList.optional(),
+  instagram: instagramHandle,
+  website: optionalText(300).refine(
+    (v) => v == null || /^https?:\/\/[^\s]+\.[^\s]+/i.test(v),
+    "Informe o site completo, começando com https://",
+  ),
+  publicPhone: optionalText(40),
+  whatsapp: optionalText(40),
+  imageUrl: optionalText(1000).refine(
+    (v) => v == null || /^https:\/\/[^\s]+$/i.test(v),
+    "Informe a URL completa da imagem, começando com https://",
+  ),
+  publicEmail: z
+    .union([email(), z.literal("")])
+    .optional()
+    .transform((v) => (v === undefined ? undefined : v || null)),
+  capacity: z.number().int().min(1).max(200_000).nullable().optional(),
+  notes: optionalText(2000),
+  sourceNote: optionalText(500),
+});
+
+export const stageCreateSchema = stageBaseSchema.extend({
+  status: z.enum(StageStatus).optional(),
+});
+
+/** PATCH: campos parciais + ações de curadoria. */
+export const stageUpdateSchema = stageBaseSchema.partial().extend({
+  status: z.enum(StageStatus).optional(),
+  /** true = marca como verificado agora (pela pessoa logada). */
+  verify: z.boolean().optional(),
+});

@@ -37,7 +37,9 @@ Fonte única de verdade para **qualquer UI** do projeto. Antes de criar ou alter
 
 ## 3. Tokens
 
-Definidos como variáveis CSS em `app/globals.css` (claro em `:root`, escuro em `@media (prefers-color-scheme: dark)`) e expostos ao Tailwind via `@theme inline`. Cada variável `--x` vira utilitários `bg-x`, `text-x`, `border-x`, `ring-x`…
+Definidos como variáveis CSS em `app/globals.css`, cada uma no formato **`--x: light-dark(<claro>, <escuro>)`**, e expostos ao Tailwind via `@theme inline`. Cada variável `--x` vira utilitários `bg-x`, `text-x`, `border-x`, `ring-x`…
+
+**Tema:** o valor efetivo vem de `color-scheme`. Por padrão segue o sistema operacional (`:root { color-scheme: light dark }`). Qualquer elemento com `data-theme="light"` ou `data-theme="dark"` força o tema daquele trecho (os widgets usam isso via `?tema=`). Ao criar um token, use sempre `light-dark()` — o teste `tests/design-tokens.test.ts` falha se um token de cor tiver valor só para um tema.
 
 ### 3.1 Cores base
 
@@ -94,7 +96,7 @@ Escala do Tailwind (múltiplos de 4px). Valores padronizados:
 
 | Contexto | Valor |
 | --- | --- |
-| Container de página | `containerClass` = `mx-auto max-w-5xl px-4 py-8` (`containerNarrowClass` = `max-w-3xl`) |
+| Container de página | `containerClass` = `mx-auto max-w-5xl px-4 py-8` (`containerNarrowClass` = `max-w-3xl`, `containerWideClass` = `max-w-7xl` para quadros) |
 | Cabeçalho → conteúdo | `mb-8` (no `PageHeader`) |
 | Entre seções/cards | `gap-6` |
 | Campos de formulário | grid `gap-4` (`sm:grid-cols-2`, campos largos com `sm:col-span-2`); largura máx. do form `max-w-xl` |
@@ -137,7 +139,8 @@ Tamanhos: **16px** dentro de botões (automático), **20px** no menu, **24px** e
 | --- | --- | --- |
 | `Button` | Ações em formulários e na página (submit, gerar, aplicar). | `variant` `primary`·`secondary`·`ghost`·`danger`·`danger-solid`; `size` `sm`(32px)·`md`(40px)·`lg`(48px); `icon`; `loading`; `type` padrão `"button"` |
 | `ButtonLink` | Navegação com cara de botão ("Nova casa", "Alterar", "Entrar"). | mesmas `variant`/`size`/`icon` + props de `next/link` |
-| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason` |
+| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason`, `size` |
+| `Sheet` | Painel lateral modal com detalhes de um item sem sair da tela (ex.: card do Fluxo de contatos). Controlado: `open`/`onClose`; Esc, X e clique fora passam pelo estado do pai; ao abrir, o foco vai para o título. | `open`, `onClose`, `title`, `description`, `children` |
 | `ConfirmDeleteButton` | Remover um registro via `DELETE` na API. | `endpoint`, `redirectTo`, `itemLabel` (ex.: `a casa "Bar X"`), `disabledReason` |
 
 Hierarquia de variantes: `primary` = a ação principal da área (uma só) · `secondary` = alternativas (Cancelar, Mês atual) · `ghost` = ações discretas (Limpar, Copiar, itens de toolbar) · `danger` = abre fluxo destrutivo · `danger-solid` = confirma a destruição (só dentro do modal).
@@ -159,6 +162,7 @@ Todos ligam `<label htmlFor>` via `useId`, mostram `*` quando `required` e aceit
 | `SelectField` | Opções fechadas (`<option>` como filhos). |
 | `PhoneField` | Telefone/WhatsApp com máscara BR `(11) 99999-0000`. `value` + `onValueChange`. |
 | `CurrencyField` | Dinheiro com máscara (digita só números). Estado **em centavos** (`number \| null`), igual ao banco. |
+| `CheckboxField` | Opção liga/desliga dentro de formulário (label à direita + `hint`). Para ações que valem na hora, use um botão. |
 | `CitySelectFields` (em `components/`) | Par UF + cidade (IBGE com cache; vira texto livre se a API falhar). |
 
 Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com Salvar + Cancelar via `cancelHref`), hook `useJsonSubmit` (loading/erro do envio).
@@ -168,9 +172,12 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | Componente | Uso |
 | --- | --- |
 | `PageHeader` | Topo de toda página do dashboard: `title` (h1), `description`, `back` {href,label}, `actions`, `children` (badges). |
-| `Card` | Agrupar uma seção: `title` (h2), `description`, `actions`, `muted`. |
+| `PageHeader` `eyebrow` | Em sub-páginas de um item com submenu, o nome da seção-mãe acima do título (ex.: `eyebrow="Integrações"`). |
+
+> **Server × client:** componentes (inclusive ícones) e funções **não podem** ser passados como props de um Server Component para um Client Component — o Next quebra com "Functions cannot be passed directly to Client Components". Componentes do DS que precisam de estado do navegador seguem o padrão: o componente principal é server (renderiza ícones/conteúdo) e só a parte interativa mínima é client. Em client components, passe ícones já renderizados (`children`) ou use-os dentro de outro client component.
+| `Card` | Agrupar uma seção: `title` (h2; `titleAs="h3"` quando o card está dentro de uma seção com h2 próprio), `description`, `actions`, `muted`. |
 | `DetailList` + `DetailItem` | Tela de detalhe em grid 2 colunas. `wide`, `preserveLines`, `numeric`. Vazio vira "—". |
-| `ExternalLink` | `mailto:`, `wa.me`, Instagram; `icon` opcional; externos abrem em nova aba com aviso para leitor de tela. |
+| `ExternalLink` | `mailto:`, `wa.me`, Instagram, ingressos; `icon` opcional à esquerda (ex.: `EmailIcon`). Links `http(s)` já ganham o ícone de link externo no fim e abrem em nova aba com aviso para leitor de tela — não passe `ExternalLinkIcon` como `icon`. |
 | `Table` + `Tr` + `Td` | Listagens. `caption` (sr-only) obrigatório; **todo `Td` recebe `label`** (vira rótulo no mobile). `strong` = coluna principal (link para o detalhe); `numeric`; `align="right"` = ações. |
 | `Pagination` + `parsePage`/`pageArgs` | `?pagina=N`, 50 por página, preserva filtros via `searchParams`. |
 | `FilterBar` + `FilterField` | Filtros de listagem como `<form method="get">` (estado na URL). Aplicar/Limpar inclusos; `extraActions` para atalhos. |
@@ -182,7 +189,7 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | `Brand` / `PRODUCT_NAME` | Marca (ícone + "Agenda da banda"). Nunca escreva o nome do produto à mão. |
 | `AuthLayout` | Telas públicas de autenticação (marca + card + link alternativo no rodapé). |
 
-Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`, `toneClass`.
+Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`/`containerWideClass`, `toneClass`.
 
 ---
 
@@ -218,12 +225,23 @@ PageHeader  back ("Voltar à listagem" na criação, "Voltar aos detalhes" na ed
 ```
 Após salvar: `router.push` para o detalhe + `router.refresh()`.
 
-### Configuração (`/integracoes`, `/banda`)
-`PageHeader` + um `Card` por assunto. Sucesso de salvamento sem navegação → `Alert tone="success"` no topo do form.
+### Configuração (`/integracoes/*`, `/banda`)
+`PageHeader` + um `Card` por assunto. Quando uma seção tem sub-páginas independentes (ex.: cada integração), use **submenu no menu lateral** (`children` do item em `NAV_GROUPS`): uma rota por sub-página, cada uma com `PageHeader eyebrow="<seção>"`, e a rota raiz redirecionando para a primeira (em `next.config.ts`, redirect HTTP). Nova integração = nova rota em `app/(dashboard)/integracoes/<nome>/` + novo filho em `NAV_GROUPS`. Sucesso de salvamento sem navegação → `Alert tone="success"` no topo do form.
+
+### Diretório em cards (`/explorar`)
+Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (`aria-live`, `formatInteger`) + `<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">` de cards (`StageCard`: `<article>` com imagem 4:3 — placeholder com ícone se faltar —, selos, `h2` com o nome, ações no rodapé com `mt-auto` para alinhar entre cards) + `Pagination` com `pageSize` próprio (24, múltiplo de 2 e 3). Ação principal do card ocupa a largura (`w-full`) e, depois de feita, vira link para o resultado ("Nas suas casas").
+
+### Quadro por etapas (`/fluxo`)
+`containerWideClass` (7xl) + `PageHeader` + colunas `<section aria-labelledby>` (`grid md:grid-cols-2 xl:grid-cols-4`, fundo `bg-surface-muted`) com selo da etapa e contagem no `h2`; cards `<article>` (`h3`) compactos com selo de origem; **arrastar e soltar** entre colunas (mouse e toque com `@dnd-kit/core`; coluna de destino `bg-info-bg`) e, para teclado, botão "esticado" no card que abre um `Sheet` com o `<select>` de etapa e os detalhes. Âncora `#<prefixo>-<id>` com `target:ring-2 target:ring-focus` para "Ver no …". Estado de quadro interativo fica no client (atualização imediata) em vez de `router.refresh()`.
 
 ### Público
 - **Landing:** `Brand` no topo, h1 grande, 2 CTAs (`lg`), 3 cards de recurso com ícones das entidades.
 - **Login / cadastro:** `AuthLayout` (título, descrição, form com botão `w-full`, link alternativo no `footer`).
+
+### Público (agenda da banda) — ver `docs/integracoes.md`
+- **Página `/b/[slug]`:** sem shell do app; `h1` = nome da banda; `PublicShowList`; rodapé "Agenda publicada com" + `Brand`; JSON-LD.
+- **Widget `/embed/[slug]/…`:** raiz com `data-embed` + `data-theme` (de `?tema=`), sem cabeçalho/rodapé do app, `EmbedAutoResize` no fim. Conteúdo compacto, link discreto "Agenda completa".
+- `PublicShowList` (`components/public/`) recebe **só** `PublicShow` (saída de `toPublicShow`) — nunca dados internos.
 
 ### Estados globais
 - **Carregando:** `app/(dashboard)/loading.tsx` (skeleton com `bg-surface-sunken animate-pulse`).
@@ -234,7 +252,7 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 
 ## 6. Padrões de interação
 
-- **Navegação:** menu lateral em dois grupos — *Gestão* (Casas, Shows, Contatos) e *Configurações* (Integrações, Minha banda). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
+- **Navegação:** menu lateral por módulos — *Administrativo* (Casas, Shows), *Financeiro* (em breve), *Marketing* (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Recurso ainda não lançado aparece **desabilitado** (sem link, `aria-disabled`) com "Em breve" numa segunda linha abaixo do nome (nomes longos não são cortados); módulo inteiro não lançado mostra só o título com o selo. Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
 - **Envio de formulário:** botão com `loading` (spinner + "Salvando…"), erro da API em `Alert` no topo, validação nativa (`required`, `type`, `minLength`) + Zod no servidor.
 - **Confirmação:** ações irreversíveis ou com efeito externo usam `ConfirmButton` (nunca `window.confirm`/`alert`). O título é uma pergunta curta; a descrição explica a consequência; o botão de confirmação repete o verbo.
 - **Bloqueio explicado:** quando uma ação não é permitida, desabilite e explique com `disabledReason` (ex.: casa com shows não pode ser removida).
@@ -302,7 +320,7 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 - **Mudar a cor da marca:** altere `--primary`, `--primary-hover`, `--on-primary` (e `--focus`, se quiser) nos dois temas em `globals.css`. Rode `npm run test` — o teste de contraste valida.
 - **Novo token:** declare a variável nos dois temas + mapeie em `@theme inline` + documente na seção 3 + (se for par texto/fundo) adicione ao `PAIRS` de `tests/design-tokens.test.ts`.
 - **Novo componente:** em `components/ui/`, só com tokens, com JSDoc dizendo quando usar; adicione à galeria e à seção 4.
-- **Tema escuro manual (toggle):** hoje segue o sistema operacional. Para toggle, trocar o `@media` por uma classe/atributo em `<html>` e usar `@custom-variant dark` — os componentes não mudam, pois só usam tokens.
+- **Tema escuro manual (toggle):** já suportado pela base — basta definir `data-theme="light|dark"` no `<html>` (preferência salva em cookie/localStorage). Os componentes não mudam, pois só usam tokens.
 
 ---
 
@@ -311,5 +329,5 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` logado redireciona para `/casas`.
 - Sem toast global: sucesso ao criar/editar é comunicado só pelo redirecionamento para o detalhe.
 - Filtro de mês dos shows exige "Aplicar" após escolher o ano (o select de mês depende do ano já aplicado).
-- Sem tema escuro manual (segue o sistema).
+- Sem seletor de tema manual na interface (a base com `data-theme` já existe).
 - O shell do dashboard não está na galeria (depende de sessão); valide-o rodando o app logado.

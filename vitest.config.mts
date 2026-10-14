@@ -7,6 +7,8 @@ export default defineConfig({
   },
   test: {
     environment: "node",
+    // Segredo fixo só para testes (tokens assinados com AUTH_SECRET).
+    env: { AUTH_SECRET: "segredo-de-teste" },
     include: ["**/*.test.ts"],
     exclude: ["node_modules/**", ".next/**"],
   },

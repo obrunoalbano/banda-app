@@ -94,3 +94,43 @@ export function resolveShowCache({
   if (venueChanged && venueCacheCents !== undefined) return venueCacheCents;
   return currentCents;
 }
+
+/**
+ * Visibilidade do show na agenda pública.
+ * - informado no input → usa o informado;
+ * - virou evento particular sem informar → oculta (privacidade);
+ * - criação sem informar → público se for em casa, oculto se for particular.
+ */
+export function resolveShowVisibility({
+  inputIsPublic,
+  currentIsPublic,
+  venueId,
+}: {
+  inputIsPublic: boolean | undefined;
+  /** `undefined` na criação. */
+  currentIsPublic?: boolean;
+  venueId: string | null;
+}): boolean {
+  if (inputIsPublic !== undefined) return inputIsPublic;
+  if (!venueId) return false;
+  return currentIsPublic ?? true;
+}
+
+/** `true` marca cancelado (mantém a data original se já estava); `false` reativa. */
+export function resolveCancelledAt(
+  inputCancelled: boolean | undefined,
+  current: Date | null,
+  now: Date = new Date(),
+): Date | null {
+  if (inputCancelled === undefined) return current;
+  if (!inputCancelled) return null;
+  return current ?? now;
+}
+
+// en-CA formata como YYYY-MM-DD. Criado uma vez (Intl é caro).
+const ymdInAppTz = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Paulo" });
+
+/** "Hoje" como data pura (UTC 00:00) no fuso da app — para filtrar shows futuros. */
+export function todayDateOnly(now: Date = new Date()): Date {
+  return parseDateOnly(ymdInAppTz.format(now))!;
+}
