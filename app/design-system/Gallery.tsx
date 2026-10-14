@@ -16,6 +16,7 @@ import { CheckboxField, CurrencyField, PhoneField, SelectField, TextAreaField, T
 import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
+import { Sheet } from "@/components/ui/Sheet";
 import { containerClass, type ButtonVariant } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
@@ -51,6 +52,7 @@ function Section({ id, title, children }: { id: string; title: string; children:
 export function Gallery() {
   const [cents, setCents] = useState<number | null>(150000);
   const [phone, setPhone] = useState("(11) 99999-0000");
+  const [sheetOpen, setSheetOpen] = useState(false);
 
   return (
     <div className={containerClass}>
@@ -116,6 +118,21 @@ export function Gallery() {
               variant="danger"
               onConfirm={async () => null}
             />
+            <Button variant="secondary" onClick={() => setSheetOpen(true)}>
+              Abrir painel lateral (Sheet)
+            </Button>
+            <Sheet
+              open={sheetOpen}
+              onClose={() => setSheetOpen(false)}
+              title="Bar do Exemplo"
+              description={<Badge tone="warning">Proposta</Badge>}
+            >
+              <DetailList className="max-w-none">
+                <DetailItem label="Cidade">Santos/SP</DetailItem>
+                <DetailItem label="WhatsApp">(13) 99999-0000</DetailItem>
+              </DetailList>
+              <TextAreaField label="Observações" rows={4} defaultValue="Ligar sexta." />
+            </Sheet>
           </div>
         </div>
       </Section>

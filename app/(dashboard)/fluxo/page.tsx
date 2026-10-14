@@ -1,11 +1,12 @@
 import type { DealStep } from "@/app/generated/prisma/enums";
 import { DealBoard } from "@/components/deals/DealBoard";
+import type { BoardDeal } from "@/components/deals/DealCard";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { DealIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerWideClass, linkClass } from "@/components/ui/styles";
 import { DEAL_COLUMN_LIMIT, DEAL_STEPS } from "@/lib/deals";
-import { formatRelative } from "@/lib/format";
+import { formatDateTimeShort, formatMonthYear, formatRelative } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
 import type { Metadata } from "next";
@@ -21,9 +22,41 @@ const dealSelect = {
   city: true,
   state: true,
   venueId: true,
+  notes: true,
   stepChangedAt: true,
-  lead: { select: { id: true, email: true, whatsapp: true } },
-  stage: { select: { whatsapp: true, instagram: true } },
+  createdAt: true,
+  lead: {
+    select: {
+      id: true,
+      email: true,
+      whatsapp: true,
+      city: true,
+      eventDate: true,
+      eventType: true,
+      eventDescription: true,
+      createdAt: true,
+    },
+  },
+  // Só canais institucionais do palco (mesmos do Explorar).
+  stage: {
+    select: {
+      type: true,
+      neighborhood: true,
+      city: true,
+      state: true,
+      whatsapp: true,
+      publicPhone: true,
+      publicEmail: true,
+      instagram: true,
+      website: true,
+      imageThumbUrl: true,
+      verifiedAt: true,
+      lastActivityAt: true,
+      notes: true,
+      genres: true,
+      capacity: true,
+    },
+  },
 } as const;
 
 export default async function FluxoPage() {
@@ -44,9 +77,19 @@ export default async function FluxoPage() {
   for (const c of counts) countByStep[c.step] = c._count._all;
   const total = counts.reduce((sum, c) => sum + c._count._all, 0);
   const now = new Date();
-  const deals = columns.flat().map(({ stepChangedAt, ...deal }) => ({
+  // Datas viram texto aqui (o quadro é client: evita divergência de hidratação).
+  const deals: BoardDeal[] = columns.flat().map(({ stepChangedAt, createdAt, lead, stage, ...deal }) => ({
     ...deal,
     sinceLabel: formatRelative(stepChangedAt, now),
+    createdLabel: formatDateTimeShort(createdAt),
+    lead: lead && (({ createdAt: received, ...rest }) => ({ ...rest, receivedLabel: formatDateTimeShort(received) }))(lead),
+    stage:
+      stage &&
+      (({ verifiedAt, lastActivityAt, ...rest }) => ({
+        ...rest,
+        verified: verifiedAt !== null,
+        lastActivityLabel: lastActivityAt ? formatMonthYear(lastActivityAt) : null,
+      }))(stage),
   }));
 
   return (

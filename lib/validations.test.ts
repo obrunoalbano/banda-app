@@ -133,6 +133,12 @@ describe("Fluxo de contatos", () => {
   it("etapa válida", () => {
     expect(dealUpdateSchema.safeParse({ step: "GANHOU" }).success).toBe(true);
     expect(dealUpdateSchema.safeParse({ step: "FECHADO" }).success).toBe(false);
+    expect(dealUpdateSchema.safeParse({}).success).toBe(false);
+  });
+  it("observações: texto livre; vazio apaga", () => {
+    expect(dealUpdateSchema.parse({ notes: "  Ligar sexta  " })).toEqual({ notes: "Ligar sexta" });
+    expect(dealUpdateSchema.parse({ notes: "" })).toEqual({ notes: null });
+    expect(dealUpdateSchema.safeParse({ notes: "x".repeat(5001) }).success).toBe(false);
   });
   it("dealId só na criação da casa", () => {
     expect(venueUpdateSchema.parse({ dealId: "d1", name: "X" })).toEqual({ name: "X" });
