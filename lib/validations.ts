@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ShowPaymentStatus, VenueSendStatus } from "@/app/generated/prisma/enums";
 import { MAX_CENTS } from "@/lib/money";
 import { slugError } from "@/lib/slug";
+import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
 
 /*
  * Os schemas já NORMALIZAM a entrada (trim, email minúsculo, UF maiúscula, "" → null).
@@ -164,3 +165,35 @@ const leadIngestObjectSchema = z.object({
 export const leadIngestSchema = leadIngestObjectSchema;
 
 export const leadUpdateSchema = leadIngestObjectSchema.partial();
+
+/**
+ * Envio PÚBLICO do formulário de contato (página, widget ou formulário do site da banda).
+ * Sem `metadata` (vetor de spam). `website` é o honeypot (deve vir vazio);
+ * `formToken` vem dos formulários do próprio app (anti-robô).
+ */
+export const publicLeadSchema = leadIngestObjectSchema.omit({ metadata: true }).extend({
+  website: z.string().max(500).optional(),
+  formToken: z.string().max(300).optional(),
+});
+
+/** Configuração do formulário público (tela Integrações → Contatos). */
+export const leadFormSettingsSchema = z.object({
+  enabled: z.boolean().optional(),
+  allowedOrigins: z
+    .array(z.string().max(300))
+    .max(MAX_ALLOWED_ORIGINS, `Cadastre no máximo ${MAX_ALLOWED_ORIGINS} domínios.`)
+    .transform((list, ctx) => {
+      const out: string[] = [];
+      for (const raw of list) {
+        if (!raw.trim()) continue;
+        const origin = normalizeOrigin(raw);
+        if (!origin) {
+          ctx.addIssue({ code: "custom", message: `Domínio inválido: ${raw}` });
+          return z.NEVER;
+        }
+        if (!out.includes(origin)) out.push(origin);
+      }
+      return out;
+    })
+    .optional(),
+});

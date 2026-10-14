@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   dateParts,
+  formatRelative,
   formatDateOnly,
   formatDateTimeShort,
   instagramHref,
@@ -62,5 +63,20 @@ describe("dateParts (bloco de data da agenda)", () => {
       weekday: "ter",
       long: "terça-feira, 15 de dezembro de 2026",
     });
+  });
+});
+
+describe("formatRelative", () => {
+  const now = new Date("2026-10-13T12:00:00Z");
+  const ago = (ms: number) => new Date(now.getTime() - ms);
+  it.each([
+    [10_000, "agora há pouco"],
+    [5 * 60_000, "há 5 minutos"],
+    [3 * 3600_000, "há 3 horas"],
+    [26 * 3600_000, "ontem"],
+    [3 * 86400_000, "há 3 dias"],
+    [65 * 86400_000, "há 2 meses"],
+  ])("%sms → %s", (ms, expected) => {
+    expect(formatRelative(ago(ms), now)).toBe(expected);
   });
 });

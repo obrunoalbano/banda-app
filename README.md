@@ -50,8 +50,8 @@ npm run dev:local          # app em http://localhost:3000 usando o banco local
 
 ## Integrações
 
-- **Agenda pública:** a banda ativa em **Integrações** e divulga a página `/b/<slug>`, o widget (iframe + `embed.js`) ou a API `GET /api/public/v1/bands/<slug>/shows`.
-- **Formulário de contato:** o site envia `POST /api/leads/ingest` com `Authorization: Bearer <token>`; o lead aparece em **Contatos**.
+- **Agenda pública:** a banda ativa em **Integrações → Agenda** e divulga a página `/b/<slug>`, o widget (iframe + `embed.js`) ou a API `GET /api/public/v1/bands/<slug>/shows`.
+- **Formulário de contato:** a banda ativa em **Integrações → Contatos** e usa o formulário pronto (`/b/<slug>/contato` ou widget), o formulário do próprio site (domínios autorizados) ou a integração pelo servidor (`POST /api/leads/ingest` com token). Os pedidos aparecem em **Contatos**.
 
 Contratos, privacidade e próximas fases: [docs/integracoes.md](docs/integracoes.md).
 

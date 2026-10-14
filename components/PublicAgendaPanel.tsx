@@ -6,15 +6,15 @@ import { Button, ButtonLink } from "@/components/ui/Button";
 import { Card } from "@/components/ui/Card";
 import { CodeBlock } from "@/components/ui/CodeBlock";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
-import { CheckboxField, SelectField, TextField } from "@/components/ui/fields";
+import { TextField } from "@/components/ui/fields";
 import { ExternalLinkIcon } from "@/components/ui/icons";
 import { linkClass } from "@/components/ui/styles";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { slugError } from "@/lib/slug";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
-import { EMBED_RESIZE_MESSAGE } from "@/components/public/EmbedAutoResize";
+import { useState } from "react";
+import { EmbedWidgetSection } from "@/components/EmbedWidgetSection";
 
 type PublicAgendaPanelProps = {
   baseUrl: string;
@@ -24,11 +24,6 @@ type PublicAgendaPanelProps = {
   publicUpcomingCount: number;
 };
 
-const THEME_OPTIONS = [
-  { value: "claro", label: "Claro" },
-  { value: "escuro", label: "Escuro" },
-  { value: "auto", label: "Automático (segue o visitante)" },
-];
 
 export function PublicAgendaPanel({
   baseUrl,
@@ -42,27 +37,8 @@ export function PublicAgendaPanel({
   const [slug, setSlug] = useState(initialSlug);
   const [slugDraft, setSlugDraft] = useState(initialSlug);
   const [saved, setSaved] = useState<string | null>(null);
-  const [theme, setTheme] = useState("claro");
-  const [transparent, setTransparent] = useState(false);
-  const [previewHeight, setPreviewHeight] = useState(320);
-
-  // A pré-visualização se ajusta à altura do widget (mesmo protocolo do public/embed.js).
-  useEffect(() => {
-    const onMessage = (event: MessageEvent) => {
-      if (event.origin !== window.location.origin || event.data?.type !== EMBED_RESIZE_MESSAGE) return;
-      const height = Number(event.data.height);
-      if (height > 0) setPreviewHeight(Math.ceil(height));
-    };
-    window.addEventListener("message", onMessage);
-    return () => window.removeEventListener("message", onMessage);
-  }, []);
-
   const pageUrl = `${baseUrl}/b/${slug}`;
-  const embedParams = new URLSearchParams({ tema: theme, ...(transparent && { fundo: "transparente" }) });
-  const embedUrl = `${baseUrl}/embed/${slug}/shows?${embedParams.toString()}`;
   const apiUrl = `${baseUrl}/api/public/v1/bands/${slug}/shows`;
-  const widgetSnippet = `<iframe src="${embedUrl}" title="Agenda de shows" loading="lazy" style="width:100%;border:0;height:420px"></iframe>
-<script src="${baseUrl}/embed.js" async></script>`;
 
   const draftNormalized = slugDraft.trim().toLowerCase();
   const draftError = draftNormalized === slug ? null : slugError(draftNormalized);
@@ -202,36 +178,13 @@ export function PublicAgendaPanel({
             <h4 id="divulgar-widget" className="text-sm font-semibold text-fg">
               2. Widget no seu site <span className="font-normal text-fg-subtle">— Wix, WordPress, Squarespace, HTML</span>
             </h4>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <SelectField label="Tema" value={theme} onChange={(e) => setTheme(e.target.value)}>
-                {THEME_OPTIONS.map((o) => (
-                  <option key={o.value} value={o.value}>
-                    {o.label}
-                  </option>
-                ))}
-              </SelectField>
-              <CheckboxField
-                label="Fundo transparente"
-                className="sm:pt-7"
-                checked={transparent}
-                onChange={(e) => setTransparent(e.target.checked)}
-              />
-            </div>
-            <CodeBlock label="Cole este código onde a agenda deve aparecer" copyable wrap>
-              {widgetSnippet}
-            </CodeBlock>
-            {enabled ? (
-              <div>
-                <p className="mb-1 text-xs font-medium text-fg-subtle">Pré-visualização</p>
-                <iframe
-                  key={embedUrl}
-                  src={embedUrl}
-                  title="Pré-visualização do widget de agenda"
-                  style={{ height: previewHeight }}
-                  className="w-full rounded-md border border-line"
-                />
-              </div>
-            ) : null}
+            <EmbedWidgetSection
+              baseUrl={baseUrl}
+              embedPath={`/embed/${slug}/shows`}
+              iframeTitle="Agenda de shows"
+              snippetLabel="Cole este código onde a agenda deve aparecer"
+              showPreview={enabled}
+            />
           </section>
 
           <section aria-labelledby="divulgar-api" className="flex flex-col gap-3">

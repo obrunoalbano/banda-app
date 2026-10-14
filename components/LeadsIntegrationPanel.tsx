@@ -57,67 +57,49 @@ export function LeadsIntegrationPanel({ baseUrl, ingestPath, initialHasToken }: 
 });`;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Card
-        titleAs="h3"
-        title="Token de acesso"
-        description="O site envia este token em cada requisição. Guarde-o no backend do site, nunca no código do navegador."
-      >
-        <div className="flex flex-col gap-4">
-          {!hasToken && !token ? (
-            <Alert tone="warning">Gere um token antes de integrar o formulário do seu site.</Alert>
-          ) : null}
+    <Card
+      title="Integração pelo servidor"
+      description="Para desenvolvedores: envie pedidos a partir do backend do site (ou de uma função serverless) usando um token secreto. Para enviar direto do navegador, use o “Formulário do seu site” acima."
+    >
+      <div className="flex flex-col gap-4">
+        {token ? (
+          <Alert tone="warning" title="Copie o token agora">
+            Por segurança ele não será mostrado de novo. Se perder, gere outro.
+          </Alert>
+        ) : null}
+        {token ? <CodeBlock label="Token" copyable>{token}</CodeBlock> : null}
 
-          {token ? (
-            <Alert tone="warning" title="Copie o token agora">
-              Por segurança ele não será mostrado de novo. Se perder, gere outro.
-            </Alert>
-          ) : null}
-          {token ? <CodeBlock label="Token" copyable>{token}</CodeBlock> : null}
+        {error && !hasToken ? <Alert>{error}</Alert> : null}
 
-          {error && !hasToken ? <Alert>{error}</Alert> : null}
-
-          <div>
-            {hasToken ? (
-              <ConfirmButton
-                label="Regenerar token"
-                variant="secondary"
-                icon={RetryIcon}
-                title="Regenerar o token?"
-                description="O token atual para de funcionar imediatamente. Atualize o site integrado com o novo token."
-                confirmLabel="Regenerar"
-                tone="danger"
-                onConfirm={generateToken}
-              />
-            ) : (
-              <Button loading={loading} onClick={() => void generateToken()}>
-                Gerar token
-              </Button>
-            )}
-          </div>
+        <div className="flex flex-wrap items-center gap-3">
+          {hasToken ? (
+            <ConfirmButton
+              label="Regenerar token"
+              variant="secondary"
+              icon={RetryIcon}
+              title="Regenerar o token?"
+              description="O token atual para de funcionar imediatamente. Atualize o site integrado com o novo token."
+              confirmLabel="Regenerar"
+              tone="danger"
+              onConfirm={generateToken}
+            />
+          ) : (
+            <Button variant="secondary" loading={loading} onClick={() => void generateToken()}>
+              Gerar token
+            </Button>
+          )}
+          <span className="text-xs text-fg-subtle">
+            {hasToken ? "Token ativo. O valor só é exibido ao gerar." : "Nenhum token gerado."}
+          </span>
         </div>
-      </Card>
 
-      <Card
-        titleAs="h3"
-        title="Como enviar leads"
-        description={
-          <>
-            Faça um <code className="rounded bg-surface-sunken px-1 font-mono text-xs">POST</code> com JSON a partir
-            do backend do site (ou de uma função serverless). Para enviar direto do navegador, a origem do site precisa
-            estar em <code className="rounded bg-surface-sunken px-1 font-mono text-xs">LEADS_INGEST_ALLOWED_ORIGINS</code>.
-          </>
-        }
-      >
-        <div className="flex flex-col gap-4">
-          <CodeBlock label="Endpoint" copyable>
-            {ingestUrl}
-          </CodeBlock>
-          <CodeBlock label="Exemplo (JavaScript)" copyable wrap>
-            {fetchExample}
-          </CodeBlock>
-        </div>
-      </Card>
-    </div>
+        <CodeBlock label="Endpoint" copyable>
+          {ingestUrl}
+        </CodeBlock>
+        <CodeBlock label="Exemplo (JavaScript no servidor)" copyable wrap>
+          {fetchExample}
+        </CodeBlock>
+      </div>
+    </Card>
   );
 }

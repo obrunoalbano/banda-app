@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   leadIngestSchema,
+  leadFormSettingsSchema,
   normalizeLeadIngestBody,
   publicAgendaSchema,
+  publicLeadSchema,
   registerBandSchema,
   showCreateSchema,
   venueCreateSchema,
@@ -99,5 +101,21 @@ describe("publicAgendaSchema", () => {
     expect(publicAgendaSchema.parse({ slug: "  Os-Incriveis " }).slug).toBe("os-incriveis");
     expect(publicAgendaSchema.safeParse({ slug: "api" }).success).toBe(false);
     expect(publicAgendaSchema.safeParse({ slug: "os incriveis" }).success).toBe(false);
+  });
+});
+
+describe("formulário público", () => {
+  it("normaliza e deduplica domínios; ignora linhas vazias", () => {
+    const r = leadFormSettingsSchema.parse({ allowedOrigins: ["meusite.com.br", "https://meusite.com.br/contato", " ", "www.meusite.com.br"] });
+    expect(r.allowedOrigins).toEqual(["https://meusite.com.br", "https://www.meusite.com.br"]);
+  });
+  it("rejeita domínio inválido e mais de 10", () => {
+    expect(leadFormSettingsSchema.safeParse({ allowedOrigins: ["meusite"] }).success).toBe(false);
+    expect(leadFormSettingsSchema.safeParse({ allowedOrigins: Array.from({ length: 11 }, (_, i) => `s${i}.com`) }).success).toBe(false);
+  });
+  it("envio público não aceita metadata e mantém honeypot/token", () => {
+    const r = publicLeadSchema.parse({ name: "Ana", email: "A@X.COM", website: "", formToken: "t", metadata: { x: 1 } });
+    expect(r).toMatchObject({ email: "a@x.com", website: "", formToken: "t" });
+    expect("metadata" in r).toBe(false);
   });
 });

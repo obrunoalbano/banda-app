@@ -21,6 +21,7 @@ const dateTimeFullFmt = new Intl.DateTimeFormat("pt-BR", {
   timeZone: APP_TIME_ZONE,
 });
 const monthNameFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
+const relativeFmt = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
 const monthShortFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
 const weekdayShortFmt = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: "UTC" });
 const dateLongFmt = new Intl.DateTimeFormat("pt-BR", {
@@ -105,4 +106,27 @@ export function dateParts(ymd: string): { day: string; month: string; weekday: s
     weekday: stripDot(weekdayShortFmt.format(date)),
     long: dateLongFmt.format(date),
   };
+}
+
+/** Tempo relativo em pt-BR: "agora há pouco", "há 5 minutos", "ontem", "há 3 dias", "há 2 meses". */
+export function formatRelative(date: Date, now: Date = new Date()): string {
+  const seconds = Math.round((date.getTime() - now.getTime()) / 1000);
+  const abs = Math.abs(seconds);
+  if (abs < 60) return "agora há pouco";
+  const units: [Intl.RelativeTimeFormatUnit, number][] = [
+    ["minute", 60],
+    ["hour", 3600],
+    ["day", 86400],
+    ["month", 2592000],
+    ["year", 31536000],
+  ];
+  let unit: Intl.RelativeTimeFormatUnit = "minute";
+  let size = 60;
+  for (const [u, s] of units) {
+    if (abs >= s) {
+      unit = u;
+      size = s;
+    }
+  }
+  return relativeFmt.format(Math.round(seconds / size), unit);
 }
