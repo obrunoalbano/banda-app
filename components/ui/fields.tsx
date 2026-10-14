@@ -163,3 +163,37 @@ export function TextAreaField({ label, hint, className, ...props }: WrapperProps
     </FieldWrapper>
   );
 }
+
+/**
+ * Checkbox com label à direita e dica opcional (opções liga/desliga em formulários).
+ * Para mudanças que valem na hora (sem "Salvar"), prefira um botão de ação explícito.
+ */
+export function CheckboxField({
+  label,
+  hint,
+  className,
+  ...props
+}: WrapperProps & Omit<InputProps, "type">) {
+  const id = useId();
+  return (
+    <div className={`flex items-start gap-3 ${className ?? ""}`}>
+      <input
+        id={id}
+        type="checkbox"
+        aria-describedby={hint ? `${id}-hint` : undefined}
+        className="mt-0.5 size-4 shrink-0 rounded border-line-strong accent-primary"
+        {...props}
+      />
+      <div className="flex flex-col gap-0.5">
+        <label htmlFor={id} className={labelClass}>
+          {label}
+        </label>
+        {hint ? (
+          <p id={`${id}-hint`} className={hintClass}>
+            {hint}
+          </p>
+        ) : null}
+      </div>
+    </div>
+  );
+}

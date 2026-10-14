@@ -24,6 +24,8 @@ type NavItem = {
   icon: Icon;
   /** `false` evita marcar ativo em `/x/nova` (a página "nova" não pertence ao item). */
   matchNova?: boolean;
+  /** Submenu (ex.: Integrações → Agenda, Contatos). O pai fica marcado quando um filho está ativo. */
+  children?: { href: string; label: string }[];
 };
 
 /** Navegação: conteúdo do dia a dia primeiro, configurações separadas embaixo. */
@@ -39,7 +41,15 @@ const NAV_GROUPS: { label: string; items: NavItem[] }[] = [
   {
     label: "Configurações",
     items: [
-      { href: "/integracoes", label: "Integrações", icon: IntegrationIcon },
+      {
+        href: "/integracoes",
+        label: "Integrações",
+        icon: IntegrationIcon,
+        children: [
+          { href: "/integracoes/agenda", label: "Agenda" },
+          { href: "/integracoes/contato", label: "Contatos" },
+        ],
+      },
       { href: "/banda", label: "Minha banda", icon: BandIcon },
     ],
   },
@@ -152,23 +162,50 @@ export function DashboardShell({ userName, footer, children }: DashboardShellPro
                 {group.items.map((item) => {
                   const active = navActive(pathname, item);
                   const ItemIcon = item.icon;
+                  const hasChildren = !!item.children?.length;
                   return (
                     <li key={item.href}>
                       <Link
                         href={item.href}
                         title={expanded ? undefined : item.label}
-                        aria-current={active ? "page" : undefined}
+                        // Com submenu, quem recebe aria-current é o filho (a página); o pai só destaca a seção.
+                        aria-current={active && (!hasChildren || !expanded) ? "page" : undefined}
                         className={cx(
                           "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors",
-                          active
+                          active && (!hasChildren || !expanded)
                             ? "bg-surface-sunken font-medium text-fg"
-                            : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
+                            : active
+                              ? "font-medium text-fg hover:bg-surface-sunken"
+                              : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
                           !expanded && "justify-center px-0",
                         )}
                       >
                         <ItemIcon className={cx("size-5 shrink-0", active ? "text-fg" : "text-fg-subtle")} aria-hidden />
                         <span className={expanded ? "truncate" : "sr-only"}>{item.label}</span>
                       </Link>
+                      {hasChildren && expanded ? (
+                        <ul className="mb-1 ml-[1.375rem] mt-0.5 flex flex-col gap-0.5 border-l border-line pl-3">
+                          {item.children!.map((child) => {
+                            const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                            return (
+                              <li key={child.href}>
+                                <Link
+                                  href={child.href}
+                                  aria-current={childActive ? "page" : undefined}
+                                  className={cx(
+                                    "flex h-8 items-center rounded-md px-2.5 text-sm transition-colors",
+                                    childActive
+                                      ? "bg-surface-sunken font-medium text-fg"
+                                      : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
+                                  )}
+                                >
+                                  {child.label}
+                                </Link>
+                              </li>
+                            );
+                          })}
+                        </ul>
+                      ) : null}
                     </li>
                   );
                 })}

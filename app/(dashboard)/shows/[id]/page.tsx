@@ -1,6 +1,7 @@
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
+import { Badge } from "@/components/ui/Badge";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
-import { DetailItem, DetailList } from "@/components/ui/DetailList";
+import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
 import { EditIcon } from "@/components/ui/icons";
@@ -47,7 +48,9 @@ export default async function ShowDetalhePage({ params }: PageProps) {
             />
           </>
         }
-      />
+      >
+        {show.cancelledAt ? <Badge tone="danger">Cancelado</Badge> : null}
+      </PageHeader>
 
       <DetailList>
         <DetailItem label="Casa de show" wide>
@@ -77,6 +80,16 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         </DetailItem>
         <DetailItem label="Status de pagamento" wide>
           <ShowPaymentBadge status={show.paymentStatus} />
+        </DetailItem>
+        <DetailItem label="Agenda pública">
+          {show.isPublic ? <Badge tone="info">Visível</Badge> : <Badge>Oculto</Badge>}
+        </DetailItem>
+        <DetailItem label="Ingressos">
+          {show.ticketUrl ? (
+            <ExternalLink href={show.ticketUrl}>
+              {show.ticketUrl.replace(/^https?:\/\//, "")}
+            </ExternalLink>
+          ) : null}
         </DetailItem>
       </DetailList>
     </div>

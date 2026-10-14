@@ -3,8 +3,10 @@ import { jsonError, parseBody, withBand, zodError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   parseDateOnly,
+  resolveCancelledAt,
   resolveShowCache,
   resolveShowLocation,
+  resolveShowVisibility,
   toDateOnlyString,
 } from "@/lib/shows";
 import { showCreateSchema, showUpdateSchema } from "@/lib/validations";
@@ -17,7 +19,8 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
 
   const parsed = await parseBody(request, showUpdateSchema);
   if (!parsed.ok) return parsed.response;
-  const { date, time, cacheCents, paymentStatus, ...locationInput } = parsed.data;
+  const { date, time, cacheCents, paymentStatus, isPublic, ticketUrl, cancelled, ...locationInput } =
+    parsed.data;
 
   const location = resolveShowLocation(locationInput, existing);
 
@@ -59,6 +62,13 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
       ...(dateValue && { date: dateValue }),
       ...(time !== undefined && { time }),
       ...(paymentStatus && { paymentStatus }),
+      isPublic: resolveShowVisibility({
+        inputIsPublic: isPublic,
+        currentIsPublic: existing.isPublic,
+        venueId: location.venueId,
+      }),
+      ...(ticketUrl !== undefined && { ticketUrl }),
+      cancelledAt: resolveCancelledAt(cancelled, existing.cancelledAt),
     },
   });
 

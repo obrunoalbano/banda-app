@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { ShowPaymentStatus, VenueSendStatus } from "@/app/generated/prisma/enums";
 import { MAX_CENTS } from "@/lib/money";
+import { slugError } from "@/lib/slug";
 
 /*
  * Os schemas já NORMALIZAM a entrada (trim, email minúsculo, UF maiúscula, "" → null).
@@ -35,6 +36,13 @@ const uf = z
   .trim()
   .toUpperCase()
   .regex(/^[A-Z]{2}$/, "UF inválida");
+
+/** URL http(s) opcional (ex.: link de ingressos). "" → null. */
+const optionalUrl = (maxLen: number) =>
+  optionalText(maxLen).refine(
+    (v) => v == null || /^https?:\/\/[^\s]+\.[^\s]+/i.test(v),
+    "Informe um link completo, começando com https://",
+  );
 
 /** Valor monetário em centavos (inteiro, não negativo). */
 const centsSchema = z.number().int().min(0).max(MAX_CENTS, "Valor muito alto");
@@ -82,6 +90,11 @@ const showBaseSchema = z.object({
   /** Omitido na criação de show em casa → herda o cachê atual da casa. */
   cacheCents: centsSchema.optional().nullable(),
   paymentStatus: z.enum(ShowPaymentStatus).optional(),
+  /** Omitido → padrão por tipo (casa = público, particular = oculto). */
+  isPublic: z.boolean().optional(),
+  ticketUrl: optionalUrl(500),
+  /** true = cancelado (mantém na agenda como "Cancelado"); false = reativa. */
+  cancelled: z.boolean().optional(),
 });
 
 /** Regra: sem casa ⇒ cidade e UF do evento particular obrigatórias. */
@@ -104,6 +117,20 @@ export const showCreateSchema = showBaseSchema.superRefine((data, ctx) => {
 });
 
 export const showUpdateSchema = showBaseSchema.partial();
+
+/** Configuração da agenda pública da banda (tela Integrações). */
+export const publicAgendaSchema = z.object({
+  enabled: z.boolean().optional(),
+  slug: z
+    .string()
+    .trim()
+    .toLowerCase()
+    .superRefine((v, ctx) => {
+      const message = slugError(v);
+      if (message) ctx.addIssue({ code: "custom", message });
+    })
+    .optional(),
+});
 
 /** Aceita `phone` / `message` (legado) como alias opcionais de `whatsapp` / `eventDescription`. */
 export function normalizeLeadIngestBody(input: unknown): unknown {

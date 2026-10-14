@@ -51,4 +51,6 @@ export const RATE_LIMITS = {
   register: { limit: 5, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */
   leadIngest: { limit: 60, windowMs: 60_000 },
+  /** Leituras da API pública de agenda por IP (a CDN absorve a maior parte). */
+  publicAgenda: { limit: 120, windowMs: 60_000 },
 } as const;

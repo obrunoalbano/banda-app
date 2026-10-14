@@ -1,5 +1,6 @@
 "use client";
 
+import { PublicShowList } from "@/components/public/PublicShowList";
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Alert } from "@/components/ui/Alert";
@@ -11,7 +12,7 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CurrencyField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { CheckboxField, CurrencyField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
@@ -159,6 +160,12 @@ export function Gallery() {
               hint="Digite só números: 150000 → 1.500,00"
             />
             <TextAreaField label="Observações" className="sm:col-span-2" rows={2} />
+            <CheckboxField
+              label="Mostrar na agenda pública"
+              className="sm:col-span-2"
+              defaultChecked
+              hint="Checkbox com dica: opções liga/desliga dentro de formulários."
+            />
           </form>
         </Card>
       </Section>
@@ -210,6 +217,35 @@ export function Gallery() {
           ))}
         </Table>
         <Pagination page={2} total={130} basePath="/design-system" />
+      </Section>
+
+      <Section id="agenda-publica" title="Agenda pública (página /b/[slug] e widget)">
+        <PublicShowList
+          shows={[
+            {
+              id: "1",
+              date: "2026-12-15",
+              time: "21:00",
+              status: "scheduled",
+              title: "Bar do Zé",
+              venue: { name: "Bar do Zé", city: "Santos", state: "SP" },
+              city: "Santos",
+              state: "SP",
+              ticketUrl: "https://exemplo.com/ingressos",
+            },
+            {
+              id: "2",
+              date: "2026-12-20",
+              time: "20:00",
+              status: "cancelled",
+              title: "Evento particular",
+              venue: null,
+              city: "Campinas",
+              state: "SP",
+              ticketUrl: null,
+            },
+          ]}
+        />
       </Section>
 
       <Section id="vazio" title="Estado vazio e código">

@@ -4,7 +4,7 @@ import type { ShowPaymentStatus } from "@/app/generated/prisma/enums";
 import { CitySelectFields } from "@/components/CitySelectFields";
 import { FormActions } from "@/components/FormActions";
 import { Alert } from "@/components/ui/Alert";
-import { CurrencyField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { CheckboxField, CurrencyField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { linkClass } from "@/components/ui/styles";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { SHOW_PAYMENT_OPTIONS } from "@/lib/show-payment-status";
@@ -30,6 +30,9 @@ type ShowFormData = {
   privateState: string | null;
   cacheCents: number | null;
   paymentStatus: ShowPaymentStatus;
+  isPublic: boolean;
+  ticketUrl: string | null;
+  cancelled: boolean;
 };
 
 type ShowFormProps = {
@@ -45,6 +48,8 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
   const { submit, loading, error } = useJsonSubmit();
   /** Enquanto o usuário não mexer no cachê, trocar de casa preenche com o cachê da casa. */
   const [cacheTouched, setCacheTouched] = useState(false);
+  /** Enquanto o usuário não mexer, a visibilidade segue o padrão: casa = pública, particular = oculta. */
+  const [visibilityTouched, setVisibilityTouched] = useState(mode === "edit");
   const [form, setForm] = useState({
     venueId: show == null ? "" : (show.venueId ?? PRIVATE_EVENT_VALUE),
     date: show?.date ?? "",
@@ -54,6 +59,9 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
     privateState: show?.privateState?.toUpperCase() ?? "",
     cacheCents: show?.cacheCents ?? null,
     paymentStatus: show?.paymentStatus ?? ("AGUARDANDO_PAGAMENTO" as ShowPaymentStatus),
+    isPublic: show?.isPublic ?? true,
+    ticketUrl: show?.ticketUrl ?? "",
+    cancelled: show?.cancelled ?? false,
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -73,6 +81,9 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
         privateState: isPrivateEvent ? form.privateState : null,
         cacheCents: form.cacheCents,
         paymentStatus: form.paymentStatus,
+        isPublic: form.isPublic,
+        ticketUrl: form.ticketUrl,
+        cancelled: form.cancelled,
       },
     );
     if (!data) return;
@@ -94,6 +105,7 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
             const venue = venues.find((v) => v.id === venueId);
             set({
               venueId,
+              ...(!visibilityTouched && { isPublic: venueId !== PRIVATE_EVENT_VALUE }),
               ...(venue && !cacheTouched && { cacheCents: venue.valorCacheCents }),
             });
           }}
@@ -178,6 +190,38 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
           ))}
         </SelectField>
       </div>
+
+      <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-4">
+        <legend className="px-1 text-sm font-semibold text-fg">Agenda pública</legend>
+        <CheckboxField
+          label="Mostrar na agenda pública"
+          checked={form.isPublic}
+          onChange={(e) => {
+            setVisibilityTouched(true);
+            set({ isPublic: e.target.checked });
+          }}
+          hint={
+            isPrivateEvent
+              ? "Eventos particulares aparecem só como “Evento particular” + cidade, sem detalhes."
+              : "Aparece na página pública, no widget e na API, se a agenda estiver ativa em Integrações."
+          }
+        />
+        <TextField
+          label="Link de ingressos"
+          type="url"
+          inputMode="url"
+          placeholder="https://"
+          value={form.ticketUrl}
+          onChange={(e) => set({ ticketUrl: e.target.value })}
+          hint="Opcional. Vira um botão “Ingressos” na agenda pública."
+        />
+        <CheckboxField
+          label="Show cancelado"
+          checked={form.cancelled}
+          onChange={(e) => set({ cancelled: e.target.checked })}
+          hint="Continua listado na agenda pública como “Cancelado”, para avisar o público."
+        />
+      </fieldset>
       <FormActions
         loading={loading}
         submitLabel={mode === "create" ? "Cadastrar show" : "Salvar alterações"}

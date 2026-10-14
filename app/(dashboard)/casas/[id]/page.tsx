@@ -3,7 +3,7 @@ import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { ButtonLink } from "@/components/ui/Button";
-import { EditIcon, EmailIcon, ExternalLinkIcon, WhatsappIcon } from "@/components/ui/icons";
+import { EditIcon, EmailIcon, WhatsappIcon } from "@/components/ui/icons";
 import { containerClass, linkClass } from "@/components/ui/styles";
 import { instagramHref, whatsappHref } from "@/lib/format";
 import { formatCents } from "@/lib/money";
@@ -79,7 +79,7 @@ export default async function CasaDetalhePage({ params }: PageProps) {
         <DetailItem label="Instagram" wide>
           {venue.instagram ? (
             ig ? (
-              <ExternalLink href={ig} icon={ExternalLinkIcon}>
+              <ExternalLink href={ig}>
                 {venue.instagram}
               </ExternalLink>
             ) : (

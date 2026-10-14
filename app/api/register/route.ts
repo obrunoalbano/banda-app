@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { isUniqueViolation, jsonError, parseBody } from "@/lib/api";
+import { findAvailableSlug } from "@/lib/band-slug";
 import { prisma } from "@/lib/prisma";
 import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
@@ -18,14 +19,25 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
 
   const { password, ...data } = parsed.data;
-  try {
-    await prisma.band.create({
-      data: { ...data, passwordHash: await hash(password, 12) },
-    });
-  } catch (error) {
-    if (isUniqueViolation(error)) return jsonError(409, "Este email já está cadastrado");
-    throw error;
+  if (await prisma.band.findUnique({ where: { email: data.email }, select: { id: true } })) {
+    return jsonError(409, "Este email já está cadastrado");
   }
 
-  return NextResponse.json({ ok: true }, { status: 201 });
+  const passwordHash = await hash(password, 12);
+  // O slug pode colidir com um cadastro simultâneo: tenta de novo com o próximo livre.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      await prisma.band.create({
+        data: { ...data, passwordHash, slug: await findAvailableSlug(data.name) },
+      });
+      return NextResponse.json({ ok: true }, { status: 201 });
+    } catch (error) {
+      if (!isUniqueViolation(error)) throw error;
+      // Email concorrente cadastrado entre a checagem e o create.
+      if (await prisma.band.findUnique({ where: { email: data.email }, select: { id: true } })) {
+        return jsonError(409, "Este email já está cadastrado");
+      }
+    }
+  }
+  return jsonError(503, "Não foi possível concluir o cadastro. Tente novamente.");
 }
