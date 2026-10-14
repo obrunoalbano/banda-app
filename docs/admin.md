@@ -54,7 +54,7 @@ O comando mostra o banco de destino, recusa banco remoto sem `--confirm-remote`,
 - Global (não pertence a banda). Campos: nome, tipo (`StageType`), cidade/UF, estilos (`genres[]`), Instagram (normalizado `@handle`), site, telefone/email **comerciais**, capacidade, programação/observações, **fonte da informação** (interna), situação (`DRAFT` → `PUBLISHED` → `ARCHIVED`), `verifiedAt/By`, `createdBy`.
 - **LGPD:** só canais institucionais. Nome/telefone pessoal de responsável **não** entram (ficam na `Venue` privada de cada banda).
 - Publicar = verificar agora. **Reverificação** sugerida após 180 dias (`needsReverification`, selo "Reverificar").
-- O Explorar Palcos (bandas) mostrará só `PUBLISHED` — ver `docs/modulos-marketing.md` §4.
+- O Explorar Palcos (bandas, `/explorar`) mostra só `PUBLISHED` — ver `docs/modulos-marketing.md` §4.2.1. Arquivar tira o palco do diretório; as casas que bandas já criaram a partir dele continuam (`stageId` vira `null` só se o palco for excluído).
 
 ## 6. Importação em lote de palcos
 Script `scripts/import-stages.mjs` (normalização em `lib/stage-import.ts`, com teste). Use para bases **próprias da equipe** (ou com licença de reúso) — a origem fica registrada em cada palco (`sourceNote`).

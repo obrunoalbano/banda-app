@@ -62,7 +62,7 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/contatos", label: "Contatos", icon: LeadIcon },
       { href: "/redes-sociais", label: "Redes Sociais", icon: SocialIcon, soon: true },
       { href: "/epk", label: "EPK Profissional", icon: EpkIcon, soon: true },
-      { href: "/explorar", label: "Explorar Palcos", icon: ExploreIcon, soon: true },
+      { href: "/explorar", label: "Explorar Palcos", icon: ExploreIcon },
       { href: "/abordagem", label: "Abordagem com IA", icon: AiIcon, soon: true },
     ],
   },

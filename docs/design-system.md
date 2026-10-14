@@ -227,6 +227,9 @@ Após salvar: `router.push` para o detalhe + `router.refresh()`.
 ### Configuração (`/integracoes/*`, `/banda`)
 `PageHeader` + um `Card` por assunto. Quando uma seção tem sub-páginas independentes (ex.: cada integração), use **submenu no menu lateral** (`children` do item em `NAV_GROUPS`): uma rota por sub-página, cada uma com `PageHeader eyebrow="<seção>"`, e a rota raiz redirecionando para a primeira (em `next.config.ts`, redirect HTTP). Nova integração = nova rota em `app/(dashboard)/integracoes/<nome>/` + novo filho em `NAV_GROUPS`. Sucesso de salvamento sem navegação → `Alert tone="success"` no topo do form.
 
+### Diretório em cards (`/explorar`)
+Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (`aria-live`, `formatInteger`) + `<ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">` de cards (`StageCard`: `<article>` com imagem 4:3 — placeholder com ícone se faltar —, selos, `h2` com o nome, ações no rodapé com `mt-auto` para alinhar entre cards) + `Pagination` com `pageSize` próprio (24, múltiplo de 2 e 3). Ação principal do card ocupa a largura (`w-full`) e, depois de feita, vira link para o resultado ("Nas suas casas").
+
 ### Público
 - **Landing:** `Brand` no topo, h1 grande, 2 CTAs (`lg`), 3 cards de recurso com ícones das entidades.
 - **Login / cadastro:** `AuthLayout` (título, descrição, form com botão `w-full`, link alternativo no `footer`).

@@ -45,6 +45,7 @@ app/
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste), band/password (POST)
     admin/*                SUPERADMIN (withAdmin): stages, bands (+reset-password), admins, password
     venues (POST), venues/[id] (PATCH, DELETE)
+    explorar/[stageId] (POST)  adiciona palco do diretório às casas da banda (idempotente)
     shows (POST), shows/[id] (PATCH, DELETE)
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
@@ -60,6 +61,7 @@ components/
                            Button, Badge, Card, Alert, fields, PageHeader, DetailList, Table, FilterBar,
                            Pagination, EmptyState, CodeBlock, ConfirmButton, StatusPage, Brand, AuthLayout
   public/                  PublicShowList, EmbedAutoResize (página pública e widget)
+  explore/                 StageCard, ExploreFilterForm, AddStageButton (Explorar Palcos)
   *Form.tsx                formulários client (POST/PATCH na API)
   DashboardShell.tsx       menu lateral (gaveta no mobile) + header
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
@@ -69,6 +71,7 @@ lib/
   access.ts                regras de acesso por rota e papel (proxy.ts) — função pura com teste
   passwords.ts             senha provisória + hash · change-password.ts: troca da própria senha
   stages.ts                labels/tons de Stage, reverificação
+  explore.ts               Explorar Palcos: filtros, where (sempre PUBLISHED), ordem, palco → casa
   validations.ts           schemas Zod que validam E normalizam
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas)
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
@@ -93,7 +96,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 ## Modelo de dados (resumo)
 
 - **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador).
-- **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa.
+- **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
@@ -209,6 +212,6 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - Escritas via route handlers + `fetch`; migrar para Server Actions (`useActionState`) é opcional, mas manteria `/api/leads/ingest` como REST.
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` redireciona para `/casas`.
 - Débitos de UX detalhados: seção 12 de `docs/design-system.md`.
-- Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Pendente: tela Explorar Palcos das bandas, EPK (Supabase Storage), Abordagem com IA (Claude com cota).
+- Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Feito: Explorar Palcos das bandas (`/explorar`, `docs/modulos-marketing.md` §4.2.1). Pendente: EPK (Supabase Storage), Abordagem com IA (Claude com cota).
 - Painel: sem log de auditoria das ações da equipe; importação em lote só por script (sem upload no painel); superadmin não redefine senha de outro admin pela tela (usar `npm run admin:create -- --reset`).
 - Integrações — fase 3 (iCal, redirecionamento de slug antigo, webhooks, email de novo lead, captcha): `docs/integracoes.md`.

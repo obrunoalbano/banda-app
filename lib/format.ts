@@ -23,6 +23,7 @@ const dateTimeFullFmt = new Intl.DateTimeFormat("pt-BR", {
 const monthNameFmt = new Intl.DateTimeFormat("pt-BR", { month: "long", timeZone: "UTC" });
 const relativeFmt = new Intl.RelativeTimeFormat("pt-BR", { numeric: "auto" });
 const monthShortFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", timeZone: "UTC" });
+const monthYearFmt = new Intl.DateTimeFormat("pt-BR", { month: "short", year: "numeric", timeZone: APP_TIME_ZONE });
 const weekdayShortFmt = new Intl.DateTimeFormat("pt-BR", { weekday: "short", timeZone: "UTC" });
 const dateLongFmt = new Intl.DateTimeFormat("pt-BR", {
   weekday: "long",
@@ -129,4 +130,19 @@ export function formatRelative(date: Date, now: Date = new Date()): string {
     }
   }
   return relativeFmt.format(Math.round(seconds / size), unit);
+}
+
+/** Timestamp → "out/2026" (selos de verificação/atividade). */
+export function formatMonthYear(date: Date): string {
+  const parts = monthYearFmt.formatToParts(date);
+  const month = (parts.find((p) => p.type === "month")?.value ?? "").replace(/\.$/, "");
+  const year = parts.find((p) => p.type === "year")?.value ?? "";
+  return `${month}/${year}`;
+}
+
+const integerFmt = new Intl.NumberFormat("pt-BR");
+
+/** 5775 → "5.775". */
+export function formatInteger(n: number): string {
+  return integerFmt.format(n);
 }

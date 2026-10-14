@@ -99,6 +99,7 @@ export default async function CasaDetalhePage({ params }: PageProps) {
             <span className="text-fg-subtle">Nenhum</span>
           )}
         </DetailItem>
+        {venue.stageId ? <DetailItem label="Origem">Explorar Palcos</DetailItem> : null}
       </DetailList>
     </div>
   );
