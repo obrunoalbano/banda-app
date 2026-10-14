@@ -1,7 +1,6 @@
-import Link from "next/link";
-import { buttonPrimaryClass, buttonSecondaryClass } from "@/components/ui/styles";
+import { Button, ButtonLink } from "@/components/ui/Button";
 
-/** Botões Salvar/Cancelar dos formulários. Cancelar é link explícito (não depende do histórico). */
+/** Rodapé de formulário: ação principal à esquerda, Cancelar (link explícito) ao lado. */
 export function FormActions({
   loading,
   submitLabel,
@@ -12,14 +11,14 @@ export function FormActions({
   cancelHref?: string;
 }) {
   return (
-    <div className="flex flex-wrap gap-3 pt-2">
-      <button type="submit" disabled={loading} className={buttonPrimaryClass}>
+    <div className="flex flex-wrap gap-3 border-t border-line pt-5">
+      <Button type="submit" loading={loading}>
         {loading ? "Salvando…" : submitLabel}
-      </button>
+      </Button>
       {cancelHref ? (
-        <Link href={cancelHref} className={buttonSecondaryClass}>
+        <ButtonLink href={cancelHref} variant="secondary">
           Cancelar
-        </Link>
+        </ButtonLink>
       ) : null}
     </div>
   );

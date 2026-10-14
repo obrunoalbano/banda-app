@@ -1,12 +1,18 @@
-import Link from "next/link";
+import { ButtonLink } from "@/components/ui/Button";
+import { BackIcon, NotFoundIcon } from "@/components/ui/icons";
+import { StatusPage } from "@/components/ui/StatusPage";
 
 export default function ContatoNotFound() {
   return (
-    <div className="mx-auto flex max-w-lg flex-col gap-4 px-4 py-16 text-center">
-      <h1 className="text-xl font-semibold text-zinc-900 dark:text-zinc-50">Contato não encontrado</h1>
-      <Link href="/contatos" className="text-sm font-medium text-zinc-700 underline dark:text-zinc-300">
-        Voltar à lista
-      </Link>
-    </div>
+    <StatusPage
+      icon={NotFoundIcon}
+      title="Contato não encontrado"
+      description="Ele pode ter sido removido ou não pertence à sua banda."
+      actions={
+        <ButtonLink href="/contatos" variant="secondary" icon={BackIcon}>
+          Voltar aos contatos
+        </ButtonLink>
+      }
+    />
   );
 }

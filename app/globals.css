@@ -1,26 +1,175 @@
 @import "tailwindcss";
 
-:root {
-  --background: #ffffff;
-  --foreground: #171717;
-}
+/*
+ * Design system — tokens semânticos. Documentação: docs/design-system.md
+ *
+ * Componentes usam SÓ estes nomes (bg-surface, text-fg-muted, border-line…), nunca
+ * paleta crua (zinc-500, red-600…) nem variantes dark:. O tema escuro é resolvido aqui,
+ * trocando o valor das variáveis — mudar a identidade visual = mudar este arquivo.
+ */
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: var(--font-geist-sans);
-  --font-mono: var(--font-geist-mono);
+:root {
+  /* Superfícies */
+  --canvas: #ffffff; /* fundo da página */
+  --surface: #ffffff; /* cards, tabelas, inputs, dialog */
+  --surface-muted: #fafafa; /* menu lateral, cabeçalho de tabela, barra de filtros */
+  --surface-sunken: #f4f4f5; /* hover, código, skeleton */
+
+  /* Texto */
+  --fg: #18181b; /* texto principal, títulos */
+  --fg-muted: #52525b; /* descrições, texto secundário */
+  --fg-subtle: #6b6b74; /* labels de detalhe, placeholders, metadados (mín. AA 4.5:1) */
+
+  /* Bordas */
+  --line: #e4e4e7; /* divisórias, cards */
+  --line-strong: #d4d4d8; /* inputs, botão secundário */
+
+  /* Ação principal (monocromática — trocar aqui para dar cor à marca) */
+  --primary: #18181b;
+  --primary-hover: #27272a;
+  --on-primary: #ffffff;
+
+  /* Ação destrutiva sólida */
+  --danger: #dc2626;
+  --danger-hover: #b91c1c;
+  --on-danger: #ffffff;
+
+  /* Foco (outline de teclado) */
+  --focus: #71717a;
+
+  /* Fundo escurecido atrás de modal/gaveta (igual nos dois temas) */
+  --overlay: rgb(0 0 0 / 0.5);
+
+  /* Tons de feedback: -bg (fundo suave), -fg (texto sobre -bg), -line (borda) */
+  --neutral-bg: #f4f4f5;
+  --neutral-fg: #3f3f46;
+  --neutral-line: #e4e4e7;
+  --info-bg: #e0f2fe;
+  --info-fg: #0c4a6e;
+  --info-line: #bae6fd;
+  --success-bg: #d1fae5;
+  --success-fg: #064e3b;
+  --success-line: #a7f3d0;
+  --warning-bg: #fef3c7;
+  --warning-fg: #78350f;
+  --warning-line: #fde68a;
+  --danger-bg: #fef2f2;
+  --danger-fg: #991b1b;
+  --danger-line: #fecaca;
+
+  color-scheme: light;
 }
 
 @media (prefers-color-scheme: dark) {
   :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
+    --canvas: #09090b;
+    --surface: #09090b;
+    --surface-muted: #111113;
+    --surface-sunken: #1f1f23;
+
+    --fg: #fafafa;
+    --fg-muted: #a1a1aa;
+    --fg-subtle: #8b8b94;
+
+    --line: #27272a;
+    --line-strong: #52525b;
+
+    --primary: #f4f4f5;
+    --primary-hover: #d4d4d8;
+    --on-primary: #18181b;
+
+    --danger: #dc2626;
+    --danger-hover: #b91c1c;
+    --on-danger: #ffffff;
+
+    --focus: #a1a1aa;
+
+    --neutral-bg: #27272a;
+    --neutral-fg: #e4e4e7;
+    --neutral-line: #3f3f46;
+    --info-bg: #082f49;
+    --info-fg: #bae6fd;
+    --info-line: #0c4a6e;
+    --success-bg: #052e1f;
+    --success-fg: #a7f3d0;
+    --success-line: #065f46;
+    --warning-bg: #2d1d05;
+    --warning-fg: #fde68a;
+    --warning-line: #78350f;
+    --danger-bg: #2a0f12;
+    --danger-fg: #fecaca;
+    --danger-line: #7f1d1d;
+
+    color-scheme: dark;
   }
 }
 
+@theme inline {
+  --color-canvas: var(--canvas);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-surface-sunken: var(--surface-sunken);
+
+  --color-fg: var(--fg);
+  --color-fg-muted: var(--fg-muted);
+  --color-fg-subtle: var(--fg-subtle);
+
+  --color-line: var(--line);
+  --color-line-strong: var(--line-strong);
+
+  --color-primary: var(--primary);
+  --color-primary-hover: var(--primary-hover);
+  --color-on-primary: var(--on-primary);
+
+  --color-danger: var(--danger);
+  --color-danger-hover: var(--danger-hover);
+  --color-on-danger: var(--on-danger);
+
+  --color-focus: var(--focus);
+  --color-overlay: var(--overlay);
+
+  --color-neutral-bg: var(--neutral-bg);
+  --color-neutral-fg: var(--neutral-fg);
+  --color-neutral-line: var(--neutral-line);
+  --color-info-bg: var(--info-bg);
+  --color-info-fg: var(--info-fg);
+  --color-info-line: var(--info-line);
+  --color-success-bg: var(--success-bg);
+  --color-success-fg: var(--success-fg);
+  --color-success-line: var(--success-line);
+  --color-warning-bg: var(--warning-bg);
+  --color-warning-fg: var(--warning-fg);
+  --color-warning-line: var(--warning-line);
+  --color-danger-bg: var(--danger-bg);
+  --color-danger-fg: var(--danger-fg);
+  --color-danger-line: var(--danger-line);
+
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: var(--canvas);
+  color: var(--fg);
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
+}
+
+/* Foco de teclado consistente em todo elemento interativo (mouse não mostra). */
+:focus-visible {
+  outline: 2px solid var(--focus);
+  outline-offset: 2px;
+}
+
+/* Números alinhados em colunas (valores, datas, contagens). */
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
 }

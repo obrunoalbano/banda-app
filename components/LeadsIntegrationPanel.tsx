@@ -1,7 +1,11 @@
 "use client";
 
 import { Alert } from "@/components/ui/Alert";
-import { buttonPrimaryClass, buttonSecondaryClass } from "@/components/ui/styles";
+import { Button } from "@/components/ui/Button";
+import { Card } from "@/components/ui/Card";
+import { CodeBlock } from "@/components/ui/CodeBlock";
+import { ConfirmButton } from "@/components/ui/ConfirmButton";
+import { RetryIcon } from "@/components/ui/icons";
 import { useState } from "react";
 
 type LeadsIntegrationPanelProps = {
@@ -10,53 +14,28 @@ type LeadsIntegrationPanelProps = {
   initialHasToken: boolean;
 };
 
-const inputMonoClass =
-  "w-full rounded-md border border-zinc-200 bg-zinc-50 px-3 py-2 font-mono text-xs text-zinc-800 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-200";
-
-export function LeadsIntegrationPanel({
-  baseUrl,
-  ingestPath,
-  initialHasToken,
-}: LeadsIntegrationPanelProps) {
+export function LeadsIntegrationPanel({ baseUrl, ingestPath, initialHasToken }: LeadsIntegrationPanelProps) {
   const ingestUrl = `${baseUrl}${ingestPath}`;
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [hasToken, setHasToken] = useState(initialHasToken);
   const [token, setToken] = useState<string | null>(null);
-  const [copied, setCopied] = useState(false);
 
-  async function copyToken() {
-    if (!token) return;
-    try {
-      await navigator.clipboard.writeText(token);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      // Sem permissão de clipboard: o token continua visível para copiar manualmente.
-    }
-  }
-
-  async function generateToken() {
-    if (
-      hasToken &&
-      !window.confirm("Regenerar o token? O token atual para de funcionar imediatamente nos sites integrados.")
-    ) {
-      return;
-    }
+  /** Gera/regenera o token. Retorna mensagem de erro (para o ConfirmButton) ou null. */
+  async function generateToken(): Promise<string | null> {
     setError(null);
-    setCopied(false);
     setLoading(true);
-    const res = await fetch("/api/band/ingest-token", { method: "POST" });
-    const data = await res.json().catch(() => ({}));
+    const res = await fetch("/api/band/ingest-token", { method: "POST" }).catch(() => null);
+    const data = res ? await res.json().catch(() => ({})) : {};
     setLoading(false);
-    if (!res.ok) {
-      setError(typeof data.error === "string" ? data.error : "Erro ao gerar token.");
-      return;
+    if (!res?.ok || typeof data.token !== "string") {
+      const message = typeof data.error === "string" ? data.error : "Erro ao gerar token.";
+      setError(message);
+      return message;
     }
-    if (typeof data.token === "string") {
-      setToken(data.token);
-      setHasToken(true);
-    }
+    setToken(data.token);
+    setHasToken(true);
+    return null;
   }
 
   const fetchExample = `await fetch("${ingestUrl}", {
@@ -78,57 +57,65 @@ export function LeadsIntegrationPanel({
 });`;
 
   return (
-    <section className="mb-10 rounded-lg border border-zinc-200 bg-white p-4 dark:border-zinc-800 dark:bg-zinc-950">
-      <h2 className="text-sm font-semibold text-zinc-900 dark:text-zinc-50">Integração com site (leads)</h2>
-      <p className="mt-2 text-sm text-zinc-600 dark:text-zinc-400">
-        Envie um <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">POST</code> com JSON. O ideal é
-        chamar a URL a partir do <strong>backend</strong> do site ou de um serverless (o token não deve ir
-        parar no front). Para form no browser, defina{" "}
-        <code className="rounded bg-zinc-100 px-1 dark:bg-zinc-800">LEADS_INGEST_ALLOWED_ORIGINS</code> no
-        servidor.
-      </p>
+    <div className="flex flex-col gap-6">
+      <Card
+        title="Token de acesso"
+        description="O site envia este token em cada requisição. Guarde-o no backend do site, nunca no código do navegador."
+      >
+        <div className="flex flex-col gap-4">
+          {!hasToken && !token ? (
+            <Alert tone="warning">Gere um token antes de integrar o formulário do seu site.</Alert>
+          ) : null}
 
-      <div className="mt-4 space-y-3">
-        <div>
-          <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Endpoint</span>
-          <pre className={`mt-1 overflow-x-auto ${inputMonoClass}`}>{ingestUrl}</pre>
-        </div>
+          {token ? (
+            <Alert tone="warning" title="Copie o token agora">
+              Por segurança ele não será mostrado de novo. Se perder, gere outro.
+            </Alert>
+          ) : null}
+          {token ? <CodeBlock label="Token" copyable>{token}</CodeBlock> : null}
 
-        <div className="flex flex-wrap items-center gap-3">
-          <button
-            type="button"
-            disabled={loading}
-            onClick={() => void generateToken()}
-            className={buttonPrimaryClass}
-          >
-            {loading ? "Gerando…" : hasToken ? "Regenerar token" : "Gerar token"}
-          </button>
-          {!hasToken && (
-            <span className="text-xs text-amber-700 dark:text-amber-400">
-              Gere um token antes de integrar o formulário.
-            </span>
-          )}
-        </div>
+          {error && !hasToken ? <Alert>{error}</Alert> : null}
 
-        {error && <Alert>{error}</Alert>}
-
-        {token && (
-          <div className="rounded-md border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-900/60 dark:bg-amber-950/40">
-            <p className="text-xs font-medium text-amber-900 dark:text-amber-100">
-              Copie o token agora — ele não será mostrado de novo nesta tela.
-            </p>
-            <pre className={`mt-2 overflow-x-auto ${inputMonoClass}`}>{token}</pre>
-            <button type="button" onClick={() => void copyToken()} className={`mt-2 ${buttonSecondaryClass}`}>
-              {copied ? "Copiado ✓" : "Copiar token"}
-            </button>
+          <div>
+            {hasToken ? (
+              <ConfirmButton
+                label="Regenerar token"
+                variant="secondary"
+                icon={RetryIcon}
+                title="Regenerar o token?"
+                description="O token atual para de funcionar imediatamente. Atualize o site integrado com o novo token."
+                confirmLabel="Regenerar"
+                tone="danger"
+                onConfirm={generateToken}
+              />
+            ) : (
+              <Button loading={loading} onClick={() => void generateToken()}>
+                Gerar token
+              </Button>
+            )}
           </div>
-        )}
-      </div>
+        </div>
+      </Card>
 
-      <div className="mt-6">
-        <span className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Exemplo fetch</span>
-        <pre className={`mt-1 overflow-x-auto whitespace-pre-wrap ${inputMonoClass}`}>{fetchExample}</pre>
-      </div>
-    </section>
+      <Card
+        title="Como enviar leads"
+        description={
+          <>
+            Faça um <code className="rounded bg-surface-sunken px-1 font-mono text-xs">POST</code> com JSON a partir
+            do backend do site (ou de uma função serverless). Para enviar direto do navegador, a origem do site precisa
+            estar em <code className="rounded bg-surface-sunken px-1 font-mono text-xs">LEADS_INGEST_ALLOWED_ORIGINS</code>.
+          </>
+        }
+      >
+        <div className="flex flex-col gap-4">
+          <CodeBlock label="Endpoint" copyable>
+            {ingestUrl}
+          </CodeBlock>
+          <CodeBlock label="Exemplo (JavaScript)" copyable wrap>
+            {fetchExample}
+          </CodeBlock>
+        </div>
+      </Card>
+    </div>
   );
 }

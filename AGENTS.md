@@ -18,8 +18,8 @@ Toda a UI, rotas e mensagens são em **português (pt-BR)**. Identificadores de 
 | Auth | next-auth v5 (beta) — Credentials (email + senha bcrypt), sessão **JWT** |
 | Banco | PostgreSQL via Prisma 7 + `@prisma/adapter-pg` (pool `pg` próprio em `lib/prisma.ts`) |
 | Validação | Zod 4 (`lib/validations.ts`) |
-| Estilo | Tailwind CSS 4, paleta `zinc` com variantes `dark:`, componentes próprios em `components/ui/` |
-| Testes | Vitest (unitários em `lib/*.test.ts`) |
+| UI | Tailwind CSS 4 com **tokens semânticos** (`app/globals.css`), componentes em `components/ui/`, ícones `lucide-react` — ver **`docs/design-system.md`** |
+| Testes | Vitest (unitários em `lib/*.test.ts`; contraste dos tokens em `tests/`) |
 | Deploy | Vercel (ver comentários sobre cookie `__Secure-` em `proxy.ts`) |
 
 O client Prisma é gerado em `app/generated/prisma` (gitignored). Importe tipos/enums de `@/app/generated/prisma/client` e `@/app/generated/prisma/enums`.
@@ -44,9 +44,12 @@ app/
     shows (POST), shows/[id] (PATCH, DELETE)
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
+  design-system/           galeria viva do design system (só em dev: /design-system)
+  not-found.tsx            404 global
 components/
-  ui/                      design system: styles.ts (classes), fields (inputs c/ label), PageHeader,
-                           DetailList, Table, EmptyState, Pagination, Alert, ConfirmDeleteButton
+  ui/                      design system (docs/design-system.md): styles.ts (receitas/tokens), icons.ts,
+                           Button, Badge, Card, Alert, fields, PageHeader, DetailList, Table, FilterBar,
+                           Pagination, EmptyState, CodeBlock, ConfirmButton, StatusPage, Brand, AuthLayout
   *Form.tsx                formulários client (POST/PATCH na API)
   DashboardShell.tsx       menu lateral (gaveta no mobile) + header
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
@@ -60,6 +63,8 @@ lib/
   lead-ingest-auth.ts      extração/geração/hash do token de ingestão
 proxy.ts                   proteção de rotas (páginas → redirect /login, API → 401)
 prisma/schema.prisma       modelo de dados
+docs/design-system.md      tokens, componentes, modelos de página, microcopy, acessibilidade
+tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 ```
 
 ## Modelo de dados (resumo)
@@ -117,14 +122,18 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Aceita aliases legados `phone` → `whatsapp` e `message` → `eventDescription` (`normalizeLeadIngestBody`). Não quebre esse contrato: sites externos já dependem dele (há teste em `lib/validations.test.ts`).
 - CORS só para origens em `LEADS_INGEST_ALLOWED_ORIGINS`. Rate limit por token (60/min).
 
-### UI
-- Use os componentes de `components/ui/` — não copie classes Tailwind. Novas variações visuais entram em `components/ui/styles.ts`.
-- Página do dashboard: `<div className={containerClass}>` + `<PageHeader title back? actions?>` (é o único `<h1>` da página; o header do shell é só marca).
-- Formulário: `TextField`/`SelectField`/`TextAreaField`/`PhoneField`/`CurrencyField` (label ligado via `useId`), `Alert` para erro, `FormActions` com `cancelHref` explícito (não usar `router.back()`).
-- Detalhe: `DetailList` + `DetailItem` (vazio vira "—"); email/telefone/Instagram viram links (`mailto:`, `whatsappHref`, `instagramHref`).
-- Listagem: `Table`/`Tr`/`Td`, `EmptyState`, `Pagination` (`?pagina=N`, 50 por página; preserve os filtros em `searchParams`). Filtros são `<form method="get">` (estado na URL).
-- Exclusão: `ConfirmDeleteButton` (modal `<dialog>`; `disabledReason` quando houver bloqueio). Nada de `window.confirm`/`alert` novos.
-- Nova seção no menu: adicione em `NAV` de `components/DashboardShell.tsx` (`matchNova: false` se houver sub-rota `nova`).
+### UI — design system
+**Leia `docs/design-system.md` antes de criar ou alterar qualquer tela.** Resumo das regras obrigatórias:
+- Use componentes de `components/ui/`; se nada serve, estenda/crie lá (e adicione à galeria `app/design-system/Gallery.tsx` e ao doc).
+- Cores só por **token semântico** (`bg-surface`, `text-fg-muted`, `border-line`, `toneClass`…). Paleta crua (`zinc-500`, `bg-black/50`) e `dark:` são **erro de lint** em `app/` e `components/`.
+- Status → `Badge` com tom fixo por significado (info = em andamento, success = concluído/pago, warning = pendente, danger = erro).
+- Página: `metadata.title` + `containerClass` + `PageHeader` (único `<h1>`, ações à direita, no máx. 1 `primary`).
+- Formulário: `*Field` (label ligado), `CurrencyField`/`PhoneField` para máscaras, `Alert` para erro, `FormActions` com `cancelHref`.
+- Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
+- Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
+- Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
+- Nova seção no menu: `NAV_GROUPS` em `components/DashboardShell.tsx` (`matchNova: false` se houver sub-rota `nova`).
+- Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 
 ## Banco e migrations
 
@@ -151,6 +160,6 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - **Vazamento:** um SQLite criado por `.env` malformado (path `dev.db"AUTH_SECRET=…`) foi versionado em `7d4e466` e removido depois; **continua no histórico do GitHub** até reescrever o histórico. O `AUTH_SECRET` e os dados desse banco devem ser considerados vazados.
 - Rate limit é em memória (por instância serverless), não global.
 - Não há testes E2E (Playwright) nem de integração com banco; os testes cobrem só `lib/`.
-- `LeadsIntegrationPanel` ainda usa `window.confirm` ao regenerar token.
 - Escritas via route handlers + `fetch`; migrar para Server Actions (`useActionState`) é opcional, mas manteria `/api/leads/ingest` como REST.
 - Sem página inicial com resumo (próximos shows, valores a receber) — `/` redireciona para `/casas`.
+- Débitos de UX detalhados: seção 12 de `docs/design-system.md`.

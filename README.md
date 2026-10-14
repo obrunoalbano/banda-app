@@ -2,7 +2,7 @@
 
 App para bandas organizarem **casas de show** (prospecção e status de envio), **agenda de shows** (cachê e pagamento) e **contatos** recebidos pelo site da banda.
 
-Next.js 16 · React 19 · Prisma 7 + PostgreSQL · next-auth v5 · Tailwind 4 · Zod 4 · Vitest
+Next.js 16 · React 19 · Prisma 7 + PostgreSQL · next-auth v5 · Tailwind 4 · Zod 4 · lucide-react · Vitest
 
 ## Rodando localmente
 
@@ -39,4 +39,5 @@ Na tela **Integrações** a banda gera um token e recebe a URL `POST /api/leads/
 
 ## Para quem vai desenvolver
 
-Arquitetura, convenções e débitos técnicos: [AGENTS.md](AGENTS.md).
+- Arquitetura, convenções e débitos técnicos: [AGENTS.md](AGENTS.md).
+- UI/UX: [docs/design-system.md](docs/design-system.md) — tokens, componentes e padrões. Galeria viva em `npm run dev` → `/design-system`.

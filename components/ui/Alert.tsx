@@ -1,22 +1,41 @@
-const styles = {
-  error: "bg-red-50 text-red-800 dark:bg-red-950/40 dark:text-red-200",
-  success: "bg-emerald-50 text-emerald-900 dark:bg-emerald-950/40 dark:text-emerald-200",
-  warning: "bg-amber-50 text-amber-900 dark:bg-amber-950/40 dark:text-amber-100",
-} as const;
+import { DangerIcon, InfoIcon, SuccessIcon, WarningIcon, type Icon } from "./icons";
+import { cx, toneClass } from "./styles";
 
+type AlertTone = "danger" | "success" | "warning" | "info";
+
+const icons: Record<AlertTone, Icon> = {
+  danger: DangerIcon,
+  success: SuccessIcon,
+  warning: WarningIcon,
+  info: InfoIcon,
+};
+
+/**
+ * Mensagem de feedback em bloco (erro de formulário, sucesso ao salvar, aviso).
+ * `danger` é anunciado imediatamente a leitores de tela (role="alert").
+ */
 export function Alert({
-  tone = "error",
+  tone = "danger",
+  title,
   children,
+  className,
 }: {
-  tone?: keyof typeof styles;
+  tone?: AlertTone;
+  title?: React.ReactNode;
   children: React.ReactNode;
+  className?: string;
 }) {
+  const IconCmp = icons[tone];
   return (
-    <p
-      role={tone === "error" ? "alert" : "status"}
-      className={`rounded-md px-3 py-2 text-sm ${styles[tone]}`}
+    <div
+      role={tone === "danger" ? "alert" : "status"}
+      className={cx("flex gap-3 rounded-md border px-3 py-2.5 text-sm", toneClass[tone], className)}
     >
-      {children}
-    </p>
+      <IconCmp className="mt-0.5 size-4 shrink-0" aria-hidden />
+      <div className="min-w-0">
+        {title ? <p className="font-medium">{title}</p> : null}
+        <div className={title ? "mt-0.5" : undefined}>{children}</div>
+      </div>
+    </div>
   );
 }

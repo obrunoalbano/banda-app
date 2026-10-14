@@ -2,12 +2,17 @@ import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { DetailItem, DetailList } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { buttonPrimaryClass, containerClass, linkClass } from "@/components/ui/styles";
+import { ButtonLink } from "@/components/ui/Button";
+import { EditIcon } from "@/components/ui/icons";
+import { containerClass, linkClass } from "@/components/ui/styles";
 import { formatDateOnly } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Show" };
 import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -32,9 +37,9 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         back={{ href: "/shows", label: "Voltar à listagem" }}
         actions={
           <>
-            <Link href={`/shows/${show.id}/editar`} className={buttonPrimaryClass}>
+            <ButtonLink href={`/shows/${show.id}/editar`} icon={EditIcon}>
               Alterar
-            </Link>
+            </ButtonLink>
             <ConfirmDeleteButton
               endpoint={`/api/shows/${show.id}`}
               redirectTo="/shows"
@@ -56,7 +61,7 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         </DetailItem>
         <DetailItem label="Cidade">{show.venue?.city ?? show.privateCity}</DetailItem>
         <DetailItem label="Estado">{show.venue?.state ?? show.privateState}</DetailItem>
-        <DetailItem label="Cachê">
+        <DetailItem label="Cachê" numeric>
           {show.cacheCents != null ? formatCents(show.cacheCents) : null}
         </DetailItem>
         {show.privateEventDetails && (
@@ -64,8 +69,12 @@ export default async function ShowDetalhePage({ params }: PageProps) {
             {show.privateEventDetails}
           </DetailItem>
         )}
-        <DetailItem label="Data">{date}</DetailItem>
-        <DetailItem label="Horário">{show.time}</DetailItem>
+        <DetailItem label="Data" numeric>
+          {date}
+        </DetailItem>
+        <DetailItem label="Horário" numeric>
+          {show.time}
+        </DetailItem>
         <DetailItem label="Status de pagamento" wide>
           <ShowPaymentBadge status={show.paymentStatus} />
         </DetailItem>

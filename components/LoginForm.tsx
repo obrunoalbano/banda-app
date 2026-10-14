@@ -3,10 +3,9 @@
 import { signIn } from "next-auth/react";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
-import Link from "next/link";
 import { Alert } from "@/components/ui/Alert";
+import { Button } from "@/components/ui/Button";
 import { TextField } from "@/components/ui/fields";
-import { buttonPrimaryClass, linkClass } from "@/components/ui/styles";
 
 /** Evita open redirect; só paths relativos internos. */
 function safeCallbackUrl(raw: string | null): string {
@@ -59,7 +58,7 @@ export function LoginForm() {
   }
 
   return (
-    <form onSubmit={handleSubmit} className="flex w-full max-w-md flex-col gap-4">
+    <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {registered && <Alert tone="success">Cadastro concluído. Faça login com seu email e senha.</Alert>}
       {(error ?? urlAuthError) && <Alert>{error ?? urlAuthError}</Alert>}
       <TextField
@@ -80,15 +79,9 @@ export function LoginForm() {
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
-      <button type="submit" disabled={loading} className={`mt-2 ${buttonPrimaryClass} py-2.5`}>
+      <Button type="submit" loading={loading} className="mt-2 w-full">
         {loading ? "Entrando…" : "Entrar"}
-      </button>
-      <p className="text-center text-sm text-zinc-600 dark:text-zinc-400">
-        Ainda não tem conta?{" "}
-        <Link href="/cadastro" className={linkClass}>
-          Cadastre sua banda
-        </Link>
-      </p>
+      </Button>
     </form>
   );
 }

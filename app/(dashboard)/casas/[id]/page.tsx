@@ -2,12 +2,17 @@ import { StatusBadge } from "@/components/StatusBadge";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
-import { buttonPrimaryClass, containerClass, linkClass } from "@/components/ui/styles";
+import { ButtonLink } from "@/components/ui/Button";
+import { EditIcon, EmailIcon, ExternalLinkIcon, WhatsappIcon } from "@/components/ui/icons";
+import { containerClass, linkClass } from "@/components/ui/styles";
 import { instagramHref, whatsappHref } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Casa de show" };
 import { notFound } from "next/navigation";
 
 type PageProps = { params: Promise<{ id: string }> };
@@ -32,9 +37,9 @@ export default async function CasaDetalhePage({ params }: PageProps) {
         back={{ href: "/casas", label: "Voltar à listagem" }}
         actions={
           <>
-            <Link href={`/casas/${venue.id}/editar`} className={buttonPrimaryClass}>
+            <ButtonLink href={`/casas/${venue.id}/editar`} icon={EditIcon}>
               Alterar
-            </Link>
+            </ButtonLink>
             <ConfirmDeleteButton
               endpoint={`/api/venues/${venue.id}`}
               redirectTo="/casas"
@@ -54,23 +59,35 @@ export default async function CasaDetalhePage({ params }: PageProps) {
       <DetailList>
         <DetailItem label="Responsável">{venue.responsible}</DetailItem>
         <DetailItem label="Telefone">
-          {wa ? <ExternalLink href={wa}>{venue.phone}</ExternalLink> : venue.phone}
+          {wa ? (
+            <ExternalLink href={wa} icon={WhatsappIcon}>
+              {venue.phone}
+            </ExternalLink>
+          ) : (
+            venue.phone
+          )}
         </DetailItem>
         <DetailItem label="Email" wide>
-          {venue.email ? <ExternalLink href={`mailto:${venue.email}`}>{venue.email}</ExternalLink> : null}
+          {venue.email ? (
+            <ExternalLink href={`mailto:${venue.email}`} icon={EmailIcon}>
+              {venue.email}
+            </ExternalLink>
+          ) : null}
         </DetailItem>
         <DetailItem label="Cidade">{venue.city}</DetailItem>
         <DetailItem label="Estado">{venue.state}</DetailItem>
         <DetailItem label="Instagram" wide>
           {venue.instagram ? (
             ig ? (
-              <ExternalLink href={ig}>{venue.instagram}</ExternalLink>
+              <ExternalLink href={ig} icon={ExternalLinkIcon}>
+                {venue.instagram}
+              </ExternalLink>
             ) : (
               venue.instagram
             )
           ) : null}
         </DetailItem>
-        <DetailItem label="Cachê de referência">
+        <DetailItem label="Cachê de referência" numeric>
           {venue.valorCacheCents != null ? formatCents(venue.valorCacheCents) : null}
         </DetailItem>
         <DetailItem label="Shows">
@@ -79,7 +96,7 @@ export default async function CasaDetalhePage({ params }: PageProps) {
               {showCount} show(s)
             </Link>
           ) : (
-            <span className="text-zinc-500">Nenhum</span>
+            <span className="text-fg-subtle">Nenhum</span>
           )}
         </DetailItem>
       </DetailList>

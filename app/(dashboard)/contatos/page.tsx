@@ -1,12 +1,16 @@
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
+import { LeadIcon } from "@/components/ui/icons";
 import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatDateTimeShort } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Contatos" };
 
 type PageProps = { searchParams: Promise<{ pagina?: string }> };
 
@@ -40,12 +44,15 @@ export default async function ContatosPage({ searchParams }: PageProps) {
 
       {total === 0 ? (
         <EmptyState
-          message="Nenhum contato recebido ainda."
-          action={{ href: "/integracoes", label: "Ative a integração com seu site" }}
+          icon={LeadIcon}
+          title="Nenhum contato recebido ainda"
+          description="Conecte o formulário do seu site para receber pedidos de orçamento aqui."
+          action={{ href: "/integracoes", label: "Configurar integração", primary: true }}
         />
       ) : (
         <>
           <Table
+            caption="Contatos recebidos"
             headers={[
               { label: "Nome" },
               { label: "Email" },
@@ -57,12 +64,18 @@ export default async function ContatosPage({ searchParams }: PageProps) {
           >
             {leads.map((lead) => (
               <Tr key={lead.id}>
-                <Td strong>{lead.name}</Td>
-                <Td>{lead.email}</Td>
-                <Td>{lead.whatsapp}</Td>
-                <Td>{lead.source}</Td>
-                <Td>{formatDateTimeShort(lead.createdAt)}</Td>
-                <Td align="right">
+                <Td label="Nome" strong>
+                  <Link href={`/contatos/${lead.id}`} className="hover:underline">
+                    {lead.name}
+                  </Link>
+                </Td>
+                <Td label="Email">{lead.email}</Td>
+                <Td label="WhatsApp">{lead.whatsapp}</Td>
+                <Td label="Origem">{lead.source}</Td>
+                <Td label="Recebido em" numeric>
+                  {formatDateTimeShort(lead.createdAt)}
+                </Td>
+                <Td label="Ações" align="right">
                   <Link href={`/contatos/${lead.id}`} className={linkClass}>
                     Detalhes
                   </Link>

@@ -4,6 +4,9 @@ import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
 import { redirect } from "next/navigation";
+import type { Metadata } from "next";
+
+export const metadata: Metadata = { title: "Minha banda" };
 
 export default async function BandaPage() {
   const bandId = await requireBandId();

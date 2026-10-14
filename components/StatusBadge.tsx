@@ -1,20 +1,15 @@
 import type { VenueSendStatus } from "@/app/generated/prisma/enums";
+import { Badge } from "@/components/ui/Badge";
+import type { Tone } from "@/components/ui/styles";
 import { SEND_STATUS_LABELS } from "@/lib/send-status";
 
-const styles: Record<VenueSendStatus, string> = {
-  NAO_ENVIADO:
-    "bg-amber-100 text-amber-900 dark:bg-amber-950/60 dark:text-amber-200",
-  ENVIADO: "bg-sky-100 text-sky-900 dark:bg-sky-950/60 dark:text-sky-200",
-  FINALIZADO:
-    "bg-emerald-100 text-emerald-900 dark:bg-emerald-950/60 dark:text-emerald-200",
+/** Pendente → warning, em andamento → info, concluído → success. */
+const tones: Record<VenueSendStatus, Tone> = {
+  NAO_ENVIADO: "warning",
+  ENVIADO: "info",
+  FINALIZADO: "success",
 };
 
 export function StatusBadge({ status }: { status: VenueSendStatus }) {
-  return (
-    <span
-      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium ${styles[status]}`}
-    >
-      {SEND_STATUS_LABELS[status]}
-    </span>
-  );
+  return <Badge tone={tones[status]}>{SEND_STATUS_LABELS[status]}</Badge>;
 }

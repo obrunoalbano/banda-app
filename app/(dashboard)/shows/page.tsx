@@ -3,7 +3,9 @@ import { ShowsFilterForm } from "@/components/ShowsFilterForm";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
-import { buttonPrimaryClass, containerClass, linkClass } from "@/components/ui/styles";
+import { ButtonLink } from "@/components/ui/Button";
+import { AddIcon, ShowIcon } from "@/components/ui/icons";
+import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatDateOnly, monthLabel } from "@/lib/format";
 import { formatCents } from "@/lib/money";
@@ -17,7 +19,10 @@ import {
   yearBoundsUtc,
   type YearMonth,
 } from "@/lib/show-calendar-aggregates";
+import type { Metadata } from "next";
 import Link from "next/link";
+
+export const metadata: Metadata = { title: "Shows" };
 
 type PageProps = {
   searchParams: Promise<{ casaId?: string; ano?: string; mes?: string; pagina?: string }>;
@@ -134,9 +139,9 @@ export default async function ShowsPage({ searchParams }: PageProps) {
         title="Shows"
         description="Por padrão lista todos os shows. Ano e mês listam só períodos com cadastro."
         actions={
-          <Link href="/shows/nova" className={buttonPrimaryClass}>
+          <ButtonLink href="/shows/nova" icon={AddIcon}>
             Novo show
-          </Link>
+          </ButtonLink>
         }
       />
 
@@ -155,18 +160,20 @@ export default async function ShowsPage({ searchParams }: PageProps) {
 
       {!hasShows ? (
         <EmptyState
-          message="Nenhum show cadastrado."
-          action={{ href: "/shows/nova", label: "Cadastrar o primeiro" }}
+          icon={ShowIcon}
+          title="Nenhum show cadastrado"
+          description="Registre seus shows em casas ou eventos particulares para controlar cachê e pagamento."
+          action={{ href: "/shows/nova", label: "Cadastrar o primeiro show", primary: true }}
         />
       ) : shows.length === 0 ? (
         <EmptyState
-          message="Nenhum show corresponde aos filtros."
+          title="Nenhum show corresponde aos filtros"
           action={{ href: "/shows", label: "Limpar filtros" }}
         />
       ) : (
         <>
           <Table
-            minWidth={960}
+            caption="Shows cadastrados"
             headers={[
               { label: "Casa" },
               { label: "Cidade" },
@@ -180,16 +187,26 @@ export default async function ShowsPage({ searchParams }: PageProps) {
           >
             {shows.map((show) => (
               <Tr key={show.id}>
-                <Td strong>{show.venue?.name ?? "Evento Particular"}</Td>
-                <Td>{show.venue?.city ?? show.privateCity}</Td>
-                <Td>{show.venue?.state ?? show.privateState}</Td>
-                <Td>{formatCents(show.cacheCents)}</Td>
-                <Td>{formatDateOnly(show.date)}</Td>
-                <Td>{show.time}</Td>
-                <Td>
+                <Td label="Casa" strong>
+                  <Link href={`/shows/${show.id}`} className="hover:underline">
+                    {show.venue?.name ?? "Evento Particular"}
+                  </Link>
+                </Td>
+                <Td label="Cidade">{show.venue?.city ?? show.privateCity}</Td>
+                <Td label="UF">{show.venue?.state ?? show.privateState}</Td>
+                <Td label="Cachê" numeric>
+                  {formatCents(show.cacheCents)}
+                </Td>
+                <Td label="Data" numeric>
+                  {formatDateOnly(show.date)}
+                </Td>
+                <Td label="Horário" numeric>
+                  {show.time}
+                </Td>
+                <Td label="Pagamento">
                   <ShowPaymentBadge status={show.paymentStatus} />
                 </Td>
-                <Td align="right">
+                <Td label="Ações" align="right">
                   <Link href={`/shows/${show.id}`} className={linkClass}>
                     Detalhes
                   </Link>
