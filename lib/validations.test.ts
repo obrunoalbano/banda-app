@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  dealCreateSchema,
+  dealUpdateSchema,
+  venueUpdateSchema,
   leadIngestSchema,
   leadFormSettingsSchema,
   normalizeLeadIngestBody,
@@ -117,5 +120,21 @@ describe("formulário público", () => {
     const r = publicLeadSchema.parse({ name: "Ana", email: "A@X.COM", website: "", formToken: "t", metadata: { x: 1 } });
     expect(r).toMatchObject({ email: "a@x.com", website: "", formToken: "t" });
     expect("metadata" in r).toBe(false);
+  });
+});
+
+describe("Fluxo de contatos", () => {
+  it("inclui contato OU palco (nunca os dois)", () => {
+    expect(dealCreateSchema.safeParse({ leadId: "l1" }).success).toBe(true);
+    expect(dealCreateSchema.safeParse({ stageId: "s1" }).success).toBe(true);
+    expect(dealCreateSchema.safeParse({ leadId: "l1", stageId: "s1" }).success).toBe(false);
+    expect(dealCreateSchema.safeParse({}).success).toBe(false);
+  });
+  it("etapa válida", () => {
+    expect(dealUpdateSchema.safeParse({ step: "GANHOU" }).success).toBe(true);
+    expect(dealUpdateSchema.safeParse({ step: "FECHADO" }).success).toBe(false);
+  });
+  it("dealId só na criação da casa", () => {
+    expect(venueUpdateSchema.parse({ dealId: "d1", name: "X" })).toEqual({ name: "X" });
   });
 });

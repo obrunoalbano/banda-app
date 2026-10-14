@@ -68,6 +68,9 @@ export const subtleLinkClass = "text-sm text-fg-subtle hover:text-fg";
 /** Container padrão de página do dashboard (largura máx. 5xl). */
 export const containerClass = "mx-auto w-full max-w-5xl px-4 py-8";
 
+/** Container largo (quadros com colunas, ex.: Fluxo de contatos). */
+export const containerWideClass = "mx-auto w-full max-w-7xl px-4 py-8";
+
 /** Container estreito (formulários longos de leitura, ex.: detalhe de contato). */
 export const containerNarrowClass = "mx-auto w-full max-w-3xl px-4 py-8";
 

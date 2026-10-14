@@ -1,3 +1,4 @@
+import { DealStepBadge } from "@/components/deals/DealStepBadge";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination, pageArgs, parsePage } from "@/components/ui/Pagination";
@@ -23,7 +24,15 @@ export default async function ContatosPage({ searchParams }: PageProps) {
     prisma.lead.findMany({
       where: { bandId },
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, email: true, whatsapp: true, source: true, createdAt: true },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        whatsapp: true,
+        source: true,
+        createdAt: true,
+        deals: { where: { bandId }, select: { step: true } },
+      },
       ...pageArgs(page),
     }),
   ]);
@@ -58,6 +67,7 @@ export default async function ContatosPage({ searchParams }: PageProps) {
               { label: "Email" },
               { label: "WhatsApp" },
               { label: "Origem" },
+              { label: "Fluxo" },
               { label: "Recebido em" },
               { label: "Ações", align: "right" },
             ]}
@@ -72,6 +82,7 @@ export default async function ContatosPage({ searchParams }: PageProps) {
                 <Td label="Email">{lead.email}</Td>
                 <Td label="WhatsApp">{lead.whatsapp}</Td>
                 <Td label="Origem">{lead.source}</Td>
+                <Td label="Fluxo">{lead.deals[0] ? <DealStepBadge step={lead.deals[0].step} /> : null}</Td>
                 <Td label="Recebido em" numeric>
                   {formatDateTimeShort(lead.createdAt)}
                 </Td>

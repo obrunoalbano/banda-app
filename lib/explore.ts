@@ -1,5 +1,5 @@
 /**
- * Explorar Palcos (lado da banda): filtros, consulta e conversão palco → casa.
+ * Explorar Palcos (lado da banda): filtros e consulta. Palco → negociação/casa: lib/deals.ts.
  * Puro (sem Prisma em runtime) — coberto por lib/explore.test.ts.
  *
  * REGRA: a banda só vê palcos PUBLISHED. Toda consulta parte de `buildStageWhere`, que fixa isso.
@@ -105,33 +105,3 @@ export const exploreStageSelect = {
   lastActivityAt: true,
   notes: true,
 } as const;
-
-type StageForVenue = {
-  id: string;
-  name: string;
-  city: string;
-  state: string;
-  instagram: string | null;
-  whatsapp: string | null;
-  publicPhone: string | null;
-  publicEmail: string | null;
-};
-
-/**
- * Palco → dados da casa no funil da banda (status "Não enviado").
- * Responsável fica vazio (o diretório não guarda pessoas — LGPD); a banda completa depois.
- */
-export function venueDataFromStage(stage: StageForVenue, bandId: string) {
-  return {
-    bandId,
-    stageId: stage.id,
-    name: stage.name,
-    responsible: "",
-    phone: stage.whatsapp ?? stage.publicPhone ?? "",
-    email: stage.publicEmail ?? "",
-    city: stage.city,
-    state: stage.state,
-    instagram: stage.instagram,
-    sendStatus: "NAO_ENVIADO" as const,
-  };
-}

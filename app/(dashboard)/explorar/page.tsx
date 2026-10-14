@@ -33,7 +33,7 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
   const header = (
     <PageHeader
       title="Explorar Palcos"
-      description="Bares, casas de show e espaços com música ao vivo. Adicione às suas casas para acompanhar o contato."
+      description="Bares, casas de show e espaços com música ao vivo. Adicione ao Fluxo de contatos para acompanhar a negociação."
     />
   );
 
@@ -67,14 +67,19 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
     }),
   ]);
 
-  // Quais destes palcos a banda já tem nas casas (botão vira "Nas suas casas").
-  const added = stages.length
-    ? await prisma.venue.findMany({
-        where: { bandId, stageId: { in: stages.map((s) => s.id) } },
-        select: { id: true, stageId: true },
-      })
-    : [];
-  const venueByStage = new Map(added.map((v) => [v.stageId, v.id]));
+  // Quais destes palcos já estão no fluxo da banda ou nas casas (sinalizados no card).
+  const stageIds = stages.map((s) => s.id);
+  const [deals, venues] = stageIds.length
+    ? await Promise.all([
+        prisma.deal.findMany({
+          where: { bandId, stageId: { in: stageIds } },
+          select: { id: true, step: true, stageId: true },
+        }),
+        prisma.venue.findMany({ where: { bandId, stageId: { in: stageIds } }, select: { id: true, stageId: true } }),
+      ])
+    : [[], []];
+  const dealByStage = new Map(deals.map((d) => [d.stageId, { id: d.id, step: d.step }]));
+  const venueByStage = new Map(venues.map((v) => [v.stageId, v.id]));
   const params = exploreFiltersToParams(filters);
   const hasFilters = Object.keys(params).length > 0;
 
@@ -99,7 +104,11 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
           <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             {stages.map((stage) => (
               <li key={stage.id} className="flex">
-                <StageCard stage={stage} venueId={venueByStage.get(stage.id) ?? null} />
+                <StageCard
+                  stage={stage}
+                  venueId={venueByStage.get(stage.id) ?? null}
+                  deal={dealByStage.get(stage.id) ?? null}
+                />
               </li>
             ))}
           </ul>

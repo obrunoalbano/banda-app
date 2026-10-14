@@ -1,10 +1,10 @@
-import { AddStageButton } from "@/components/explore/AddStageButton";
+import { AddToFlowButton } from "@/components/deals/AddToFlowButton";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
-import { ExploreIcon, ExternalLinkIcon, VerifiedIcon, WhatsappIcon } from "@/components/ui/icons";
+import { CheckIcon, ExploreIcon, ExternalLinkIcon, VerifiedIcon, WhatsappIcon } from "@/components/ui/icons";
 import { formatMonthYear, instagramHref, whatsappHref } from "@/lib/format";
 import { STAGE_TYPE_LABELS } from "@/lib/stages";
-import type { StageType } from "@/app/generated/prisma/enums";
+import type { DealStep, StageType } from "@/app/generated/prisma/enums";
 import Image from "next/image";
 
 export type ExploreStage = {
@@ -24,7 +24,17 @@ export type ExploreStage = {
 };
 
 /** Card de palco no Explorar Palcos (só dados institucionais do diretório curado). */
-export function StageCard({ stage, venueId }: { stage: ExploreStage; venueId: string | null }) {
+export function StageCard({
+  stage,
+  venueId,
+  deal,
+}: {
+  stage: ExploreStage;
+  /** Casa da banda ligada a este palco (negociação ganha e adicionada). */
+  venueId: string | null;
+  /** Negociação no Fluxo de contatos, se houver. */
+  deal: { id: string; step: DealStep } | null;
+}) {
   const wa = whatsappHref(stage.whatsapp);
   const ig = instagramHref(stage.instagram);
   const place = [stage.neighborhood, `${stage.city}/${stage.state}`].filter(Boolean).join(" · ");
@@ -88,7 +98,12 @@ export function StageCard({ stage, venueId }: { stage: ExploreStage; venueId: st
           ) : (
             <p className="text-xs text-fg-subtle">Sem canal de contato cadastrado.</p>
           )}
-          <AddStageButton stageId={stage.id} venueId={venueId} />
+          <AddToFlowButton origin={{ stageId: stage.id }} deal={deal} fullWidth />
+          {venueId ? (
+            <ButtonLink href={`/casas/${venueId}`} variant="secondary" size="sm" icon={CheckIcon} className="w-full">
+              Nas suas casas
+            </ButtonLink>
+          ) : null}
         </div>
       </div>
     </article>

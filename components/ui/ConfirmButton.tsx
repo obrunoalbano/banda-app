@@ -3,13 +3,14 @@
 import { useId, useRef, useState } from "react";
 import { Button } from "./Button";
 import type { Icon } from "./icons";
-import type { ButtonVariant } from "./styles";
+import type { ButtonSize, ButtonVariant } from "./styles";
 
 export type ConfirmButtonProps = {
   /** Texto do botão que abre o modal. */
   label: string;
   /** Variante do botão que abre o modal. */
   variant?: ButtonVariant;
+  size?: ButtonSize;
   icon?: Icon;
   /** Título do modal (pergunta curta). */
   title: string;
@@ -32,6 +33,7 @@ export type ConfirmButtonProps = {
 export function ConfirmButton({
   label,
   variant = "secondary",
+  size,
   icon,
   title,
   description,
@@ -62,6 +64,7 @@ export function ConfirmButton({
     <>
       <Button
         variant={variant}
+        size={size}
         icon={icon}
         onClick={() => {
           setError(null);

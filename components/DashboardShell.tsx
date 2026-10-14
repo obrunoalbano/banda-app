@@ -13,6 +13,7 @@ import {
   CollapseIcon,
   ExpandIcon,
   IntegrationIcon,
+  DealIcon,
   LeadIcon,
   MenuIcon,
   ShowIcon,
@@ -60,6 +61,7 @@ const NAV_GROUPS: NavGroup[] = [
     label: "Marketing",
     items: [
       { href: "/contatos", label: "Contatos", icon: LeadIcon },
+      { href: "/fluxo", label: "Fluxo de contatos", icon: DealIcon },
       { href: "/redes-sociais", label: "Redes Sociais", icon: SocialIcon, soon: true },
       { href: "/epk", label: "EPK Profissional", icon: EpkIcon, soon: true },
       { href: "/explorar", label: "Explorar Palcos", icon: ExploreIcon },
