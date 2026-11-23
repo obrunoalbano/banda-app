@@ -3,7 +3,7 @@ import { jsonError, parseBody, withAdmin } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import { adminUpdateBandSchema } from "@/lib/validations";
 
-/** Desativa/reativa conta de banda (desativada não faz login e perde o acesso na hora). */
+/** Desativa/reativa a banda (ninguém a acessa enquanto desativada; as contas dos integrantes continuam). */
 export const PATCH = withAdmin<{ id: string }>(async (request, { params: { id } }) => {
   const parsed = await parseBody(request, adminUpdateBandSchema);
   if (!parsed.ok) return parsed.response;

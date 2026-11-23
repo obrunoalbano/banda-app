@@ -11,7 +11,10 @@ export async function GET(request: Request) {
   const bandId = await requireBandId();
   const params = new URL(request.url).searchParams;
   const period = parseFinancePeriod(
-    { ano: params.get("ano") ?? undefined, mes: params.get("mes") ?? undefined },
+    {
+      ano: params.get("ano") ?? undefined,
+      mes: params.get("mes") ?? undefined,
+    },
     todayDateOnly(),
   );
   const [shows, entries] = await fetchPeriodMoney(bandId, period);

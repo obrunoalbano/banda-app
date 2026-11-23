@@ -16,7 +16,7 @@ import { containerClass, linkClass } from "@/components/ui/styles";
 import { formatDateOnly } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -26,13 +26,16 @@ import { notFound } from "next/navigation";
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function ShowDetalhePage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const { id } = await params;
   const show = await prisma.show.findFirst({
     where: { id, bandId },
     include: {
       venue: { select: { id: true, name: true, city: true, state: true } },
-      financeEntries: { select: entryMoneySelect, orderBy: [{ date: "asc" }, { createdAt: "asc" }] },
+      financeEntries: {
+        select: entryMoneySelect,
+        orderBy: [{ date: "asc" }, { createdAt: "asc" }],
+      },
     },
   });
   if (!show) notFound();
@@ -51,16 +54,18 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         description={`${date} às ${show.time}`}
         back={{ href: "/shows", label: "Voltar à listagem" }}
         actions={
-          <>
-            <ButtonLink href={`/shows/${show.id}/editar`} icon={EditIcon}>
-              Alterar
-            </ButtonLink>
-            <ConfirmDeleteButton
-              endpoint={`/api/shows/${show.id}`}
-              redirectTo="/shows"
-              itemLabel={`o show "${title} - ${date}"`}
-            />
-          </>
+          canEdit ? (
+            <>
+              <ButtonLink href={`/shows/${show.id}/editar`} icon={EditIcon}>
+                Alterar
+              </ButtonLink>
+              <ConfirmDeleteButton
+                endpoint={`/api/shows/${show.id}`}
+                redirectTo="/shows"
+                itemLabel={`o show "${title} - ${date}"`}
+              />
+            </>
+          ) : null
         }
       >
         {show.cancelledAt ? <Badge tone="danger">Cancelado</Badge> : null}
@@ -110,9 +115,7 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         </DetailItem>
         <DetailItem label="Ingressos">
           {show.ticketUrl ? (
-            <ExternalLink href={show.ticketUrl}>
-              {show.ticketUrl.replace(/^https?:\/\//, "")}
-            </ExternalLink>
+            <ExternalLink href={show.ticketUrl}>{show.ticketUrl.replace(/^https?:\/\//, "")}</ExternalLink>
           ) : null}
         </DetailItem>
       </DetailList>
@@ -122,24 +125,26 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         description="Despesas e receitas extras deste show. O resultado entra na visão geral do Financeiro."
         className="mt-8"
         actions={
-          <>
-            <ButtonLink
-              href={`/financeiro/lancamentos/nova?showId=${show.id}&tipo=RECEITA`}
-              variant="secondary"
-              size="sm"
-              icon={AddIcon}
-            >
-              Receita
-            </ButtonLink>
-            <ButtonLink
-              href={`/financeiro/lancamentos/nova?showId=${show.id}&tipo=DESPESA`}
-              variant="secondary"
-              size="sm"
-              icon={AddIcon}
-            >
-              Despesa
-            </ButtonLink>
-          </>
+          canEdit ? (
+            <>
+              <ButtonLink
+                href={`/financeiro/lancamentos/nova?showId=${show.id}&tipo=RECEITA`}
+                variant="secondary"
+                size="sm"
+                icon={AddIcon}
+              >
+                Receita
+              </ButtonLink>
+              <ButtonLink
+                href={`/financeiro/lancamentos/nova?showId=${show.id}&tipo=DESPESA`}
+                variant="secondary"
+                size="sm"
+                icon={AddIcon}
+              >
+                Despesa
+              </ButtonLink>
+            </>
+          ) : null
         }
       >
         {entries.length === 0 ? (
@@ -154,9 +159,13 @@ export default async function ShowDetalhePage({ params }: PageProps) {
             {entries.map((e) => (
               <Tr key={e.id}>
                 <Td label="Descrição" strong>
-                  <Link href={`/financeiro/lancamentos/${e.id}/editar`} className="hover:underline">
-                    {e.description}
-                  </Link>
+                  {canEdit ? (
+                    <Link href={`/financeiro/lancamentos/${e.id}/editar`} className="hover:underline">
+                      {e.description}
+                    </Link>
+                  ) : (
+                    e.description
+                  )}
                 </Td>
                 <Td label="Categoria">
                   {FINANCE_TYPE_LABELS[e.type]} · {FINANCE_CATEGORY_LABELS[e.category]}
@@ -176,7 +185,9 @@ export default async function ShowDetalhePage({ params }: PageProps) {
         <dl className="mt-4 flex flex-wrap items-baseline justify-end gap-x-6 gap-y-1 border-t border-line pt-4 text-sm">
           <div className="flex gap-2">
             <dt className="text-fg-muted">Cachê</dt>
-            <dd className="tabular text-fg">{show.cancelledAt ? "— (cancelado)" : formatCents(show.cacheCents ?? 0)}</dd>
+            <dd className="tabular text-fg">
+              {show.cancelledAt ? "— (cancelado)" : formatCents(show.cacheCents ?? 0)}
+            </dd>
           </div>
           <div className="flex gap-2">
             <dt className="font-medium text-fg">Resultado</dt>

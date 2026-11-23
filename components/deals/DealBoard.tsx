@@ -38,11 +38,14 @@ const announcements: Announcements = {
 export function DealBoard({
   initialDeals,
   initialCounts,
+  readOnly = false,
 }: {
   /** Mais recentes por etapa (já limitadas no servidor). */
   initialDeals: BoardDeal[];
   /** Total por etapa (pode ser maior que o exibido). */
   initialCounts: Record<DealStep, number>;
+  /** Visualizador da banda: sem arrastar e painel só de consulta. */
+  readOnly?: boolean;
 }) {
   const [deals, setDeals] = useState(initialDeals);
   const [counts, setCounts] = useState(initialCounts);
@@ -119,7 +122,7 @@ export function DealBoard({
         </div>
       ) : null}
       <DndContext
-        sensors={sensors}
+        sensors={readOnly ? [] : sensors}
         onDragStart={onDragStart}
         onDragEnd={onDragEnd}
         onDragCancel={() => setDraggingId(null)}
@@ -160,6 +163,7 @@ export function DealBoard({
               setDeals((list) => list.map((d) => (d.id === open.id ? { ...d, notes } : d)))
             }
             onRemoved={() => removed(open.id)}
+            readOnly={readOnly}
           />
         ) : null}
       </Sheet>

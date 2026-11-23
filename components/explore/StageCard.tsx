@@ -28,12 +28,15 @@ export function StageCard({
   stage,
   venueId,
   deal,
+  canEdit = true,
 }: {
   stage: ExploreStage;
   /** Casa da banda ligada a este palco (negociação ganha e adicionada). */
   venueId: string | null;
   /** Negociação no Fluxo de contatos, se houver. */
   deal: { id: string; step: DealStep } | null;
+  /** Visualizador da banda não inclui no fluxo. */
+  canEdit?: boolean;
 }) {
   const wa = whatsappHref(stage.whatsapp);
   const ig = instagramHref(stage.instagram);
@@ -98,7 +101,7 @@ export function StageCard({
           ) : (
             <p className="text-xs text-fg-subtle">Sem canal de contato cadastrado.</p>
           )}
-          <AddToFlowButton origin={{ stageId: stage.id }} deal={deal} fullWidth />
+          {canEdit ? <AddToFlowButton origin={{ stageId: stage.id }} deal={deal} fullWidth /> : null}
           {venueId ? (
             <ButtonLink href={`/casas/${venueId}`} variant="secondary" size="sm" icon={CheckIcon} className="w-full">
               Nas suas casas

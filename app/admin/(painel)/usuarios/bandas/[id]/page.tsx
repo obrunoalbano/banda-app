@@ -5,17 +5,21 @@ import { Card } from "@/components/ui/Card";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
+import { Table, Td, Tr } from "@/components/ui/Table";
+import { BAND_ROLE_SHORT, BAND_ROLE_TONES } from "@/lib/band-roles";
 import { formatDateTimeShort } from "@/lib/format";
+import { memberStatus } from "@/lib/members";
 import { prisma } from "@/lib/prisma";
 import { requireAdminId } from "@/lib/session";
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "Banda" };
 
 type PageProps = { params: Promise<{ id: string }> };
 
-/** Visão da conta para a equipe: dados cadastrais, uso e ações de conta (sem dados de negócio da banda). */
+/** Visão da banda para a equipe: dados cadastrais, integrantes, uso e ativação (sem dados de negócio). */
 export default async function AdminBandaDetalhePage({ params }: PageProps) {
   await requireAdminId();
   const { id } = await params;
@@ -26,14 +30,16 @@ export default async function AdminBandaDetalhePage({ params }: PageProps) {
       name: true,
       responsible: true,
       phone: true,
-      email: true,
       slug: true,
       createdAt: true,
       disabledAt: true,
-      mustChangePassword: true,
       publicAgendaEnabled: true,
       leadFormEnabled: true,
       _count: { select: { venues: true, shows: true, leads: true } },
+      members: {
+        orderBy: [{ role: "asc" }, { name: "asc" }],
+        select: { id: true, name: true, email: true, role: true, userId: true, inviteExpiresAt: true },
+      },
     },
   });
   if (!band) notFound();
@@ -42,29 +48,20 @@ export default async function AdminBandaDetalhePage({ params }: PageProps) {
     <div className={containerClass}>
       <PageHeader
         title={band.name}
-        description={`Conta criada em ${formatDateTimeShort(band.createdAt)}`}
+        description={`Banda criada em ${formatDateTimeShort(band.createdAt)}`}
         back={{ href: "/admin/usuarios/bandas", label: "Voltar às bandas" }}
       >
-        <AccountStatus disabled={!!band.disabledAt} provisional={band.mustChangePassword} />
+        <AccountStatus disabled={!!band.disabledAt} provisional={false} />
       </PageHeader>
 
       <div className="flex flex-col gap-8">
-        <Card title="Conta">
-          <AccountActions
-            kind="band"
-            id={band.id}
-            name={band.name}
-            email={band.email}
-            disabled={!!band.disabledAt}
-          />
+        <Card title="Banda">
+          <AccountActions kind="band" id={band.id} name={band.name} disabled={!!band.disabledAt} />
         </Card>
 
         <DetailList>
           <DetailItem label="Responsável">{band.responsible}</DetailItem>
           <DetailItem label="Telefone">{band.phone}</DetailItem>
-          <DetailItem label="Email de acesso" wide>
-            {band.email}
-          </DetailItem>
           <DetailItem label="Endereço público" wide>
             {band.publicAgendaEnabled ? (
               <ExternalLink href={`/b/${band.slug}`}>/b/{band.slug}</ExternalLink>
@@ -82,6 +79,39 @@ export default async function AdminBandaDetalhePage({ params }: PageProps) {
             {band._count.venues} casas · {band._count.shows} shows · {band._count.leads} contatos
           </DetailItem>
         </DetailList>
+
+        <Table
+          caption="Integrantes"
+          headers={[{ label: "Nome" }, { label: "Email" }, { label: "Acesso" }, { label: "Situação" }]}
+        >
+          {band.members.map((m) => {
+            const status = memberStatus(m);
+            return (
+              <Tr key={m.id}>
+                <Td label="Nome" strong>
+                  {m.userId ? (
+                    <Link href={`/admin/usuarios/contas/${m.userId}`} className="hover:underline">
+                      {m.name}
+                    </Link>
+                  ) : (
+                    m.name
+                  )}
+                </Td>
+                <Td label="Email">{m.email}</Td>
+                <Td label="Acesso">
+                  <Badge tone={BAND_ROLE_TONES[m.role]}>{BAND_ROLE_SHORT[m.role]}</Badge>
+                </Td>
+                <Td label="Situação">
+                  {status === "active" ? (
+                    <Badge tone="success">Com acesso</Badge>
+                  ) : (
+                    <Badge tone="warning">{status === "pending" ? "Convite enviado" : "Convite expirado"}</Badge>
+                  )}
+                </Td>
+              </Tr>
+            );
+          })}
+        </Table>
       </div>
     </div>
   );

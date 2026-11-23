@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { requireAdminSession, requireBandSession } from "@/lib/session";
+import type { BandRole } from "@/app/generated/prisma/enums";
+import { requireAdminSession, requireBandSession, requireUserSession } from "@/lib/session";
 
 /** Resposta de erro padrão da API: `{ error }` em pt-BR (+ `details` opcional). */
 export function jsonError(
@@ -39,20 +40,40 @@ export function zodError(error: z.ZodError, headers?: HeadersInit) {
   return jsonError(400, "Dados inválidos", { details: z.flattenError(error), headers });
 }
 
-type BandContext<P> = { bandId: string; params: P };
+type BandContext<P> = { bandId: string; userId: string; role: BandRole; params: P };
 
 /**
- * Envolve um route handler autenticado: resolve a sessão (401 se ausente) e os `params`.
- * Uso: `export const GET = withBand(async (request, { bandId, params }) => { ... })`.
+ * Envolve um route handler da banda ativa: resolve a sessão (401 se ausente/sem banda) e os `params`.
+ * Por padrão só ADMINISTRADORES da banda passam (403 para visualizador) — toda rota de escrita
+ * fica protegida sem precisar lembrar. `{ viewer: true }` libera leitura para visualizadores.
+ * Uso: `export const PATCH = withBand(async (request, { bandId, params }) => { ... })`.
  */
 export function withBand<P = Record<string, never>>(
   handler: (request: Request, ctx: BandContext<P>) => Promise<Response>,
+  options: { viewer?: boolean } = {},
 ) {
   return async (request: Request, context: { params: Promise<P> }) => {
     const session = await requireBandSession();
     if (!session) return jsonError(401, "Não autorizado");
+    if (!session.canEdit && !options.viewer) {
+      return jsonError(403, "Apenas administradores da banda podem fazer alterações.");
+    }
     const params = context?.params ? await context.params : ({} as P);
-    return handler(request, { bandId: session.bandId, params });
+    return handler(request, { bandId: session.bandId, userId: session.userId, role: session.role, params });
+  };
+}
+
+type UserContext<P> = { userId: string; params: P };
+
+/** Rotas da CONTA (independem da banda ativa): perfil, senha, criar/trocar banda, aceitar convite. */
+export function withUser<P = Record<string, never>>(
+  handler: (request: Request, ctx: UserContext<P>) => Promise<Response>,
+) {
+  return async (request: Request, context: { params: Promise<P> }) => {
+    const session = await requireUserSession();
+    if (!session) return jsonError(401, "Não autorizado");
+    const params = context?.params ? await context.params : ({} as P);
+    return handler(request, { userId: session.userId, params });
   };
 }
 

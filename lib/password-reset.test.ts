@@ -44,7 +44,7 @@ describe("email", () => {
   it("link com token codificado e nome escapado no HTML", () => {
     const url = passwordResetUrl("https://app.banda.com", "a+b/c");
     expect(url).toBe("https://app.banda.com/redefinir-senha?token=a%2Bb%2Fc");
-    const email = passwordResetEmail({ bandName: "<Os Ruídos>", url });
+    const email = passwordResetEmail({ name: "<Os Ruídos>", url });
     expect(email.text).toContain(url);
     expect(email.html).toContain("&#60;Os Ruídos&#62;");
     expect(email.html).not.toContain("<Os Ruídos>");

@@ -8,7 +8,7 @@ import { containerWideClass, linkClass } from "@/components/ui/styles";
 import { DEAL_COLUMN_LIMIT, DEAL_STEPS } from "@/lib/deals";
 import { formatDateTimeShort, formatMonthYear, formatRelative } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -60,10 +60,14 @@ const dealSelect = {
 } as const;
 
 export default async function FluxoPage() {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
 
   const [counts, ...columns] = await Promise.all([
-    prisma.deal.groupBy({ by: ["step"], where: { bandId }, _count: { _all: true } }),
+    prisma.deal.groupBy({
+      by: ["step"],
+      where: { bandId },
+      _count: { _all: true },
+    }),
     ...DEAL_STEPS.map((step) =>
       prisma.deal.findMany({
         where: { bandId, step },
@@ -82,7 +86,12 @@ export default async function FluxoPage() {
     ...deal,
     sinceLabel: formatRelative(stepChangedAt, now),
     createdLabel: formatDateTimeShort(createdAt),
-    lead: lead && (({ createdAt: received, ...rest }) => ({ ...rest, receivedLabel: formatDateTimeShort(received) }))(lead),
+    lead:
+      lead &&
+      (({ createdAt: received, ...rest }) => ({
+        ...rest,
+        receivedLabel: formatDateTimeShort(received),
+      }))(lead),
     stage:
       stage &&
       (({ verifiedAt, lastActivityAt, ...rest }) => ({
@@ -116,10 +125,14 @@ export default async function FluxoPage() {
           icon={DealIcon}
           title="Nenhuma negociação no fluxo"
           description="Use “Adicionar ao fluxo” em um contato recebido ou em um palco do Explorar Palcos."
-          action={{ href: "/explorar", label: "Explorar Palcos", primary: true }}
+          action={{
+            href: "/explorar",
+            label: "Explorar Palcos",
+            primary: true,
+          }}
         />
       ) : (
-        <DealBoard initialDeals={deals} initialCounts={countByStep} />
+        <DealBoard initialDeals={deals} initialCounts={countByStep} readOnly={!canEdit} />
       )}
     </div>
   );

@@ -15,7 +15,7 @@ import { financeYears, showLabel } from "@/lib/finance-query";
 import { formatDateOnly } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import { todayDateOnly } from "@/lib/shows";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -23,7 +23,13 @@ import Link from "next/link";
 export const metadata: Metadata = { title: "Lançamentos" };
 
 type PageProps = {
-  searchParams: Promise<{ ano?: string; mes?: string; tipo?: string; situacao?: string; pagina?: string }>;
+  searchParams: Promise<{
+    ano?: string;
+    mes?: string;
+    tipo?: string;
+    situacao?: string;
+    pagina?: string;
+  }>;
 };
 
 const SITUATIONS = [
@@ -34,7 +40,7 @@ const SITUATIONS = [
 type Situation = (typeof SITUATIONS)[number]["value"];
 
 export default async function LancamentosPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const sp = await searchParams;
   const today = todayDateOnly();
   const period = parseFinancePeriod(sp, today);
@@ -48,7 +54,13 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
       : situation === "pendente"
         ? { paidAt: null }
         : situation === "atrasado"
-          ? { paidAt: null, date: { gte: period.gte, lt: period.lt < today ? period.lt : today } }
+          ? {
+              paidAt: null,
+              date: {
+                gte: period.gte,
+                lt: period.lt < today ? period.lt : today,
+              },
+            }
           : {};
   const where = {
     bandId,
@@ -70,7 +82,13 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
         amountCents: true,
         date: true,
         paidAt: true,
-        show: { select: { id: true, venue: { select: { name: true } }, privateCity: true } },
+        show: {
+          select: {
+            id: true,
+            venue: { select: { name: true } },
+            privateCity: true,
+          },
+        },
       },
       orderBy: [{ date: "desc" }, { createdAt: "desc" }],
       ...pageArgs(page),
@@ -100,9 +118,11 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
             >
               Exportar CSV
             </ButtonLink>
-            <ButtonLink href="/financeiro/lancamentos/nova" icon={AddIcon}>
-              Novo lançamento
-            </ButtonLink>
+            {canEdit ? (
+              <ButtonLink href="/financeiro/lancamentos/nova" icon={AddIcon}>
+                Novo lançamento
+              </ButtonLink>
+            ) : null}
           </>
         }
       />
@@ -137,10 +157,21 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
           icon={FinanceEntryIcon}
           title="Nenhum lançamento ainda"
           description="Registre despesas (transporte, som, freelancer…) e receitas extras (merch, patrocínio) para ver o resultado real da banda."
-          action={{ href: "/financeiro/lancamentos/nova", label: "Lançar a primeira despesa", primary: true }}
+          action={
+            canEdit
+              ? {
+                  href: "/financeiro/lancamentos/nova",
+                  label: "Lançar a primeira despesa",
+                  primary: true,
+                }
+              : undefined
+          }
         />
       ) : entries.length === 0 ? (
-        <EmptyState title="Nenhum lançamento corresponde aos filtros" action={{ href: "/financeiro/lancamentos", label: "Limpar filtros" }} />
+        <EmptyState
+          title="Nenhum lançamento corresponde aos filtros"
+          action={{ href: "/financeiro/lancamentos", label: "Limpar filtros" }}
+        />
       ) : (
         <>
           <Table
@@ -152,15 +183,19 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
               { label: "Data" },
               { label: "Valor" },
               { label: "Situação" },
-              { label: "Ações", align: "right" },
+              ...(canEdit ? [{ label: "Ações", align: "right" as const }] : []),
             ]}
           >
             {entries.map((e) => (
               <Tr key={e.id}>
                 <Td label="Descrição" strong>
-                  <Link href={`/financeiro/lancamentos/${e.id}/editar`} className="hover:underline">
-                    {e.description}
-                  </Link>
+                  {canEdit ? (
+                    <Link href={`/financeiro/lancamentos/${e.id}/editar`} className="hover:underline">
+                      {e.description}
+                    </Link>
+                  ) : (
+                    e.description
+                  )}
                 </Td>
                 <Td label="Categoria">
                   {FINANCE_TYPE_LABELS[e.type]} · {FINANCE_CATEGORY_LABELS[e.category]}
@@ -183,11 +218,13 @@ export default async function LancamentosPage({ searchParams }: PageProps) {
                 <Td label="Situação">
                   <FinanceEntryStatusBadge status={entryStatus(e, today)} />
                 </Td>
-                <Td label="Ações" align="right">
-                  <Link href={`/financeiro/lancamentos/${e.id}/editar`} className={linkClass}>
-                    Alterar
-                  </Link>
-                </Td>
+                {canEdit ? (
+                  <Td label="Ações" align="right">
+                    <Link href={`/financeiro/lancamentos/${e.id}/editar`} className={linkClass}>
+                      Alterar
+                    </Link>
+                  </Td>
+                ) : null}
               </Tr>
             ))}
           </Table>

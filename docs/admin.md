@@ -1,6 +1,6 @@
 # Painel superadmin (`/admin`)
 
-Área da **equipe do produto** — separada do app das bandas. Hoje cadastra **palcos** (base curada do Explorar Palcos) e **usuários** (contas de banda e outros administradores). Leia antes de mexer em `app/admin/`, `app/api/admin/`, `lib/access.ts`, `auth.ts` ou nos modelos `AdminUser`/`Stage`.
+Área da **equipe do produto** — separada do app das bandas. Hoje cadastra **palcos** (base curada do Explorar Palcos) e **usuários** (bandas, contas de usuário e outros administradores). Leia antes de mexer em `app/admin/`, `app/api/admin/`, `lib/access.ts`, `auth.ts` ou nos modelos `AdminUser`/`Stage`/`User`/`BandMember`. O acesso das pessoas às bandas (multi-bandas, integrantes, convites) está na §8.
 
 ---
 
@@ -8,23 +8,23 @@
 
 | Papel | Tabela | Login | Área | APIs |
 | --- | --- | --- | --- | --- |
-| `band` | `Band` (tenant) | `/login` (provider `credentials`, client) | `/casas`, `/shows`, … | `/api/*` |
+| `user` | `User` (pessoa; acessa N bandas via `BandMember` — §8) | `/login` (provider `credentials`, client) | `/casas`, `/shows`, … | `/api/*` |
 | `superadmin` | `AdminUser` (equipe) | `/admin/login` (provider `admin`, **Server Action**) | `/admin/*` | `/api/admin/*` |
 
 - Tabelas separadas de propósito: o superadmin não é cliente nem tenant; uma falha numa área não dá acesso à outra.
-- O JWT carrega `role` e `mustChangePassword` (`auth.ts`). Tokens antigos sem `role` contam como `band`.
+- O JWT carrega `role` e `mustChangePassword` (`auth.ts`). Tokens antigos (sem `role` ou com `role: "band"`, de antes de multi-bandas) contam como `user` — a migração criou cada `User` com o **mesmo id** da banda, então essas sessões continuam válidas.
 - **Regras em `lib/access.ts` (`decideAccess`, função pura com teste)**, executadas pelo `proxy.ts`:
   - superadmin em página de banda → `/admin`; em API de banda → 403;
-  - banda em `/admin/*` → `/casas`; em `/api/admin/*` → 403;
+  - usuário em `/admin/*` → `/casas`; em `/api/admin/*` → 403;
   - sem sessão: páginas do painel → `/admin/login`; APIs → 401;
-  - `mustChangePassword`: tudo redireciona para `/banda/senha` ou `/admin/senha` (APIs → 403), exceto a própria troca de senha.
-- **Defesa em profundidade** no servidor: `requireBandSession`/`requireBandId` e `requireAdminSession`/`requireAdminId` (`lib/session.ts`) conferem papel **e conta ativa no banco** (deduplicado por request). Rotas do painel usam `withAdmin` (`lib/api.ts`).
+  - `mustChangePassword`: tudo redireciona para `/conta/senha` ou `/admin/senha` (APIs → 403), exceto a própria troca de senha.
+- **Defesa em profundidade** no servidor: `requireUserSession`/`requireBandContext` e `requireAdminSession`/`requireAdminId` (`lib/session.ts`) conferem papel **e conta ativa no banco** (deduplicado por request); `requireBandContext` também confere que o usuário é integrante da banda ativa e que ela não está desativada. Rotas do painel usam `withAdmin` (`lib/api.ts`).
 - Desativar conta (`disabledAt`) corta o acesso **na hora**, mesmo com JWT válido (a checagem no banco nega e redireciona para `/login?code=disabled_or_expired`); o login mostra "conta desativada" só depois da senha correta (não confirma emails a terceiros).
 
 ## 2. Senhas
 - Conta criada ou redefinida pelo painel recebe **senha provisória** (`generateTempPassword`, `xxxx-xxxx-xxxx`, sem caracteres ambíguos), exibida **uma única vez** (`TempPasswordReveal`); só o hash é salvo; `mustChangePassword = true`.
-- Troca da própria senha: `POST /api/band/password` e `POST /api/admin/password` (`lib/change-password.ts`): confere a atual, grava a nova, limpa `mustChangePassword` e atualiza o JWT (`unstable_update`).
-- **Esqueci minha senha (só bandas):** `/esqueci-senha` → `POST /api/password/forgot` (resposta igual exista ou não a conta; rate limit por IP e por email) envia por email um link `/redefinir-senha?token=…` → `POST /api/password/reset`. Token de 256 bits; o banco guarda só o SHA-256 (`Band.passwordResetTokenHash`), vale 1 hora, uso único, um por vez (pedir de novo invalida o anterior; trocar a senha logado também). Regras em `lib/password-reset.ts` (com teste). Em produção o link usa **só** `NEXT_PUBLIC_APP_URL` (nunca o Host da requisição — evita *reset poisoning*); sem ela, nada é enviado. Email: `lib/email.ts` (API da Resend, `RESEND_API_KEY` + `EMAIL_FROM`); sem essas variáveis, em desenvolvimento o email sai no console do `npm run dev`. Sessões JWT já abertas continuam válidas após a redefinição (mesma limitação da troca de senha).
+- Troca da própria senha: `POST /api/account/password` (`/conta/senha`) e `POST /api/admin/password` (`lib/change-password.ts`): confere a atual, grava a nova, limpa `mustChangePassword` e atualiza o JWT (`unstable_update`).
+- **Esqueci minha senha (usuários do app):** `/esqueci-senha` → `POST /api/password/forgot` (resposta igual exista ou não a conta; rate limit por IP e por email) envia por email um link `/redefinir-senha?token=…` → `POST /api/password/reset`. Token de 256 bits; o banco guarda só o SHA-256 (`User.passwordResetTokenHash`), vale 1 hora, uso único, um por vez (pedir de novo invalida o anterior; trocar a senha logado também). Regras em `lib/password-reset.ts` (com teste). Em produção o link usa **só** `NEXT_PUBLIC_APP_URL` (nunca o Host da requisição — evita *reset poisoning*); sem ela, nada é enviado. Email: `lib/email.ts` (API da Resend, `RESEND_API_KEY` + `EMAIL_FROM`); sem essas variáveis, em desenvolvimento o email sai no console do `npm run dev`. Sessões JWT já abertas continuam válidas após a redefinição (mesma limitação da troca de senha).
 - Depois de trocar, o formulário faz **navegação completa** (`window.location.assign`): o roteador do Next guardou pré-carregamentos feitos durante a senha provisória (todos redirecionando para a troca).
 
 ## 3. Primeiro acesso (bootstrap)
@@ -44,8 +44,9 @@ O comando mostra o banco de destino, recusa banco remoto sem `--confirm-remote`,
 | `/admin/login` | Login da equipe (Server Action: erro volta para a mesma tela; destino decidido na action) |
 | `/admin/palcos` | Lista com resumo (publicados, rascunhos, arquivados, **para reverificar**), filtros (nome/cidade, situação, UF), paginação |
 | `/admin/palcos/novo` · `/admin/palcos/[id]` | Cadastro/edição + curadoria: **Publicar**, **Marcar como verificado**, **Arquivar**, **Voltar para rascunho**, **Excluir** (só rascunho) |
-| `/admin/usuarios/bandas` | Contas de banda: busca, situação (ativas, desativadas, senha provisória) |
-| `/admin/usuarios/bandas/nova` · `/[id]` | Criar conta (senha provisória) · dados da conta, integrações ativas, uso (casas/shows/contatos), **Redefinir senha**, **Desativar/Reativar** |
+| `/admin/usuarios/bandas` | Bandas: busca (nome ou email de integrante), situação, administradores, nº de integrantes |
+| `/admin/usuarios/bandas/nova` · `/[id]` | Criar banda + administrador (email existente → só ganha a banda; novo → conta com senha provisória) · dados, integrantes, integrações, uso, **Desativar/Reativar banda** |
+| `/admin/usuarios/contas` · `/[id]` | Contas de usuário: busca, situação (ativas, desativadas, senha provisória) · bandas da conta, **Redefinir senha**, **Desativar/Reativar conta** |
 | `/admin/usuarios/administradores` (+`/novo`) | Equipe; desativar/reativar (ninguém desativa a si mesmo) |
 | `/admin/senha` | Troca da própria senha |
 
@@ -97,3 +98,25 @@ node scripts/with-local-db.mjs node scripts/migrate-stage-images.mjs --hosts <bu
 - [ ] Ações destrutivas/irreversíveis com `ConfirmButton`.
 - [ ] Item novo no menu: `ADMIN_NAV_GROUPS` em `components/DashboardShell.tsx`.
 - [ ] Teste em `lib/access.test.ts` se mudar regra de acesso.
+
+## 8. Acesso multi-bandas (usuários, integrantes e convites)
+
+**Modelo:** `User` (pessoa: email + senha) ⟷ `BandMember` (papel na banda) ⟷ `Band` (tenant, dono dos dados). Um usuário acessa N bandas; cada banda tem N integrantes.
+
+| Papel (`BandRole`) | Pode |
+| --- | --- |
+| `ADMIN` (Administrador) | tudo na banda: criar/alterar/excluir dados, Integrações, dados da banda, **integrantes** |
+| `VIEWER` (Visualizador) | só consultar (inclusive Financeiro e o CSV); não vê Integrações; telas de criar/editar redirecionam |
+
+- **Cadastro** (`/cadastro` → `POST /api/register`): cria o `User` e a **primeira banda** (vira `ADMIN`). Mais bandas em `/bandas` (`POST /api/bands`).
+- **Banda ativa:** cookie `banda_atual` (só preferência; a posse é conferida no banco a cada request — `getBandContext`). Sem cookie válido usa a primeira banda; sem nenhuma banda → `/bandas`. Trocar: seletor no topo do menu → `/bandas` → `POST /api/bands/current`.
+- **Escrita protegida por padrão:** `withBand` só deixa passar `ADMIN` (403 para visualizador). Rota de leitura para visualizador: `withBand(handler, { viewer: true })`. Rotas da conta (perfil, senha, criar/trocar banda, aceitar convite): `withUser`. Páginas de criar/editar: `requireBandEditor(fallback)`; nas listagens/detalhes os botões de ação aparecem só com `canEdit`.
+- **Integrantes** (`/banda/integrantes`, `app/api/band/members/*`): o administrador informa nome, email e acesso.
+  - email **já tem conta** → vínculo na hora (a banda aparece no próximo acesso da pessoa);
+  - email **sem conta** → convite pendente (`userId` vazio): link `/convite/<token>` enviado por email (Resend) e mostrado para o administrador copiar (WhatsApp). Token de 256 bits, só o SHA-256 no banco, vale 14 dias, uso único; "Novo link" invalida o anterior (e, se a pessoa já tiver criado conta nesse meio-tempo, vincula na hora).
+  - `/convite/<token>` decide: logado com o email do convite → **Aceitar**; logado com outro email → sair; sem sessão → **Criar conta** (`/cadastro?convite=…`, email travado no do convite) ou **Entrar** (se o email já tiver conta).
+  - O convite só é aceito pelo **link** (não por email igual no cadastro): o app não verifica email no cadastro, então vincular por email permitiria a alguém se cadastrar com o email de outra pessoa e herdar o convite.
+  - A banda nunca fica sem administrador com conta (`lastAdminBlock` em `lib/members.ts`, com teste) — vale para remover e para rebaixar (inclusive "Sair da banda").
+  - Rate limit: 30 convites/hora por banda (`RATE_LIMITS.bandInvite`).
+- **Painel:** desativar uma **banda** corta o acesso de todos a ela; desativar uma **conta** corta o acesso da pessoa a todas as bandas.
+- **Legado:** `Band.email`, `passwordHash`, `mustChangePassword`, `passwordReset*` ficaram no schema (anuláveis) só para a migração ser aditiva; nada lê esses campos. Remover numa migration futura (contração).

@@ -1,15 +1,15 @@
 import { describe, expect, it } from "vitest";
 import { decideAccess, type SessionClaims } from "./access";
 
-const band: SessionClaims = { role: "band", mustChangePassword: false };
-const bandTemp: SessionClaims = { role: "band", mustChangePassword: true };
+const band: SessionClaims = { role: "user", mustChangePassword: false };
+const bandTemp: SessionClaims = { role: "user", mustChangePassword: true };
 const admin: SessionClaims = { role: "superadmin", mustChangePassword: false };
 const adminTemp: SessionClaims = { role: "superadmin", mustChangePassword: true };
 const opts = { isProduction: true };
 const decide = (path: string, s: SessionClaims) => decideAccess(path, s, opts);
 
 describe("áreas públicas", () => {
-  it.each(["/", "/login", "/cadastro", "/b/banda", "/embed/banda/shows", "/embed.js", "/api/public/v1/bands/x/shows", "/api/auth/session", "/api/register", "/api/leads/ingest", "/esqueci-senha", "/redefinir-senha", "/api/password/forgot", "/api/password/reset", "/admin/login"])(
+  it.each(["/", "/login", "/cadastro", "/b/banda", "/embed/banda/shows", "/embed.js", "/api/public/v1/bands/x/shows", "/api/auth/session", "/api/register", "/api/leads/ingest", "/esqueci-senha", "/redefinir-senha", "/convite/abc", "/api/password/forgot", "/api/password/reset", "/admin/login"])(
     "%s sem sessão → allow",
     (path) => expect(decide(path, null)).toEqual({ type: "allow" }),
   );
@@ -24,7 +24,7 @@ describe("app da banda", () => {
     expect(decide("/casas", null)).toEqual({ type: "redirect", to: "/login", withCallback: true });
     expect(decide("/api/shows", null)).toMatchObject({ type: "json", status: 401 });
   });
-  it("banda acessa", () => {
+  it("usuário acessa", () => {
     expect(decide("/casas", band)).toEqual({ type: "allow" });
     expect(decide("/api/shows", band)).toEqual({ type: "allow" });
   });
@@ -33,10 +33,10 @@ describe("app da banda", () => {
     expect(decide("/api/shows", admin)).toMatchObject({ type: "json", status: 403 });
   });
   it("senha provisória: só a troca de senha é liberada", () => {
-    expect(decide("/casas", bandTemp)).toEqual({ type: "redirect", to: "/banda/senha" });
-    expect(decide("/banda/senha", bandTemp)).toEqual({ type: "allow" });
+    expect(decide("/casas", bandTemp)).toEqual({ type: "redirect", to: "/conta/senha" });
+    expect(decide("/conta/senha", bandTemp)).toEqual({ type: "allow" });
     expect(decide("/api/shows", bandTemp)).toMatchObject({ type: "json", status: 403 });
-    expect(decide("/api/band/password", bandTemp)).toEqual({ type: "allow" });
+    expect(decide("/api/account/password", bandTemp)).toEqual({ type: "allow" });
   });
 });
 

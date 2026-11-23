@@ -36,12 +36,15 @@ export function DealDetails({
   onMove,
   onNotesSaved,
   onRemoved,
+  readOnly = false,
 }: {
   deal: BoardDeal;
   moving: boolean;
   onMove: (step: DealStep) => void;
   onNotesSaved: (notes: string | null) => void;
   onRemoved: () => void;
+  /** Visualizador da banda: só consulta (sem mudar etapa, anotar ou tirar do fluxo). */
+  readOnly?: boolean;
 }) {
   const notes = useJsonSubmit();
   const [draft, setDraft] = useState(deal.notes ?? "");
@@ -64,7 +67,9 @@ export function DealDetails({
   }
 
   async function remove() {
-    const res = await fetch(`/api/deals/${deal.id}`, { method: "DELETE" }).catch(() => null);
+    const res = await fetch(`/api/deals/${deal.id}`, {
+      method: "DELETE",
+    }).catch(() => null);
     if (!res?.ok) return "Não foi possível tirar do fluxo.";
     onRemoved();
     return null;
@@ -73,20 +78,22 @@ export function DealDetails({
   return (
     <>
       <div className="flex flex-col gap-3">
-        <SelectField
-          label="Etapa"
-          value={deal.step}
-          disabled={moving}
-          onChange={(e) => onMove(e.target.value as DealStep)}
-          hint="Você também pode arrastar o card entre as colunas."
-        >
-          {DEAL_STEP_OPTIONS.map((o) => (
-            <option key={o.value} value={o.value}>
-              {o.label}
-            </option>
-          ))}
-        </SelectField>
-        {canAddToVenues(deal) ? (
+        {readOnly ? null : (
+          <SelectField
+            label="Etapa"
+            value={deal.step}
+            disabled={moving}
+            onChange={(e) => onMove(e.target.value as DealStep)}
+            hint="Você também pode arrastar o card entre as colunas."
+          >
+            {DEAL_STEP_OPTIONS.map((o) => (
+              <option key={o.value} value={o.value}>
+                {o.label}
+              </option>
+            ))}
+          </SelectField>
+        )}
+        {!readOnly && canAddToVenues(deal) ? (
           <ButtonLink href={`/casas/nova?negociacao=${deal.id}`} icon={AddIcon}>
             Adicionar às minhas casas
           </ButtonLink>
@@ -106,8 +113,8 @@ export function DealDetails({
       {!deal.stage && !deal.lead ? (
         <Alert tone="info">
           A origem desta negociação foi removida
-          {deal.source === "CONTATO" ? " (contato apagado)" : " (palco retirado do diretório)"}. O nome e a cidade
-          foram guardados no fluxo.
+          {deal.source === "CONTATO" ? " (contato apagado)" : " (palco retirado do diretório)"}. O nome e a cidade foram
+          guardados no fluxo.
         </Alert>
       ) : null}
 
@@ -115,42 +122,48 @@ export function DealDetails({
         <h3 id={`obs-${deal.id}`} className={sectionTitle}>
           Observações
         </h3>
-        <form onSubmit={saveNotes} className="flex flex-col gap-3">
-          {notes.error ? <Alert>{notes.error}</Alert> : null}
-          {saved && !dirty ? <Alert tone="success">Observação salva.</Alert> : null}
-          <TextAreaField
-            label="Anotações da banda"
-            rows={5}
-            maxLength={5000}
-            value={draft}
-            onChange={(e) => {
-              setDraft(e.target.value);
-              setSaved(false);
-            }}
-            placeholder="Ex.: falei com o gerente, pediu proposta até sexta; cachê sugerido R$ 1.500."
-            hint="Só a sua banda vê."
-          />
-          <div>
-            <Button type="submit" variant="secondary" loading={notes.loading} disabled={!dirty}>
-              Salvar observação
-            </Button>
-          </div>
-        </form>
+        {readOnly ? (
+          <p className="whitespace-pre-line text-sm text-fg-muted">{deal.notes || "Sem observações."}</p>
+        ) : (
+          <form onSubmit={saveNotes} className="flex flex-col gap-3">
+            {notes.error ? <Alert>{notes.error}</Alert> : null}
+            {saved && !dirty ? <Alert tone="success">Observação salva.</Alert> : null}
+            <TextAreaField
+              label="Anotações da banda"
+              rows={5}
+              maxLength={5000}
+              value={draft}
+              onChange={(e) => {
+                setDraft(e.target.value);
+                setSaved(false);
+              }}
+              placeholder="Ex.: falei com o gerente, pediu proposta até sexta; cachê sugerido R$ 1.500."
+              hint="Só a sua banda vê."
+            />
+            <div>
+              <Button type="submit" variant="secondary" loading={notes.loading} disabled={!dirty}>
+                Salvar observação
+              </Button>
+            </div>
+          </form>
+        )}
       </section>
 
-      <div className="mt-auto border-t border-line pt-4">
-        <ConfirmButton
-          label="Tirar do fluxo"
-          variant="ghost"
-          size="sm"
-          icon={DeleteIcon}
-          title={`Tirar "${deal.name}" do fluxo?`}
-          description="A negociação e as observações saem do quadro. O contato, o palco e a casa (se já criada) não são apagados."
-          confirmLabel="Tirar do fluxo"
-          tone="danger"
-          onConfirm={remove}
-        />
-      </div>
+      {readOnly ? null : (
+        <div className="mt-auto border-t border-line pt-4">
+          <ConfirmButton
+            label="Tirar do fluxo"
+            variant="ghost"
+            size="sm"
+            icon={DeleteIcon}
+            title={`Tirar "${deal.name}" do fluxo?`}
+            description="A negociação e as observações saem do quadro. O contato, o palco e a casa (se já criada) não são apagados."
+            confirmLabel="Tirar do fluxo"
+            tone="danger"
+            onConfirm={remove}
+          />
+        </div>
+      )}
     </>
   );
 }

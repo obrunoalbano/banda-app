@@ -2,16 +2,22 @@ import { ShowForm } from "@/components/ShowForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Novo show" };
 
 export default async function NovoShowPage() {
-  const bandId = await requireBandId();
+  const { bandId } = await requireBandEditor("/shows");
   const venues = await prisma.venue.findMany({
     where: { bandId },
-    select: { id: true, name: true, city: true, state: true, valorCacheCents: true },
+    select: {
+      id: true,
+      name: true,
+      city: true,
+      state: true,
+      valorCacheCents: true,
+    },
     orderBy: { name: "asc" },
   });
 

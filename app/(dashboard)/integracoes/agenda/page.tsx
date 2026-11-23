@@ -3,7 +3,7 @@ import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { getPublicBaseUrl } from "@/lib/public-base-url";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import { todayDateOnly } from "@/lib/shows";
 import type { Metadata } from "next";
 import { redirect } from "next/navigation";
@@ -11,10 +11,15 @@ import { redirect } from "next/navigation";
 export const metadata: Metadata = { title: "Agenda · Integrações" };
 
 export default async function IntegracaoAgendaPage() {
-  const bandId = await requireBandId();
+  const { bandId } = await requireBandEditor("/casas");
   const [band, publicUpcomingCount, baseUrl] = await Promise.all([
-    prisma.band.findUnique({ where: { id: bandId }, select: { slug: true, publicAgendaEnabled: true } }),
-    prisma.show.count({ where: { bandId, isPublic: true, date: { gte: todayDateOnly() } } }),
+    prisma.band.findUnique({
+      where: { id: bandId },
+      select: { slug: true, publicAgendaEnabled: true },
+    }),
+    prisma.show.count({
+      where: { bandId, isPublic: true, date: { gte: todayDateOnly() } },
+    }),
     getPublicBaseUrl(),
   ]);
   if (!band) redirect("/login");

@@ -2,7 +2,7 @@ import { ShowForm } from "@/components/ShowForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import { toDateOnlyString } from "@/lib/shows";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
@@ -12,7 +12,7 @@ export const metadata: Metadata = { title: "Alterar show" };
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function EditarShowPage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId } = await requireBandEditor("/shows");
   const { id } = await params;
   const [show, venues] = await Promise.all([
     prisma.show.findFirst({
@@ -36,7 +36,13 @@ export default async function EditarShowPage({ params }: PageProps) {
     }),
     prisma.venue.findMany({
       where: { bandId },
-      select: { id: true, name: true, city: true, state: true, valorCacheCents: true },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        state: true,
+        valorCacheCents: true,
+      },
       orderBy: { name: "asc" },
     }),
   ]);

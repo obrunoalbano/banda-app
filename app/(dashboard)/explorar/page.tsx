@@ -17,15 +17,17 @@ import {
 import { formatInteger } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
 import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Explorar Palcos" };
 
-type PageProps = { searchParams: Promise<Record<string, string | string[] | undefined>> };
+type PageProps = {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export default async function ExplorarPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const sp = await searchParams;
   const filters = parseExploreFilters(sp);
   const page = parsePage(sp.pagina);
@@ -75,7 +77,10 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
           where: { bandId, stageId: { in: stageIds } },
           select: { id: true, step: true, stageId: true },
         }),
-        prisma.venue.findMany({ where: { bandId, stageId: { in: stageIds } }, select: { id: true, stageId: true } }),
+        prisma.venue.findMany({
+          where: { bandId, stageId: { in: stageIds } },
+          select: { id: true, stageId: true },
+        }),
       ])
     : [[], []];
   const dealByStage = new Map(deals.map((d) => [d.stageId, { id: d.id, step: d.step }]));
@@ -92,7 +97,9 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
         <EmptyState
           icon={ExploreIcon}
           title={hasFilters ? "Nenhum palco corresponde aos filtros" : "Nenhum palco disponível ainda"}
-          description={hasFilters ? "Tente outra cidade ou remova algum filtro." : "A base está sendo montada pela nossa equipe."}
+          description={
+            hasFilters ? "Tente outra cidade ou remova algum filtro." : "A base está sendo montada pela nossa equipe."
+          }
           action={hasFilters ? { href: "/explorar", label: "Limpar filtros" } : undefined}
         />
       ) : (
@@ -105,6 +112,7 @@ export default async function ExplorarPage({ searchParams }: PageProps) {
             {stages.map((stage) => (
               <li key={stage.id} className="flex">
                 <StageCard
+                  canEdit={canEdit}
                   stage={stage}
                   venueId={venueByStage.get(stage.id) ?? null}
                   deal={dealByStage.get(stage.id) ?? null}

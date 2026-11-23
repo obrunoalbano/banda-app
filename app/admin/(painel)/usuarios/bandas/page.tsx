@@ -22,7 +22,6 @@ type PageProps = { searchParams: Promise<{ q?: string; situacao?: string; pagina
 const SITUACOES = {
   ativas: { label: "Ativas", where: { disabledAt: null } },
   desativadas: { label: "Desativadas", where: { disabledAt: { not: null } } },
-  provisoria: { label: "Senha provisória", where: { mustChangePassword: true, disabledAt: null } },
 } satisfies Record<string, { label: string; where: Prisma.BandWhereInput }>;
 
 export default async function AdminBandasPage({ searchParams }: PageProps) {
@@ -37,7 +36,7 @@ export default async function AdminBandasPage({ searchParams }: PageProps) {
     ...(q && {
       OR: [
         { name: { contains: q, mode: "insensitive" } },
-        { email: { contains: q, mode: "insensitive" } },
+        { members: { some: { email: { contains: q, mode: "insensitive" } } } },
       ],
     }),
   };
@@ -47,7 +46,14 @@ export default async function AdminBandasPage({ searchParams }: PageProps) {
     prisma.band.findMany({
       where,
       orderBy: { createdAt: "desc" },
-      select: { id: true, name: true, email: true, createdAt: true, disabledAt: true, mustChangePassword: true },
+      select: {
+        id: true,
+        name: true,
+        createdAt: true,
+        disabledAt: true,
+        members: { where: { role: "ADMIN", userId: { not: null } }, select: { email: true }, take: 3 },
+        _count: { select: { members: true } },
+      },
       ...pageArgs(page),
     }),
   ]);
@@ -58,19 +64,19 @@ export default async function AdminBandasPage({ searchParams }: PageProps) {
       <PageHeader
         eyebrow="Usuários"
         title="Bandas"
-        description="Contas de banda da plataforma."
+        description="Bandas da plataforma. Quem entra são as contas dos integrantes (Usuários → Contas)."
         actions={
           <ButtonLink href="/admin/usuarios/bandas/nova" icon={AddIcon}>
             Nova banda
           </ButtonLink>
         }
       >
-        <Badge>{total} contas</Badge>
+        <Badge>{total} bandas</Badge>
       </PageHeader>
 
       {total > 0 ? (
         <FilterBar clearHref="/admin/usuarios/bandas">
-          <FilterField id="f-q" label="Nome ou email">
+          <FilterField id="f-q" label="Nome ou email de integrante">
             <input id="f-q" name="q" defaultValue={q} className={inputSmClass} placeholder="Buscar…" />
           </FilterField>
           <FilterField id="f-sit" label="Situação" minWidth={170}>
@@ -90,15 +96,22 @@ export default async function AdminBandasPage({ searchParams }: PageProps) {
         <EmptyState
           icon={BandIcon}
           title="Nenhuma banda cadastrada"
-          action={{ href: "/admin/usuarios/bandas/nova", label: "Criar a primeira conta", primary: true }}
+          action={{ href: "/admin/usuarios/bandas/nova", label: "Criar a primeira banda", primary: true }}
         />
       ) : bands.length === 0 ? (
         <EmptyState title="Nenhuma banda corresponde aos filtros" action={{ href: "/admin/usuarios/bandas", label: "Limpar filtros" }} />
       ) : (
         <>
           <Table
-            caption="Contas de banda"
-            headers={[{ label: "Nome" }, { label: "Email" }, { label: "Criada em" }, { label: "Situação" }, { label: "Ações", align: "right" }]}
+            caption="Bandas"
+            headers={[
+              { label: "Nome" },
+              { label: "Administradores" },
+              { label: "Integrantes" },
+              { label: "Criada em" },
+              { label: "Situação" },
+              { label: "Ações", align: "right" },
+            ]}
           >
             {bands.map((b) => (
               <Tr key={b.id}>
@@ -107,12 +120,15 @@ export default async function AdminBandasPage({ searchParams }: PageProps) {
                     {b.name}
                   </Link>
                 </Td>
-                <Td label="Email">{b.email}</Td>
+                <Td label="Administradores">{b.members.map((m) => m.email).join(", ")}</Td>
+                <Td label="Integrantes" numeric>
+                  {b._count.members}
+                </Td>
                 <Td label="Criada em" numeric>
                   {formatDateOnly(b.createdAt)}
                 </Td>
                 <Td label="Situação">
-                  <AccountStatus disabled={!!b.disabledAt} provisional={b.mustChangePassword} />
+                  <AccountStatus disabled={!!b.disabledAt} provisional={false} />
                 </Td>
                 <Td label="Ações" align="right">
                   <Link href={`/admin/usuarios/bandas/${b.id}`} className={linkClass}>

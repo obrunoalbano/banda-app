@@ -6,7 +6,7 @@ This version has breaking changes — APIs, conventions, and file structure may 
 
 # Banda — contexto do projeto
 
-App multi-tenant (com painel de superadmin para a equipe — `docs/admin.md`) para bandas gerenciarem **casas de show** (prospecção), **shows** (agenda + pagamento) e **contatos/leads** recebidos de sites externos, e publicarem sua **agenda de shows** (página pública, widget e API). Cada cliente é uma `Band` (a banda é quem faz login no app); a equipe do produto entra pelo painel `/admin` com contas `AdminUser`.
+App multi-tenant (com painel de superadmin para a equipe — `docs/admin.md`) para bandas gerenciarem **casas de show** (prospecção), **shows** (agenda + pagamento) e **contatos/leads** recebidos de sites externos, e publicarem sua **agenda de shows** (página pública, widget e API). Cada tenant é uma `Band`; quem faz login é um `User`, que acessa **N bandas** como integrante (`BandMember`: administrador ou visualizador — `docs/admin.md` §8). A equipe do produto entra pelo painel `/admin` com contas `AdminUser`.
 
 Toda a UI, rotas e mensagens são em **português (pt-BR)**. Identificadores de código e campos do banco são em inglês (exceto enums e rotas de página).
 
@@ -15,7 +15,7 @@ Toda a UI, rotas e mensagens são em **português (pt-BR)**. Identificadores de 
 | Camada | Tecnologia |
 | --- | --- |
 | Framework | Next.js 16 (App Router), React 19, TypeScript strict |
-| Auth | next-auth v5 (beta) — Credentials (email + senha bcrypt), sessão **JWT** com `role` (`band` \| `superadmin`) |
+| Auth | next-auth v5 (beta) — Credentials (email + senha bcrypt), sessão **JWT** com `role` (`user` \| `superadmin`); banda ativa no cookie `banda_atual` (posse conferida no banco) |
 | Banco | PostgreSQL via Prisma 7 + `@prisma/adapter-pg` (pool `pg` próprio em `lib/prisma.ts`) |
 | Validação | Zod 4 (`lib/validations.ts`) |
 | UI | Tailwind CSS 4 com **tokens semânticos** (`app/globals.css`), componentes em `components/ui/`, ícones `lucide-react` — ver **`docs/design-system.md`** |
@@ -29,7 +29,8 @@ O client Prisma é gerado em `app/generated/prisma` (gitignored). Importe tipos/
 ```
 app/
   page.tsx                 landing (redireciona p/ /casas se logado)
-  login/, cadastro/        páginas públicas
+  login/, cadastro/        páginas públicas (cadastro = conta + 1ª banda, ou conta via convite ?convite=)
+  convite/[token]/         PÚBLICO — link de convite para uma banda (aceitar, cadastrar ou entrar)
   esqueci-senha/, redefinir-senha/  "esqueci minha senha" da banda (link por email — docs/admin.md §2)
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
@@ -43,14 +44,19 @@ app/
     integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
       agenda/              Integrações → Agenda: agenda pública (ativar, slug, divulgar)
       contato/             Integrações → Contatos: status, formulário pronto, domínios, token de servidor
-    banda/                 dados da conta
+    banda/                 dados da banda (admin edita; visualizador só lê) · integrantes/ (convites, papéis)
+    bandas/                Minhas bandas: escolher a banda ativa, criar outra
+    conta/                 dados da conta do usuário · senha/ (troca da senha)
   api/                     só ESCRITA (leitura é feita direto nos Server Components)
     auth/[...nextauth]     next-auth
     register               cadastro público (rate limit por IP)
     password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
     band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
-    band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste), band/password (POST)
-    admin/*                SUPERADMIN (withAdmin): stages, bands (+reset-password), admins, password
+    band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste)
+    band/members (POST), band/members/[id] (PATCH, DELETE), band/members/[id]/invite (POST: novo link)
+    account (PATCH), account/password (POST), bands (POST: nova banda), bands/current (POST: trocar),
+    invites/[token] (POST: aceitar convite logado)   ← rotas da CONTA usam withUser
+    admin/*                SUPERADMIN (withAdmin): stages, bands, users (+reset-password), admins, password
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
@@ -61,7 +67,7 @@ app/
     public/v1/bands/[slug]/leads  PÚBLICO — envio do formulário (origem do app ou domínio cadastrado, anti-spam)
   b/[slug]/                PÚBLICO — página da agenda da banda (opt-in); contato/ = formulário público
   embed/[slug]/shows|contato/  PÚBLICO — widgets (agenda e formulário) para iframe em sites externos
-  admin/                   PAINEL SUPERADMIN (docs/admin.md): login/ + (painel)/ palcos, usuarios/bandas, usuarios/administradores, senha
+  admin/                   PAINEL SUPERADMIN (docs/admin.md): login/ + (painel)/ palcos, usuarios/bandas|contas|administradores, senha
   design-system/           galeria viva do design system (só em dev: /design-system)
   not-found.tsx            404 global
 components/
@@ -75,8 +81,10 @@ components/
   DashboardShell.tsx       menu lateral (gaveta no mobile) + header
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
 lib/
-  api.ts                   withBand, parseBody, jsonError, zodError, isUniqueViolation
-  session.ts               getSession; requireBandId/requireBandSession; requireAdminId/requireAdminSession (papel + conta ativa)
+  api.ts                   withBand (só ADMIN da banda por padrão; { viewer: true } libera leitura), withUser, withAdmin, parseBody, jsonError…
+  session.ts               getBandContext/requireBandContext (banda ativa + papel + canEdit), requireBandEditor, requireUserId, requireAdminId…
+  members.ts               convites (token só hash), lastAdminBlock, banda ativa (com teste) · band-roles.ts: labels/tons dos papéis
+  band-access.ts           criar banda com admin, achar/aceitar convite, cookie da banda ativa · band-invite.ts: convidar/vincular
   access.ts                regras de acesso por rota e papel (proxy.ts) — função pura com teste
   passwords.ts             senha provisória + hash · change-password.ts: troca da própria senha
   password-reset.ts        "esqueci minha senha": token (só hash), validade, URL segura, texto do email · email.ts: envio (Resend)
@@ -108,12 +116,13 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 ## Modelo de dados (resumo)
 
-- **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `passwordResetTokenHash`/`passwordResetExpiresAt` ("esqueci minha senha").
+- **User** — pessoa que faz login (`email` único, `passwordHash`, `disabledAt`, `mustChangePassword`, `passwordResetTokenHash/ExpiresAt`, `lastLoginAt`).
+- **BandMember** — integrante: `bandId`, `userId?` (vazio = convite pendente), `name`, `email`, `role` (`ADMIN | VIEWER`), `inviteTokenHash`/`inviteExpiresAt`, `joinedAt`. Únicos `(bandId, email)` e `(bandId, userId)`.
+- **Band** — tenant. `responsible`/`phone` (contato), `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `disabledAt` (banda desativada pelo painel). `email`/`passwordHash`/`mustChangePassword`/`passwordReset*` são **legado** (pré multi-bandas; anuláveis, não usar).
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`; `paymentDueDate` (vencimento do cachê, vazio = data do show) e `paidAt` (data do recebimento, preenchida ao marcar pago — `resolveShowPaidAt`), ambos data pura. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
-- **Band** (conta): `disabledAt` (desativada pelo painel; corta acesso na hora) e `mustChangePassword` (senha provisória).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
 - **FinanceEntry** — lançamento do Financeiro: `type` (`RECEITA | DESPESA`), `category` (`FinanceCategory`; quais valem por tipo em `lib/finance-categories.ts`, conferido no schema e no PATCH), `description`, `amountCents`, `date` e `paidAt` (datas puras; `paidAt` vazio = pendente), `showId?` (`onDelete: SetNull`). **O cachê do show não vira lançamento** — os totais somam `Show.cacheCents` + lançamentos (show cancelado fica fora).
 - **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), `notes` (observações da banda), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
@@ -133,22 +142,23 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 ## Convenções obrigatórias
 
 ### Multi-tenant / segurança
-- **Toda** query de Venue/Show/Lead deve filtrar por `bandId` da sessão. Por id: `findFirst({ where: { id, bandId } })`, ou `updateMany`/`deleteMany({ where: { id, bandId } })` checando `count` (uma query só). Nunca `findUnique/update/delete({ where: { id } })` sem checar posse antes.
+- **Toda** query de Venue/Show/Lead deve filtrar por `bandId` da banda ativa (`requireBandContext`/`withBand` — já conferem que o usuário é integrante). Por id: `findFirst({ where: { id, bandId } })`, ou `updateMany`/`deleteMany({ where: { id, bandId } })` checando `count` (uma query só). Nunca `findUnique/update/delete({ where: { id } })` sem checar posse antes.
 - Ao associar um Show a uma Venue, validar que a venue pertence à mesma banda (ver `app/api/shows/route.ts`).
-- Rotas públicas precisam ser liberadas explicitamente em `proxy.ts` (`/`, `/login`, `/cadastro`, `/esqueci-senha`, `/redefinir-senha`, `/api/auth/*`, `/api/register`, `/api/leads/ingest`, `/api/password/forgot|reset` e, em `isPublicIntegrationPath`, `/b/*`, `/embed/*`, `/embed.js`, `/api/public/*`). Qualquer nova rota é protegida por padrão.
+- Rotas públicas precisam ser liberadas explicitamente em `proxy.ts` (`/`, `/login`, `/cadastro`, `/esqueci-senha`, `/redefinir-senha`, `/convite/*`, `/api/auth/*`, `/api/register`, `/api/leads/ingest`, `/api/password/forgot|reset` e, em `isPublicIntegrationPath`, `/b/*`, `/embed/*`, `/embed.js`, `/api/public/*`). Qualquer nova rota é protegida por padrão.
 - **Privacidade da agenda:** toda saída pública de show passa por `toPublicShow` (lista fechada; cachê, pagamento, detalhes de evento particular e contatos da casa nunca saem). Detalhes e contratos em `docs/integracoes.md`.
 - Endpoints públicos ou de autenticação usam `rateLimit` (`lib/rate-limit.ts`). É por instância (em memória); para limite global, trocar a implementação por Redis/Upstash mantendo a assinatura.
 - Segredos de integração: guardar só hash (ver `lead-ingest-auth.ts`).
 - Nunca versionar `.env*` (só `.env.example`). Novas variáveis de ambiente devem ser adicionadas ao `.env.example`.
 
-### Papéis (banda × superadmin) — ver `docs/admin.md`
+### Papéis (usuário × superadmin; administrador × visualizador na banda) — ver `docs/admin.md`
 - Regras de acesso só em `lib/access.ts` (`decideAccess`) — o `proxy.ts` apenas executa. Mudou regra? Atualize `lib/access.test.ts`.
-- Rotas de banda: `withBand`/`requireBandId`; do painel: `withAdmin`/`requireAdminId`. Ambos conferem **papel e conta ativa no banco**.
+- Rotas de banda: `withBand` (escrita = só administrador da banda) / `requireBandContext` (páginas; use `canEdit` para mostrar ações) / `requireBandEditor(fallback)` (páginas de criar/editar); da conta: `withUser`/`requireUserId`; do painel: `withAdmin`/`requireAdminId`. Todos conferem **papel e conta ativa no banco**.
+- Visualizador nunca vê botão de ação: ao criar tela/ação nova, esconda-a sem `canEdit` (a API já recusa com 403).
 - Primeiro superadmin: `npm run admin:create -- --email … --name …` (recusa banco remoto sem `--confirm-remote`).
 - Login do painel é Server Action (`app/admin/login/actions.ts`): falhas não podem cair em `/login` (das bandas).
 
 ### Leitura e escrita
-- **Server Components** leem com Prisma direto: `const bandId = await requireBandId();` (redireciona se não logado). Use `select` só com os campos exibidos.
+- **Server Components** leem com Prisma direto: `const { bandId, canEdit } = await requireBandContext();` (redireciona se não logado ou sem banda). Use `select` só com os campos exibidos.
 - **Escrita**: formulários client usam `useJsonSubmit()` → `app/api/*` → `router.push(...)` + `router.refresh()`.
 - **Route handler** padrão:
   ```ts
@@ -184,7 +194,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`): Administrativo (Casas, Shows) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações, Minha banda). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). O nome do usuário no rodapé leva a `/conta`. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 
 ## Banco e migrations
@@ -211,7 +221,7 @@ npm run stages:images -- --hosts <bucket> --dry-run  # gera miniaturas (WebP 400
 # Banco LOCAL (PGlite, .local-db/) — valide migrations e features sem tocar em produção:
 npm run db:local          # sobe o banco (deixe rodando)
 npm run db:local:migrate  # prisma migrate deploy no banco local
-npm run db:local:seed     # banda demo: demo@local.test / senha-local-123, agenda /b/banda-demo
+npm run db:local:seed     # demo@local.test / senha-local-123 (admin de 2 bandas), viewer@local.test / senha-viewer-123, agenda /b/banda-demo
 npm run dev:local         # next dev apontando para o banco local
 ```
 

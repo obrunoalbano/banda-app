@@ -8,26 +8,33 @@ import {
   normalizeLeadIngestBody,
   publicAgendaSchema,
   publicLeadSchema,
-  registerBandSchema,
+  registerSchema,
   showCreateSchema,
   venueCreateSchema,
 } from "./validations";
 
-describe("registerBandSchema", () => {
+describe("registerSchema", () => {
   it("normaliza email e faz trim", () => {
-    const r = registerBandSchema.parse({
-      name: " Banda ",
-      responsible: "Ana",
-      phone: "11",
+    const r = registerSchema.parse({
+      name: " Ana ",
       email: " Ana@Exemplo.COM ",
       password: "12345678",
+      bandName: " Banda ",
+      phone: "",
     });
     expect(r.email).toBe("ana@exemplo.com");
-    expect(r.name).toBe("Banda");
+    expect(r.name).toBe("Ana");
+    expect(r.bandName).toBe("Banda");
+    expect(r.phone).toBeNull();
   });
   it("rejeita senha curta e nome só com espaços", () => {
-    const r = registerBandSchema.safeParse({ name: "  ", responsible: "a", phone: "1", email: "a@b.co", password: "123" });
+    const r = registerSchema.safeParse({ name: "  ", email: "a@b.co", password: "123", bandName: "B" });
     expect(r.success).toBe(false);
+  });
+  it("sem convite exige o nome da banda; com convite não", () => {
+    const base = { name: "Ana", email: "a@b.co", password: "12345678" };
+    expect(registerSchema.safeParse(base).success).toBe(false);
+    expect(registerSchema.safeParse({ ...base, inviteToken: "tok" }).success).toBe(true);
   });
 });
 

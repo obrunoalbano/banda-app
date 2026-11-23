@@ -1,6 +1,7 @@
 /**
  * Popula o banco LOCAL com uma banda de exemplo (recria a cada execução).
- * Login: demo@local.test / senha-local-123 · Agenda pública: /b/banda-demo
+ * Logins: demo@local.test / senha-local-123 (admin de 2 bandas) · viewer@local.test / senha-viewer-123
+ * (visualizador da Banda Demo) · Agenda pública: /b/banda-demo
  * Recusa rodar se a URL não for local (proteção contra apagar dados reais).
  */
 import bcrypt from "bcryptjs";
@@ -24,11 +25,28 @@ const inDays = (days) => {
 };
 
 const BAND = "demo-band";
-await client.query(`DELETE FROM "Band" WHERE id = $1 OR email = 'demo@local.test'`, [BAND]);
+const BAND2 = "demo-band-2";
+// Contas: Ana administra as duas bandas; Beto é visualizador da Banda Demo.
+await client.query(`DELETE FROM "Band" WHERE id IN ($1, $2) OR email = 'demo@local.test'`, [BAND, BAND2]);
+await client.query(`DELETE FROM "User" WHERE email IN ('demo@local.test', 'viewer@local.test')`);
 await client.query(
-  `INSERT INTO "Band" (id, name, responsible, phone, email, "passwordHash", slug, "publicAgendaEnabled", "updatedAt")
-   VALUES ($1, 'Banda Demo', 'Ana Demo', '(11) 99999-0000', 'demo@local.test', $2, 'banda-demo', true, now())`,
-  [BAND, bcrypt.hashSync("senha-local-123", 10)],
+  `INSERT INTO "User" (id, name, email, phone, "passwordHash", "updatedAt") VALUES
+     ('demo-user', 'Ana Demo', 'demo@local.test', '(11) 99999-0000', $1, now()),
+     ('demo-viewer', 'Beto Visualizador', 'viewer@local.test', NULL, $2, now())`,
+  [bcrypt.hashSync("senha-local-123", 10), bcrypt.hashSync("senha-viewer-123", 10)],
+);
+await client.query(
+  `INSERT INTO "Band" (id, name, responsible, phone, slug, "publicAgendaEnabled", "updatedAt") VALUES
+     ($1, 'Banda Demo', 'Ana Demo', '(11) 99999-0000', 'banda-demo', true, now()),
+     ($2, 'Segunda Banda', 'Ana Demo', '(11) 99999-0000', 'segunda-banda', false, now())`,
+  [BAND, BAND2],
+);
+await client.query(
+  `INSERT INTO "BandMember" (id, "bandId", "userId", name, email, role, "joinedAt", "updatedAt") VALUES
+     ('demo-m1', $1, 'demo-user', 'Ana Demo', 'demo@local.test', 'ADMIN', now(), now()),
+     ('demo-m2', $1, 'demo-viewer', 'Beto Visualizador', 'viewer@local.test', 'VIEWER', now(), now()),
+     ('demo-m3', $2, 'demo-user', 'Ana Demo', 'demo@local.test', 'ADMIN', now(), now())`,
+  [BAND, BAND2],
 );
 
 const venues = [
@@ -90,7 +108,8 @@ for (const [id, name, type, city, state, genres, instagram, status] of stages) {
 await client.end();
 console.log(`Seed ok.
   Painel admin:    http://localhost:3000/admin/login  (admin@local.test / senha-admin-123)
-  Login:           demo@local.test / senha-local-123
+  Login admin:     demo@local.test / senha-local-123   (administra Banda Demo e Segunda Banda)
+  Login visualiz.: viewer@local.test / senha-viewer-123 (só visualiza a Banda Demo)
   Agenda pública:  http://localhost:3000/b/banda-demo
   Widget:          http://localhost:3000/embed/banda-demo/shows?tema=escuro
   API:             http://localhost:3000/api/public/v1/bands/banda-demo/shows`);

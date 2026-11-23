@@ -10,7 +10,7 @@ import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -24,10 +24,12 @@ function parseStatusFilter(raw: string | undefined): VenueSendStatus | undefined
   return s as VenueSendStatus;
 }
 
-type PageProps = { searchParams: Promise<{ cidade?: string; status?: string; pagina?: string }> };
+type PageProps = {
+  searchParams: Promise<{ cidade?: string; status?: string; pagina?: string }>;
+};
 
 export default async function CasasPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const sp = await searchParams;
   const cidadeFilter = typeof sp.cidade === "string" ? sp.cidade.trim() : "";
   const statusFilter = parseStatusFilter(sp.status);
@@ -50,7 +52,14 @@ export default async function CasasPage({ searchParams }: PageProps) {
     prisma.venue.count({ where }),
     prisma.venue.findMany({
       where,
-      select: { id: true, name: true, city: true, state: true, valorCacheCents: true, sendStatus: true },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        state: true,
+        valorCacheCents: true,
+        sendStatus: true,
+      },
       orderBy: { updatedAt: "desc" },
       ...pageArgs(page),
     }),
@@ -67,9 +76,11 @@ export default async function CasasPage({ searchParams }: PageProps) {
         title="Casas de show"
         description="Listagem com status de envio, detalhes e edição."
         actions={
-          <ButtonLink href="/casas/nova" icon={AddIcon}>
-            Nova casa
-          </ButtonLink>
+          canEdit ? (
+            <ButtonLink href="/casas/nova" icon={AddIcon}>
+              Nova casa
+            </ButtonLink>
+          ) : null
         }
       />
 
@@ -86,13 +97,18 @@ export default async function CasasPage({ searchParams }: PageProps) {
           icon={VenueIcon}
           title="Nenhuma casa cadastrada"
           description="Cadastre as casas de show para acompanhar contatos, cachê e o envio da sua proposta."
-          action={{ href: "/casas/nova", label: "Cadastrar a primeira casa", primary: true }}
+          action={
+            canEdit
+              ? {
+                  href: "/casas/nova",
+                  label: "Cadastrar a primeira casa",
+                  primary: true,
+                }
+              : undefined
+          }
         />
       ) : venues.length === 0 ? (
-        <EmptyState
-          title="Nenhuma casa corresponde aos filtros"
-          action={{ href: "/casas", label: "Limpar filtros" }}
-        />
+        <EmptyState title="Nenhuma casa corresponde aos filtros" action={{ href: "/casas", label: "Limpar filtros" }} />
       ) : (
         <>
           <Table

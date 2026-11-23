@@ -10,7 +10,7 @@ import {
   type VenuePrefill,
 } from "@/lib/deals";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -54,8 +54,8 @@ async function loadDeal(bandId: string, dealId: string) {
 
 export default async function NovaCasaPage({ searchParams }: PageProps) {
   const dealId = (await searchParams).negociacao;
-  const bandId = dealId ? await requireBandId() : null;
-  const deal = bandId && dealId ? await loadDeal(bandId, dealId) : null;
+  const { bandId } = await requireBandEditor("/casas");
+  const deal = dealId ? await loadDeal(bandId, dealId) : null;
   const usable = deal && canAddToVenues(deal);
 
   return (
