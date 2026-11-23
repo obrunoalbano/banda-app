@@ -10,36 +10,37 @@ datasource db {
 }
 
 model Band {
-  id               String   @id @default(cuid())
-  name             String
-  responsible      String
-  phone            String
-  email            String   @unique
-  passwordHash     String
+  id                     String         @id @default(cuid())
+  name                   String
+  responsible            String
+  phone                  String
+  email                  String         @unique
+  passwordHash           String
   /// Identificador público (URL da agenda: /b/<slug>). Editável; trocar quebra widgets instalados.
-  slug             String   @unique
+  slug                   String         @unique
   /// Opt-in: agenda pública (página /b/<slug>, widget e API pública de shows).
-  publicAgendaEnabled Boolean @default(false)
+  publicAgendaEnabled    Boolean        @default(false)
   /// Opt-in: formulário de contato público (página /b/<slug>/contato, widget e POST público).
-  leadFormEnabled  Boolean  @default(false)
+  leadFormEnabled        Boolean        @default(false)
   /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
-  leadAllowedOrigins String[] @default([])
+  leadAllowedOrigins     String[]       @default([])
   /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
-  disabledAt       DateTime?
+  disabledAt             DateTime?
   /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
-  mustChangePassword Boolean @default(false)
+  mustChangePassword     Boolean        @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
-  leadIngestTokenHash String? @unique
+  leadIngestTokenHash    String?        @unique
   /// "Esqueci minha senha": SHA-256 (hex) do token enviado por email (o token nunca é salvo). Um por vez; uso único.
-  passwordResetTokenHash String? @unique
+  passwordResetTokenHash String?        @unique
   /// Validade do token de redefinição de senha.
   passwordResetExpiresAt DateTime?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  venues           Venue[]
-  shows            Show[]
-  leads            Lead[]
-  deals            Deal[]
+  createdAt              DateTime       @default(now())
+  updatedAt              DateTime       @updatedAt
+  venues                 Venue[]
+  shows                  Show[]
+  leads                  Lead[]
+  deals                  Deal[]
+  financeEntries         FinanceEntry[]
 }
 
 enum VenueSendStatus {
@@ -54,26 +55,26 @@ enum ShowPaymentStatus {
 }
 
 model Venue {
-  id          String            @id @default(cuid())
-  bandId      String
-  band        Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
-  name        String
-  responsible String
-  phone       String
-  email       String
-  city        String
-  state       String
+  id              String          @id @default(cuid())
+  bandId          String
+  band            Band            @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name            String
+  responsible     String
+  phone           String
+  email           String
+  city            String
+  state           String
   /// Cachê de referência da casa, em centavos (R$ 1.500,00 = 150000).
   valorCacheCents Int?
-  instagram   String?
-  sendStatus  VenueSendStatus   @default(NAO_ENVIADO)
+  instagram       String?
+  sendStatus      VenueSendStatus @default(NAO_ENVIADO)
   /// Palco do diretório (Explorar Palcos) de onde a casa veio. Uma banda não adiciona o mesmo palco duas vezes.
-  stageId     String?
-  stage       Stage?            @relation(fields: [stageId], references: [id], onDelete: SetNull)
-  createdAt   DateTime          @default(now())
-  updatedAt   DateTime          @updatedAt
-  shows       Show[]
-  deals       Deal[]
+  stageId         String?
+  stage           Stage?          @relation(fields: [stageId], references: [id], onDelete: SetNull)
+  createdAt       DateTime        @default(now())
+  updatedAt       DateTime        @updatedAt
+  shows           Show[]
+  deals           Deal[]
 
   @@unique([bandId, stageId])
   @@index([bandId, updatedAt])
@@ -82,67 +83,72 @@ model Venue {
 }
 
 model Show {
-  id              String             @id @default(cuid())
-  bandId          String
-  band            Band               @relation(fields: [bandId], references: [id], onDelete: Cascade)
-  venueId         String?
+  id                  String            @id @default(cuid())
+  bandId              String
+  band                Band              @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  venueId             String?
   /// NoAction: uma casa com shows não pode ser apagada (preserva o histórico).
   /// Não usar Restrict: bloquearia o cascade Band → Venue/Show na mesma instrução.
-  venue           Venue?             @relation(fields: [venueId], references: [id], onDelete: NoAction)
+  venue               Venue?            @relation(fields: [venueId], references: [id], onDelete: NoAction)
   privateEventDetails String?
   privateCity         String?
   privateState        String?
   /// Cachê do show em centavos. Snapshot: não muda se o cachê da casa mudar depois.
   cacheCents          Int?
-  date            DateTime
-  time            String
-  paymentStatus   ShowPaymentStatus  @default(AGUARDANDO_PAGAMENTO)
+  date                DateTime
+  time                String
+  paymentStatus       ShowPaymentStatus @default(AGUARDANDO_PAGAMENTO)
+  /// Vencimento do cachê (data pura). Vazio = vence na data do show.
+  paymentDueDate      DateTime?
+  /// Data em que o cachê foi recebido (data pura). Preenchida ao marcar como pago.
+  paidAt              DateTime?
   /// Aparece na agenda pública. Padrão definido na API: show em casa = true, evento particular = false.
-  isPublic        Boolean            @default(false)
+  isPublic            Boolean           @default(false)
   /// Link de ingressos exibido na agenda pública.
-  ticketUrl       String?
+  ticketUrl           String?
   /// Show cancelado continua listado (como "Cancelado") em vez de sumir.
-  cancelledAt     DateTime?
-  createdAt       DateTime           @default(now())
-  updatedAt       DateTime           @updatedAt
+  cancelledAt         DateTime?
+  createdAt           DateTime          @default(now())
+  updatedAt           DateTime          @updatedAt
+  financeEntries      FinanceEntry[]
 
   @@index([bandId, date])
   @@index([venueId])
 }
 
 model Lead {
-  id          String   @id @default(cuid())
-  bandId      String
-  band        Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
-  name        String
-  email       String
-  whatsapp    String?
-  eventDate   String?
-  city        String?
-  eventType   String?
+  id               String   @id @default(cuid())
+  bandId           String
+  band             Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name             String
+  email            String
+  whatsapp         String?
+  eventDate        String?
+  city             String?
+  eventType        String?
   eventDescription String?
-  metadata    Json?
-  source      String?
-  createdAt   DateTime @default(now())
-  deals       Deal[]
+  metadata         Json?
+  source           String?
+  createdAt        DateTime @default(now())
+  deals            Deal[]
 
   @@index([bandId, createdAt])
 }
 
 /// Usuário da equipe do produto (painel /admin). Separado de Band: não é cliente/tenant.
 model AdminUser {
-  id                 String   @id @default(cuid())
+  id                 String    @id @default(cuid())
   name               String
-  email              String   @unique
+  email              String    @unique
   passwordHash       String
   /// Senha provisória: obriga a trocar no próximo acesso.
-  mustChangePassword Boolean  @default(false)
+  mustChangePassword Boolean   @default(false)
   disabledAt         DateTime?
   lastLoginAt        DateTime?
-  createdAt          DateTime @default(now())
-  updatedAt          DateTime @updatedAt
-  stagesCreated      Stage[]  @relation("StageCreatedBy")
-  stagesVerified     Stage[]  @relation("StageVerifiedBy")
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+  stagesCreated      Stage[]   @relation("StageCreatedBy")
+  stagesVerified     Stage[]   @relation("StageVerifiedBy")
 }
 
 enum StageType {
@@ -165,48 +171,48 @@ enum StageStatus {
 /// Palco da base curada (Explorar Palcos). Global: não pertence a nenhuma banda.
 /// Só canais INSTITUCIONAIS — nada de nome/telefone pessoal de responsável (LGPD).
 model Stage {
-  id            String      @id @default(cuid())
-  name          String
-  type          StageType
-  city          String
-  state         String
+  id             String      @id @default(cuid())
+  name           String
+  type           StageType
+  city           String
+  state          String
   /// Bairro/região dentro da cidade (opcional).
-  neighborhood  String?
+  neighborhood   String?
   /// Estilos que o palco costuma programar (ex.: "rock", "sertanejo").
-  genres        String[]    @default([])
-  instagram     String?
-  website       String?
+  genres         String[]    @default([])
+  instagram      String?
+  website        String?
   /// Telefone comercial do estabelecimento.
-  publicPhone   String?
+  publicPhone    String?
   /// WhatsApp comercial do estabelecimento (canal de contato principal).
-  whatsapp      String?
-  publicEmail   String?
-  capacity      Int?
+  whatsapp       String?
+  publicEmail    String?
+  capacity       Int?
   /// Link de ORIGEM da imagem (ex.: bucket da equipe). Nunca exibido — usado para (re)processar.
-  imageUrl      String?
+  imageUrl       String?
   /// Única imagem servida: miniatura WebP 400×300 no nosso storage. null = ainda não processada.
-  imageThumbUrl String?
+  imageThumbUrl  String?
   /// Última atividade conhecida (programação/música ao vivo). Quando a fonte só tem o ano, 1º/jan.
   lastActivityAt DateTime?
   /// Origem de importação em lote (ex.: "base-equipe") + id na origem — reimportar atualiza em vez de duplicar.
   externalSource String?
   externalId     String?
   /// O que programa, dias de música ao vivo, observações da curadoria.
-  notes         String?
+  notes          String?
   /// De onde veio a informação (site, Instagram, ligação…) — para correções/remoções.
-  sourceNote    String?
-  status        StageStatus @default(DRAFT)
-  verifiedAt    DateTime?
-  verifiedBy    AdminUser?  @relation("StageVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
-  verifiedById  String?
-  createdBy     AdminUser?  @relation("StageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
-  createdById   String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
+  sourceNote     String?
+  status         StageStatus @default(DRAFT)
+  verifiedAt     DateTime?
+  verifiedBy     AdminUser?  @relation("StageVerifiedBy", fields: [verifiedById], references: [id], onDelete: SetNull)
+  verifiedById   String?
+  createdBy      AdminUser?  @relation("StageCreatedBy", fields: [createdById], references: [id], onDelete: SetNull)
+  createdById    String?
+  createdAt      DateTime    @default(now())
+  updatedAt      DateTime    @updatedAt
   /// Casas das bandas criadas a partir deste palco (sinal de interesse para a curadoria).
-  venues        Venue[]
+  venues         Venue[]
   /// Negociações de bandas com este palco (Fluxo de contatos).
-  deals         Deal[]
+  deals          Deal[]
 
   @@unique([externalSource, externalId])
   @@index([status, state, city])
@@ -260,4 +266,53 @@ model Deal {
   @@index([leadId])
   @@index([stageId])
   @@index([venueId])
+}
+
+enum FinanceEntryType {
+  RECEITA
+  DESPESA
+}
+
+/// Categorias de lançamento. Quais valem para receita/despesa: lib/finance-categories.ts.
+enum FinanceCategory {
+  TRANSPORTE
+  ALIMENTACAO
+  HOSPEDAGEM
+  SOM_E_LUZ
+  MUSICO_FREELANCER
+  EQUIPE
+  COMISSAO
+  EQUIPAMENTO
+  ENSAIO
+  DIVULGACAO
+  TAXAS_E_IMPOSTOS
+  CACHE_EXTRA
+  MERCH
+  PATROCINIO
+  DIREITOS_AUTORAIS
+  OUTROS
+}
+
+/// Lançamento financeiro (Financeiro → Lançamentos): receita ou despesa, avulsa ou de um show.
+/// O cachê do show NÃO vira lançamento — fica em Show.cacheCents (sem duplicar).
+model FinanceEntry {
+  id          String           @id @default(cuid())
+  bandId      String
+  band        Band             @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  type        FinanceEntryType
+  category    FinanceCategory
+  description String
+  amountCents Int
+  /// Data do lançamento (data pura, UTC 00:00): competência/vencimento.
+  date        DateTime
+  /// Data em que foi pago/recebido (data pura). Vazio = pendente.
+  paidAt      DateTime?
+  /// Show relacionado (opcional). Apagar o show mantém o lançamento, sem vínculo.
+  showId      String?
+  show        Show?            @relation(fields: [showId], references: [id], onDelete: SetNull)
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+
+  @@index([bandId, date])
+  @@index([showId])
 }

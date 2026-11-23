@@ -7,6 +7,7 @@ import {
   CloseIcon,
   EpkIcon,
   ExploreIcon,
+  FinanceEntryIcon,
   FinanceIcon,
   ShieldIcon,
   SocialIcon,
@@ -35,6 +36,8 @@ type NavItem = {
   children?: { href: string; label: string }[];
   /** Ainda não disponível: aparece desabilitado com selo "Em breve" (sem link). */
   soon?: boolean;
+  /** Ativo só na própria URL (quando outro item do menu é sub-rota dele, ex.: /financeiro × /financeiro/lancamentos). */
+  exact?: boolean;
 };
 
 type NavGroup = {
@@ -56,7 +59,13 @@ const NAV_GROUPS: NavGroup[] = [
       { href: "/shows", label: "Shows", icon: ShowIcon, matchNova: false },
     ],
   },
-  { label: "Financeiro", items: [], soon: { icon: FinanceIcon } },
+  {
+    label: "Financeiro",
+    items: [
+      { href: "/financeiro", label: "Visão geral", icon: FinanceIcon, exact: true },
+      { href: "/financeiro/lancamentos", label: "Lançamentos", icon: FinanceEntryIcon },
+    ],
+  },
   {
     label: "Marketing",
     items: [
@@ -130,7 +139,7 @@ function SoonBadge() {
 
 function navActive(pathname: string, item: NavItem): boolean {
   if (pathname === item.href) return true;
-  if (!pathname.startsWith(`${item.href}/`)) return false;
+  if (item.exact || !pathname.startsWith(`${item.href}/`)) return false;
   if (item.matchNova === false) return !pathname.startsWith(`${item.href}/nova`);
   return true;
 }

@@ -35,6 +35,9 @@ app/
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
     contatos/              Lead: lista (paginada, coluna Fluxo), detalhe ("Adicionar ao fluxo"), editar
+    financeiro/            Financeiro (docs/financeiro.md): visão geral (resumo do período, atrasados, próximos),
+      lancamentos/         FinanceEntry: lista (filtro período/tipo/situação), nova (?showId&tipo), [id]/editar
+      exportar/            GET CSV do período (route handler com sessão; fora de /api por ser download)
     fluxo/                 Fluxo de contatos: quadro por etapa (Deal) — docs/modulos-marketing.md §4.4
     explorar/              Explorar Palcos: diretório curado (só PUBLISHED), "Adicionar ao fluxo"
     integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
@@ -44,13 +47,14 @@ app/
   api/                     só ESCRITA (leitura é feita direto nos Server Components)
     auth/[...nextauth]     next-auth
     register               cadastro público (rate limit por IP)
+    password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
     band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste), band/password (POST)
     admin/*                SUPERADMIN (withAdmin): stages, bands (+reset-password), admins, password
-    password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
+    finance-entries (POST), finance-entries/[id] (PATCH, DELETE)  lançamentos do Financeiro
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
     public/v1/bands/[slug]/shows  PÚBLICO — API da agenda (GET, CORS *, cache CDN)
@@ -75,12 +79,14 @@ lib/
   session.ts               getSession; requireBandId/requireBandSession; requireAdminId/requireAdminSession (papel + conta ativa)
   access.ts                regras de acesso por rota e papel (proxy.ts) — função pura com teste
   passwords.ts             senha provisória + hash · change-password.ts: troca da própria senha
+  password-reset.ts        "esqueci minha senha": token (só hash), validade, URL segura, texto do email · email.ts: envio (Resend)
   stages.ts                labels/tons de Stage, reverificação
   explore.ts               Explorar Palcos: filtros, where (sempre PUBLISHED), ordem
   deals.ts                 Fluxo de contatos: etapas/labels/tons, origem, canAddToVenues, pré-preenchimento da casa
   validations.ts           schemas Zod que validam E normalizam
-  password-reset.ts        "esqueci minha senha": token (só hash), validade, URL segura, texto do email · email.ts: envio (Resend)
-  shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas)
+  shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas, data de recebimento)
+  finance.ts               Financeiro: resumo do período, atraso/vencimento, resultado do show, período, CSV (com teste)
+  finance-categories.ts    tipos/categorias de lançamento (labels, categorias por tipo) · finance-query.ts: consultas
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
   rate-limit.ts            rate limit em memória
   lead-ingest-auth.ts      extração/geração/hash do token de ingestão
@@ -104,11 +110,12 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 - **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `passwordResetTokenHash`/`passwordResetExpiresAt` ("esqueci minha senha").
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
-- **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
+- **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`; `paymentDueDate` (vencimento do cachê, vazio = data do show) e `paidAt` (data do recebimento, preenchida ao marcar pago — `resolveShowPaidAt`), ambos data pura. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Band** (conta): `disabledAt` (desativada pelo painel; corta acesso na hora) e `mustChangePassword` (senha provisória).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
+- **FinanceEntry** — lançamento do Financeiro: `type` (`RECEITA | DESPESA`), `category` (`FinanceCategory`; quais valem por tipo em `lib/finance-categories.ts`, conferido no schema e no PATCH), `description`, `amountCents`, `date` e `paidAt` (datas puras; `paidAt` vazio = pendente), `showId?` (`onDelete: SetNull`). **O cachê do show não vira lançamento** — os totais somam `Show.cacheCents` + lançamentos (show cancelado fica fora).
 - **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), `notes` (observações da banda), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
 
 Todas as entidades pertencem a uma banda (`bandId`, `onDelete: Cascade`). Exceção: `Show.venueId` é `onDelete: NoAction` — **casa com shows não pode ser apagada** (a API devolve 409 e a UI desabilita o botão). Não troque para `Restrict`: quebraria o cascade Band → Venue/Show.
@@ -177,7 +184,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`): Administrativo (Casas, Shows) · Financeiro (em breve) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações, Minha banda). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`): Administrativo (Casas, Shows) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações, Minha banda). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 
 ## Banco e migrations
@@ -222,4 +229,5 @@ Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de ne
 - Débitos de UX detalhados: seção 12 de `docs/design-system.md`.
 - Marketing: EPK Profissional, Explorar Palcos e Abordagem com IA desenhados em `docs/modulos-marketing.md`. Feito: painel superadmin com cadastro de palcos (base do Explorar). Feito: Explorar Palcos das bandas (`/explorar`, §4.2.1) e Fluxo de contatos (`/fluxo`, §4.4). Pendente: EPK (Supabase Storage), Abordagem com IA (Claude com cota).
 - Painel: sem log de auditoria das ações da equipe; importação em lote só por script (sem upload no painel); superadmin não redefine senha de outro admin pela tela (usar `npm run admin:create -- --reset`).
+- Financeiro V1 feito (`docs/financeiro.md`). Pendente (v2): sinal/pagamento parcial, divisão entre integrantes, comissão automática, recibo/PDF, visão de caixa (por data de pagamento).
 - Integrações — fase 3 (iCal, redirecionamento de slug antigo, webhooks, email de novo lead, captcha): `docs/integracoes.md`.

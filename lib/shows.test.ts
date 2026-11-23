@@ -4,6 +4,7 @@ import {
   resolveCancelledAt,
   resolveShowCache,
   resolveShowLocation,
+  resolveShowPaidAt,
   resolveShowVisibility,
   toDateOnlyString,
   todayDateOnly,
@@ -107,5 +108,28 @@ describe("todayDateOnly", () => {
   it("usa o fuso de São Paulo (01:00 UTC ainda é o dia anterior)", () => {
     expect(todayDateOnly(new Date("2026-10-12T01:00:00Z")).toISOString()).toBe("2026-10-11T00:00:00.000Z");
     expect(todayDateOnly(new Date("2026-10-12T15:00:00Z")).toISOString()).toBe("2026-10-12T00:00:00.000Z");
+  });
+});
+
+describe("resolveShowPaidAt", () => {
+  const today = new Date(Date.UTC(2026, 10, 23));
+  const earlier = new Date(Date.UTC(2026, 10, 1));
+  it("aguardando sempre limpa a data", () => {
+    expect(resolveShowPaidAt({ inputStatus: "AGUARDANDO_PAGAMENTO", inputPaidAt: earlier, today })).toBeNull();
+    expect(
+      resolveShowPaidAt({ inputStatus: undefined, inputPaidAt: undefined, currentStatus: "AGUARDANDO_PAGAMENTO", today }),
+    ).toBeNull();
+  });
+  it("virou pago sem data → hoje", () => {
+    expect(
+      resolveShowPaidAt({ inputStatus: "PAGO", inputPaidAt: undefined, currentStatus: "AGUARDANDO_PAGAMENTO", currentPaidAt: null, today }),
+    ).toEqual(today);
+    expect(resolveShowPaidAt({ inputStatus: "PAGO", inputPaidAt: null, today })).toEqual(today);
+  });
+  it("usa a data informada ou mantém a atual", () => {
+    expect(resolveShowPaidAt({ inputStatus: "PAGO", inputPaidAt: earlier, today })).toEqual(earlier);
+    expect(
+      resolveShowPaidAt({ inputStatus: undefined, inputPaidAt: undefined, currentStatus: "PAGO", currentPaidAt: earlier, today }),
+    ).toEqual(earlier);
   });
 });

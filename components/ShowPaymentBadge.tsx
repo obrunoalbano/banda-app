@@ -8,6 +8,8 @@ const tones: Record<ShowPaymentStatus, Tone> = {
   AGUARDANDO_PAGAMENTO: "warning",
 };
 
-export function ShowPaymentBadge({ status }: { status: ShowPaymentStatus }) {
+/** `overdue` (cachê vencido e não pago — `isShowOverdue`) troca "Aguardando" por "Atrasado". */
+export function ShowPaymentBadge({ status, overdue }: { status: ShowPaymentStatus; overdue?: boolean }) {
+  if (overdue && status === "AGUARDANDO_PAGAMENTO") return <Badge tone="danger">Atrasado</Badge>;
   return <Badge tone={tones[status]}>{SHOW_PAYMENT_LABELS[status]}</Badge>;
 }

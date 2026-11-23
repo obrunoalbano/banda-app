@@ -1,6 +1,7 @@
 "use client";
 
 import { PublicShowList } from "@/components/public/PublicShowList";
+import { FinanceEntryStatusBadge } from "@/components/FinanceEntryStatusBadge";
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Alert } from "@/components/ui/Alert";
@@ -17,6 +18,7 @@ import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/componen
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Sheet } from "@/components/ui/Sheet";
+import { Stat } from "@/components/ui/Stat";
 import { containerClass, type ButtonVariant } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
@@ -205,6 +207,20 @@ export function Gallery() {
           </DetailItem>
           <DetailItem label="Instagram">{null}</DetailItem>
         </DetailList>
+      </Section>
+
+      <Section id="indicadores" title="Indicadores (Stat)">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Stat label="Recebido" value={formatCents(650000)} />
+          <Stat label="A receber" value={formatCents(150000)} hint={`${formatCents(150000)} atrasado`} />
+          <Stat label="Resultado" value={formatCents(-12000)} hint="Receitas − despesas" tone="danger" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <ShowPaymentBadge status="AGUARDANDO_PAGAMENTO" overdue />
+          <FinanceEntryStatusBadge status="PAGO" />
+          <FinanceEntryStatusBadge status="PENDENTE" />
+          <FinanceEntryStatusBadge status="ATRASADO" />
+        </div>
       </Section>
 
       <Section id="tabela" title="Tabela (vira cards no mobile)">

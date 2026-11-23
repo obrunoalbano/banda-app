@@ -3,18 +3,31 @@ import { jsonError, parseBody, withBand } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   parseDateOnly,
+  parseOptionalDateOnly,
   resolveCancelledAt,
   resolveShowCache,
   resolveShowLocation,
+  resolveShowPaidAt,
   resolveShowVisibility,
+  todayDateOnly,
 } from "@/lib/shows";
 import { showCreateSchema } from "@/lib/validations";
 
 export const POST = withBand(async (request, { bandId }) => {
   const parsed = await parseBody(request, showCreateSchema);
   if (!parsed.ok) return parsed.response;
-  const { date, time, cacheCents, paymentStatus, isPublic, ticketUrl, cancelled, ...locationInput } =
-    parsed.data;
+  const {
+    date,
+    time,
+    cacheCents,
+    paymentStatus,
+    paymentDueDate,
+    paidAt,
+    isPublic,
+    ticketUrl,
+    cancelled,
+    ...locationInput
+  } = parsed.data;
 
   const location = resolveShowLocation(locationInput);
 
@@ -30,6 +43,10 @@ export const POST = withBand(async (request, { bandId }) => {
 
   const dateValue = parseDateOnly(date);
   if (!dateValue) return jsonError(400, "Data inválida");
+  const dueDate = parseOptionalDateOnly(paymentDueDate);
+  if (!dueDate.ok) return jsonError(400, "Vencimento inválido");
+  const paidDate = parseOptionalDateOnly(paidAt);
+  if (!paidDate.ok) return jsonError(400, "Data de pagamento inválida");
 
   const show = await prisma.show.create({
     data: {
@@ -45,6 +62,8 @@ export const POST = withBand(async (request, { bandId }) => {
         venueCacheCents,
       }),
       ...(paymentStatus && { paymentStatus }),
+      paymentDueDate: dueDate.value ?? null,
+      paidAt: resolveShowPaidAt({ inputStatus: paymentStatus, inputPaidAt: paidDate.value, today: todayDateOnly() }),
       isPublic: resolveShowVisibility({ inputIsPublic: isPublic, venueId: location.venueId }),
       ticketUrl: ticketUrl ?? null,
       cancelledAt: resolveCancelledAt(cancelled, null),
