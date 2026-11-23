@@ -6,6 +6,11 @@ import { prisma } from "@/lib/prisma";
 export const POST = withBand(async (request, { bandId }) =>
   changeOwnPassword(request, {
     load: () => prisma.band.findUnique({ where: { id: bandId }, select: { passwordHash: true } }),
-    save: (data) => prisma.band.update({ where: { id: bandId }, data }),
+    // Trocar a senha também invalida um link de "esqueci minha senha" pendente.
+    save: (data) =>
+      prisma.band.update({
+        where: { id: bandId },
+        data: { ...data, passwordResetTokenHash: null, passwordResetExpiresAt: null },
+      }),
   }),
 );

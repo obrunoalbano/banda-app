@@ -46,5 +46,7 @@ export {
   Archive as ArchiveIcon,
   Send as PublishIcon,
   SquareKanban as DealIcon,
+  Eye as ShowPasswordIcon,
+  EyeOff as HidePasswordIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

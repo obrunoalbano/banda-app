@@ -223,6 +223,17 @@ export const changePasswordSchema = z
     path: ["newPassword"],
   });
 
+/** "Esqueci minha senha": pede o link por email. */
+export const forgotPasswordSchema = z.object({
+  email: email(),
+});
+
+/** Define a nova senha com o token recebido por email. */
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(1, "Link inválido").max(200, "Link inválido"),
+  newPassword,
+});
+
 /* ── Painel superadmin ──────────────────────────────────────────────── */
 
 /** Superadmin cria conta de banda (senha provisória gerada no servidor). */

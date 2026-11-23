@@ -1,4 +1,4 @@
-# Design system — Agenda da banda
+# Design system — banda app
 
 Fonte única de verdade para **qualquer UI** do projeto. Antes de criar ou alterar uma tela, leia este documento; ao terminar, rode `npm run check` (o lint barra cores fora do sistema e o teste de tokens barra contraste insuficiente).
 
@@ -157,7 +157,8 @@ Todos ligam `<label htmlFor>` via `useId`, mostram `*` quando `required` e aceit
 
 | Componente | Uso |
 | --- | --- |
-| `TextField` | Texto, email, data, hora, senha (`type`). |
+| `TextField` | Texto, email, data, hora (`type`). |
+| `PasswordField` | Senha, com botão de mostrar/ocultar (ícone olho, `aria-pressed`). Use em **todo** campo de senha. |
 | `TextAreaField` | Textos longos (observações, descrição). |
 | `SelectField` | Opções fechadas (`<option>` como filhos). |
 | `PhoneField` | Telefone/WhatsApp com máscara BR `(11) 99999-0000`. `value` + `onValueChange`. |
@@ -186,7 +187,7 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | `EmptyState` | Lista vazia: `icon`, `title`, `description`, `action` (`primary: true` = criar o primeiro). |
 | `CodeBlock` | Valores técnicos (URL, token, JSON) com `copyable` e `wrap`. |
 | `StatusPage` | Telas de não encontrado / erro (ícone, título, descrição, ações). |
-| `Brand` / `PRODUCT_NAME` | Marca (ícone + "Agenda da banda"). Nunca escreva o nome do produto à mão. |
+| `Brand` / `PRODUCT_NAME` | Marca: logotipo só em texto, "**banda** app" (minúsculo; "app" em `text-fg-muted`). Nunca escreva o nome do produto à mão. |
 | `AuthLayout` | Telas públicas de autenticação (marca + card + link alternativo no rodapé). |
 
 Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`/`containerWideClass`, `toneClass`.
@@ -195,7 +196,7 @@ Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(v
 
 ## 5. Modelos de página
 
-Toda página do dashboard exporta `metadata = { title: "…" }` (vira "Título · Agenda da banda" na aba) e começa com `<div className={containerClass}>`.
+Toda página do dashboard exporta `metadata = { title: "…" }` (vira "Título · banda app" na aba) e começa com `<div className={containerClass}>`.
 
 ### Listagem (`/casas`, `/shows`, `/contatos`)
 ```

@@ -21,7 +21,7 @@ export const ADMIN_PASSWORD_PAGE = "/admin/senha";
 export const ADMIN_LOGIN_PAGE = "/admin/login";
 
 /** APIs sem sessão (cada uma tem sua própria proteção: token, rate limit, opt-in…). */
-const PUBLIC_API = new Set(["/api/register", "/api/leads/ingest"]);
+const PUBLIC_API = new Set(["/api/register", "/api/leads/ingest", "/api/password/forgot", "/api/password/reset"]);
 
 /** Páginas públicas do app (sem sessão). */
 function isPublicPage(path: string, isProduction: boolean): boolean {
@@ -29,6 +29,8 @@ function isPublicPage(path: string, isProduction: boolean): boolean {
     path === "/" ||
     path === "/login" ||
     path === "/cadastro" ||
+    path === "/esqueci-senha" ||
+    path === "/redefinir-senha" ||
     // Galeria do design system: só existe em desenvolvimento (a página dá 404 em produção).
     (!isProduction && path === "/design-system")
   );

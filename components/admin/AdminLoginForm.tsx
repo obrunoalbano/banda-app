@@ -3,7 +3,7 @@
 import { adminLogin, type AdminLoginState } from "@/app/admin/login/actions";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/fields";
+import { PasswordField, TextField } from "@/components/ui/fields";
 import { useActionState } from "react";
 
 export function AdminLoginForm() {
@@ -19,7 +19,7 @@ export function AdminLoginForm() {
         required
         defaultValue={state.email}
       />
-      <TextField label="Senha" name="password" type="password" autoComplete="current-password" required />
+      <PasswordField label="Senha" name="password" autoComplete="current-password" required />
       <Button type="submit" loading={pending} className="mt-2 w-full">
         {pending ? "Entrando…" : "Entrar no painel"}
       </Button>

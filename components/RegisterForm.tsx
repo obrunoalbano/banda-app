@@ -2,7 +2,7 @@
 
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { PhoneField, TextField } from "@/components/ui/fields";
+import { PasswordField, PhoneField, TextField } from "@/components/ui/fields";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
@@ -46,9 +46,8 @@ export function RegisterForm() {
         value={form.email}
         onChange={(e) => set({ email: e.target.value })}
       />
-      <TextField
+      <PasswordField
         label="Senha"
-        type="password"
         autoComplete="new-password"
         minLength={8}
         required

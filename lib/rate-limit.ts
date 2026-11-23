@@ -47,6 +47,12 @@ export function resetRateLimits() {
 export const RATE_LIMITS = {
   /** Tentativas de login por email+IP. */
   login: { limit: 10, windowMs: 15 * 60_000 },
+  /** Pedidos de "esqueci minha senha" por IP. */
+  forgotPasswordIp: { limit: 5, windowMs: 15 * 60_000 },
+  /** Emails de redefinição por conta (evita encher a caixa de alguém). */
+  forgotPasswordEmail: { limit: 3, windowMs: 60 * 60_000 },
+  /** Tentativas de redefinir a senha com token, por IP. */
+  resetPassword: { limit: 10, windowMs: 15 * 60_000 },
   /** Cadastros por IP. */
   register: { limit: 5, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */

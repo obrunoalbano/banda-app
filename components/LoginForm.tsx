@@ -1,11 +1,13 @@
 "use client";
 
 import { signIn } from "next-auth/react";
+import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useState } from "react";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
-import { TextField } from "@/components/ui/fields";
+import { PasswordField, TextField } from "@/components/ui/fields";
+import { subtleLinkClass } from "@/components/ui/styles";
 
 /** Evita open redirect; só paths relativos internos. */
 function safeCallbackUrl(raw: string | null): string {
@@ -37,6 +39,7 @@ export function LoginForm() {
   const searchParams = useSearchParams();
   const callbackUrl = safeCallbackUrl(searchParams.get("callbackUrl"));
   const registered = searchParams.get("registered") === "1";
+  const passwordReset = searchParams.get("reset") === "1";
   const urlAuthError = messageForAuthError(searchParams.get("error"), searchParams.get("code"));
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -66,6 +69,7 @@ export function LoginForm() {
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {registered && <Alert tone="success">Cadastro concluído. Faça login com seu email e senha.</Alert>}
+      {passwordReset && <Alert tone="success">Senha alterada. Entre com a nova senha.</Alert>}
       {(error ?? urlAuthError) && <Alert>{error ?? urlAuthError}</Alert>}
       <TextField
         label="Email"
@@ -76,15 +80,17 @@ export function LoginForm() {
         value={email}
         onChange={(e) => setEmail(e.target.value)}
       />
-      <TextField
+      <PasswordField
         label="Senha"
         name="password"
-        type="password"
         autoComplete="current-password"
         required
         value={password}
         onChange={(e) => setPassword(e.target.value)}
       />
+      <Link href="/esqueci-senha" className={`${subtleLinkClass} -mt-2 self-end`}>
+        Esqueci minha senha
+      </Link>
       <Button type="submit" loading={loading} className="mt-2 w-full">
         {loading ? "Entrando…" : "Entrar"}
       </Button>

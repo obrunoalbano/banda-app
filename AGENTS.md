@@ -30,6 +30,7 @@ O client Prisma é gerado em `app/generated/prisma` (gitignored). Importe tipos/
 app/
   page.tsx                 landing (redireciona p/ /casas se logado)
   login/, cadastro/        páginas públicas
+  esqueci-senha/, redefinir-senha/  "esqueci minha senha" da banda (link por email — docs/admin.md §2)
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
@@ -46,6 +47,7 @@ app/
     band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste), band/password (POST)
     admin/*                SUPERADMIN (withAdmin): stages, bands (+reset-password), admins, password
+    password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
@@ -77,6 +79,7 @@ lib/
   explore.ts               Explorar Palcos: filtros, where (sempre PUBLISHED), ordem
   deals.ts                 Fluxo de contatos: etapas/labels/tons, origem, canAddToVenues, pré-preenchimento da casa
   validations.ts           schemas Zod que validam E normalizam
+  password-reset.ts        "esqueci minha senha": token (só hash), validade, URL segura, texto do email · email.ts: envio (Resend)
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas)
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
   rate-limit.ts            rate limit em memória
@@ -99,7 +102,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 ## Modelo de dados (resumo)
 
-- **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador).
+- **Band** — conta. `email` único, `passwordHash`, `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `passwordResetTokenHash`/`passwordResetExpiresAt` ("esqueci minha senha").
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
@@ -125,7 +128,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 ### Multi-tenant / segurança
 - **Toda** query de Venue/Show/Lead deve filtrar por `bandId` da sessão. Por id: `findFirst({ where: { id, bandId } })`, ou `updateMany`/`deleteMany({ where: { id, bandId } })` checando `count` (uma query só). Nunca `findUnique/update/delete({ where: { id } })` sem checar posse antes.
 - Ao associar um Show a uma Venue, validar que a venue pertence à mesma banda (ver `app/api/shows/route.ts`).
-- Rotas públicas precisam ser liberadas explicitamente em `proxy.ts` (`/`, `/login`, `/cadastro`, `/api/auth/*`, `/api/register`, `/api/leads/ingest` e, em `isPublicIntegrationPath`, `/b/*`, `/embed/*`, `/embed.js`, `/api/public/*`). Qualquer nova rota é protegida por padrão.
+- Rotas públicas precisam ser liberadas explicitamente em `proxy.ts` (`/`, `/login`, `/cadastro`, `/esqueci-senha`, `/redefinir-senha`, `/api/auth/*`, `/api/register`, `/api/leads/ingest`, `/api/password/forgot|reset` e, em `isPublicIntegrationPath`, `/b/*`, `/embed/*`, `/embed.js`, `/api/public/*`). Qualquer nova rota é protegida por padrão.
 - **Privacidade da agenda:** toda saída pública de show passa por `toPublicShow` (lista fechada; cachê, pagamento, detalhes de evento particular e contatos da casa nunca saem). Detalhes e contratos em `docs/integracoes.md`.
 - Endpoints públicos ou de autenticação usam `rateLimit` (`lib/rate-limit.ts`). É por instância (em memória); para limite global, trocar a implementação por Redis/Upstash mantendo a assinatura.
 - Segredos de integração: guardar só hash (ver `lead-ingest-auth.ts`).

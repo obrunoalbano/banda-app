@@ -12,7 +12,7 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CheckboxField, CurrencyField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { CheckboxField, CurrencyField, PasswordField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
@@ -165,6 +165,7 @@ export function Gallery() {
           <form className="grid max-w-xl gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
             <TextField label="Nome da casa" className="sm:col-span-2" required defaultValue="Bar do Zé" />
             <PhoneField label="Telefone" value={phone} onValueChange={setPhone} />
+            <PasswordField label="Senha" autoComplete="new-password" defaultValue="senha-de-exemplo" />
             <SelectField label="Status de envio" defaultValue="ENVIADO">
               <option value="NAO_ENVIADO">Não enviado</option>
               <option value="ENVIADO">Enviado</option>

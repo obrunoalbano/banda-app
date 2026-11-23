@@ -1,9 +1,10 @@
 "use client";
 
-import { useId } from "react";
+import { useId, useState } from "react";
 import { centsFromDigits, formatCentsPlain } from "@/lib/money";
 import { maskPhoneBr } from "@/lib/format";
-import { hintClass, inputClass, labelClass } from "./styles";
+import { HidePasswordIcon, ShowPasswordIcon } from "./icons";
+import { hintClass, iconButtonClass, inputClass, labelClass } from "./styles";
 
 /*
  * Campos de formulário com <label htmlFor> ligado ao controle (acessibilidade).
@@ -53,6 +54,40 @@ export function TextField({ label, hint, className, ...props }: WrapperProps & I
         className={inputClass}
         {...props}
       />
+    </FieldWrapper>
+  );
+}
+
+/** Senha com botão de mostrar/ocultar (o tipo volta a "password" ao recarregar a tela). */
+export function PasswordField({ label, hint, className, ...props }: WrapperProps & Omit<InputProps, "type">) {
+  const id = useId();
+  const [visible, setVisible] = useState(false);
+  return (
+    <FieldWrapper id={id} label={label} hint={hint} className={className} required={props.required}>
+      <div className="relative">
+        <input
+          id={id}
+          type={visible ? "text" : "password"}
+          aria-describedby={hint ? `${id}-hint` : undefined}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+          className={`${inputClass} pr-11`}
+          {...props}
+        />
+        <button
+          type="button"
+          onClick={() => setVisible((v) => !v)}
+          aria-label={visible ? "Ocultar senha" : "Mostrar senha"}
+          aria-pressed={visible}
+          aria-controls={id}
+          title={visible ? "Ocultar senha" : "Mostrar senha"}
+          disabled={props.disabled}
+          className={`${iconButtonClass("sm")} absolute inset-y-0 right-1 my-auto`}
+        >
+          {visible ? <HidePasswordIcon aria-hidden /> : <ShowPasswordIcon aria-hidden />}
+        </button>
+      </div>
     </FieldWrapper>
   );
 }
