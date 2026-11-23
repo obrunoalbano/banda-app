@@ -3,11 +3,14 @@ import { jsonError, parseBody, withBand, zodError } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
 import {
   parseDateOnly,
+  parseOptionalDateOnly,
   resolveCancelledAt,
   resolveShowCache,
   resolveShowLocation,
+  resolveShowPaidAt,
   resolveShowVisibility,
   toDateOnlyString,
+  todayDateOnly,
 } from "@/lib/shows";
 import { showCreateSchema, showUpdateSchema } from "@/lib/validations";
 
@@ -19,8 +22,18 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
 
   const parsed = await parseBody(request, showUpdateSchema);
   if (!parsed.ok) return parsed.response;
-  const { date, time, cacheCents, paymentStatus, isPublic, ticketUrl, cancelled, ...locationInput } =
-    parsed.data;
+  const {
+    date,
+    time,
+    cacheCents,
+    paymentStatus,
+    paymentDueDate,
+    paidAt,
+    isPublic,
+    ticketUrl,
+    cancelled,
+    ...locationInput
+  } = parsed.data;
 
   const location = resolveShowLocation(locationInput, existing);
 
@@ -48,6 +61,10 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
     if (!parsedDate) return jsonError(400, "Data inválida");
     dateValue = parsedDate;
   }
+  const dueDate = parseOptionalDateOnly(paymentDueDate);
+  if (!dueDate.ok) return jsonError(400, "Vencimento inválido");
+  const paidDate = parseOptionalDateOnly(paidAt);
+  if (!paidDate.ok) return jsonError(400, "Data de pagamento inválida");
 
   const show = await prisma.show.update({
     where: { id },
@@ -62,6 +79,14 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
       ...(dateValue && { date: dateValue }),
       ...(time !== undefined && { time }),
       ...(paymentStatus && { paymentStatus }),
+      ...(dueDate.value !== undefined && { paymentDueDate: dueDate.value }),
+      paidAt: resolveShowPaidAt({
+        inputStatus: paymentStatus,
+        inputPaidAt: paidDate.value,
+        currentStatus: existing.paymentStatus,
+        currentPaidAt: existing.paidAt,
+        today: todayDateOnly(),
+      }),
       isPublic: resolveShowVisibility({
         inputIsPublic: isPublic,
         currentIsPublic: existing.isPublic,

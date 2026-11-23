@@ -1,5 +1,14 @@
 import { z } from "zod";
-import { DealStep, ShowPaymentStatus, StageStatus, StageType, VenueSendStatus } from "@/app/generated/prisma/enums";
+import {
+  DealStep,
+  FinanceCategory,
+  FinanceEntryType,
+  ShowPaymentStatus,
+  StageStatus,
+  StageType,
+  VenueSendStatus,
+} from "@/app/generated/prisma/enums";
+import { isCategoryAllowed } from "./finance-categories";
 import { MAX_CENTS } from "@/lib/money";
 import { slugError } from "@/lib/slug";
 import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
@@ -91,9 +100,16 @@ export const dealUpdateSchema = z
   .object({ step: z.enum(DealStep).optional(), notes: optionalText(5000) })
   .refine((d) => d.step !== undefined || d.notes !== undefined, "Nada para alterar");
 
+/** Data pura "YYYY-MM-DD" (a rota converte com `parseDateOnly`). */
+const dateOnly = (message = "Data inválida") => z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, message);
+
+/** Data pura opcional: "" → null. */
+const optionalDateOnly = (message?: string) =>
+  z.preprocess((v) => (v === "" ? null : v), z.union([dateOnly(message), z.null()]).optional());
+
 const showBaseSchema = z.object({
   venueId: optionalText(64),
-  date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, "Data inválida"),
+  date: dateOnly(),
   time: z
     .string()
     .trim()
@@ -104,6 +120,10 @@ const showBaseSchema = z.object({
   /** Omitido na criação de show em casa → herda o cachê atual da casa. */
   cacheCents: centsSchema.optional().nullable(),
   paymentStatus: z.enum(ShowPaymentStatus).optional(),
+  /** Vencimento do cachê; vazio = vence na data do show. */
+  paymentDueDate: optionalDateOnly("Vencimento inválido"),
+  /** Data do recebimento; só vale com status pago (vazio = hoje). */
+  paidAt: optionalDateOnly("Data de pagamento inválida"),
   /** Omitido → padrão por tipo (casa = público, particular = oculto). */
   isPublic: z.boolean().optional(),
   ticketUrl: optionalUrl(500),
@@ -131,6 +151,29 @@ export const showCreateSchema = showBaseSchema.superRefine((data, ctx) => {
 });
 
 export const showUpdateSchema = showBaseSchema.partial();
+
+/* ── Financeiro ─────────────────────────────────────────────────────── */
+
+const financeEntryBaseSchema = z.object({
+  type: z.enum(FinanceEntryType, "Escolha receita ou despesa"),
+  category: z.enum(FinanceCategory, "Escolha a categoria"),
+  description: requiredText("Descreva o lançamento").pipe(z.string().max(200, "Descrição muito longa")),
+  amountCents: centsSchema.min(1, "Informe o valor"),
+  date: dateOnly(),
+  /** Vazio/null = pendente. */
+  paidAt: optionalDateOnly("Data de pagamento inválida"),
+  /** Show relacionado (opcional); a rota confere se é da banda. */
+  showId: optionalText(64),
+});
+
+const categoryMatchesType = (d: { type?: FinanceEntryType; category?: FinanceCategory }) =>
+  d.type === undefined || d.category === undefined || isCategoryAllowed(d.type, d.category);
+const categoryIssue = { message: "Categoria não combina com o tipo do lançamento", path: ["category"] };
+
+export const financeEntryCreateSchema = financeEntryBaseSchema.refine(categoryMatchesType, categoryIssue);
+
+/** PATCH parcial: a rota revalida tipo × categoria contra o estado final. */
+export const financeEntryUpdateSchema = financeEntryBaseSchema.partial().refine(categoryMatchesType, categoryIssue);
 
 /** Configuração da agenda pública da banda (tela Integrações). */
 export const publicAgendaSchema = z.object({
@@ -222,6 +265,17 @@ export const changePasswordSchema = z
     message: "A nova senha deve ser diferente da atual",
     path: ["newPassword"],
   });
+
+/** "Esqueci minha senha": pede o link por email. */
+export const forgotPasswordSchema = z.object({
+  email: email(),
+});
+
+/** Define a nova senha com o token recebido por email. */
+export const resetPasswordSchema = z.object({
+  token: z.string().trim().min(1, "Link inválido").max(200, "Link inválido"),
+  newPassword,
+});
 
 /* ── Painel superadmin ──────────────────────────────────────────────── */
 

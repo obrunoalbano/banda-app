@@ -11,7 +11,7 @@ Engenharia reversa (nível de produto) do **Palcos do Brasil** e o desenho da no
 | Módulo | Itens | Estado |
 | --- | --- | --- |
 | **Administrativo** | Casas, Shows | ✅ |
-| **Financeiro** | — | Em breve |
+| **Financeiro** | Visão geral, Lançamentos | ✅ V1 (`docs/financeiro.md`) |
 | **Marketing** | Contatos ✅ · **Fluxo de contatos** ✅ · Redes Sociais (em breve) · **EPK Profissional** · **Explorar Palcos** ✅ · **Abordagem com IA** | EPK e Abordagem em desenho (este documento) |
 | **Configurações** | Integrações (Agenda, Contatos), Minha banda | ✅ |
 

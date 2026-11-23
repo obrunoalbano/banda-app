@@ -23,10 +23,17 @@ export async function createStorage(driver, { bucket = "media" } = {}) {
   }
   if (driver !== "supabase") throw new Error(`storage desconhecido: ${driver}`);
 
-  const base = process.env.SUPABASE_URL?.replace(/\/$/, "");
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!base || !key) {
+  const rawBase = process.env.SUPABASE_URL?.trim();
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!rawBase || !key) {
     throw new Error("Defina SUPABASE_URL e SUPABASE_SERVICE_ROLE_KEY no .env.local para usar o Supabase Storage.");
+  }
+  // Só a origem: o painel do Supabase mostra a URL com "/rest/v1/", que quebraria o caminho do Storage.
+  const base = new URL(rawBase).origin;
+  if (key.startsWith("sb_publishable_")) {
+    throw new Error(
+      "SUPABASE_SERVICE_ROLE_KEY é a chave pública (sb_publishable_…). Use a secret key (sb_secret_…) ou a service_role legada.",
+    );
   }
   const headers = { Authorization: `Bearer ${key}`, apikey: key };
 

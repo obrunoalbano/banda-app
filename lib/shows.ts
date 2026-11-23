@@ -1,3 +1,5 @@
+import type { ShowPaymentStatus } from "@/app/generated/prisma/enums";
+
 /**
  * Regras de domínio de Show compartilhadas entre criação (POST) e edição (PATCH).
  *
@@ -16,6 +18,18 @@ export function parseDateOnly(value: string): Date | null {
     return null;
   }
   return date;
+}
+
+/**
+ * Data pura opcional vinda do schema: `undefined` = não informada (mantém), `null` = limpar.
+ * `ok: false` quando a data não existe (ex.: 2026-02-31).
+ */
+export function parseOptionalDateOnly(
+  value: string | null | undefined,
+): { ok: true; value: Date | null | undefined } | { ok: false } {
+  if (value === undefined || value === null) return { ok: true, value };
+  const date = parseDateOnly(value);
+  return date ? { ok: true, value: date } : { ok: false };
 }
 
 /** Date (UTC 00:00) → "YYYY-MM-DD" para inputs `type="date"`. */
@@ -133,4 +147,30 @@ const ymdInAppTz = new Intl.DateTimeFormat("en-CA", { timeZone: "America/Sao_Pau
 /** "Hoje" como data pura (UTC 00:00) no fuso da app — para filtrar shows futuros. */
 export function todayDateOnly(now: Date = new Date()): Date {
   return parseDateOnly(ymdInAppTz.format(now))!;
+}
+
+/**
+ * Data de recebimento do cachê (data pura).
+ * - status final "aguardando" → sempre `null`;
+ * - informada no input → usa a informada (`null` com status pago = hoje);
+ * - não informada → mantém a atual ou, se acabou de virar pago, hoje.
+ */
+export function resolveShowPaidAt({
+  inputStatus,
+  inputPaidAt,
+  currentStatus,
+  currentPaidAt,
+  today,
+}: {
+  inputStatus: ShowPaymentStatus | undefined;
+  inputPaidAt: Date | null | undefined;
+  /** `undefined` na criação. */
+  currentStatus?: ShowPaymentStatus;
+  currentPaidAt?: Date | null;
+  today: Date;
+}): Date | null {
+  const status = inputStatus ?? currentStatus ?? "AGUARDANDO_PAGAMENTO";
+  if (status !== "PAGO") return null;
+  if (inputPaidAt !== undefined) return inputPaidAt ?? today;
+  return currentPaidAt ?? today;
 }

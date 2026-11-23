@@ -27,6 +27,8 @@ export default async function EditarShowPage({ params }: PageProps) {
         privateState: true,
         cacheCents: true,
         paymentStatus: true,
+        paymentDueDate: true,
+        paidAt: true,
         isPublic: true,
         ticketUrl: true,
         cancelledAt: true,
@@ -46,7 +48,13 @@ export default async function EditarShowPage({ params }: PageProps) {
       <ShowForm
         mode="edit"
         venues={venues}
-        show={{ ...show, date: toDateOnlyString(show.date), cancelled: show.cancelledAt !== null }}
+        show={{
+          ...show,
+          date: toDateOnlyString(show.date),
+          paymentDueDate: show.paymentDueDate ? toDateOnlyString(show.paymentDueDate) : null,
+          paidAt: show.paidAt ? toDateOnlyString(show.paidAt) : null,
+          cancelled: show.cancelledAt !== null,
+        }}
       />
     </div>
   );

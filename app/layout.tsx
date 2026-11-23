@@ -1,4 +1,5 @@
 import { Analytics } from "@vercel/analytics/next";
+import { PRODUCT_NAME } from "@/components/ui/Brand";
 import type { Metadata } from "next";
 import { Geist, Geist_Mono } from "next/font/google";
 import "./globals.css";
@@ -14,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: { template: "%s · Agenda da banda", default: "Agenda da banda" },
+  title: { template: `%s · ${PRODUCT_NAME}`, default: PRODUCT_NAME },
   description: "Gerencie casas de show, agenda de shows e contatos da sua banda",
 };
 

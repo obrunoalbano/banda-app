@@ -1,4 +1,5 @@
 import { AdminLoginForm } from "@/components/admin/AdminLoginForm";
+import { PRODUCT_NAME } from "@/components/ui/Brand";
 import { AuthLayout } from "@/components/ui/AuthLayout";
 import type { Metadata } from "next";
 
@@ -9,7 +10,7 @@ export default function AdminLoginPage() {
   return (
     <AuthLayout
       title="Painel administrativo"
-      description="Acesso restrito à equipe da Agenda da banda."
+      description={`Acesso restrito à equipe do ${PRODUCT_NAME}.`}
     >
       <AdminLoginForm />
     </AuthLayout>

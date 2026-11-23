@@ -24,6 +24,7 @@
 ## 2. Senhas
 - Conta criada ou redefinida pelo painel recebe **senha provisória** (`generateTempPassword`, `xxxx-xxxx-xxxx`, sem caracteres ambíguos), exibida **uma única vez** (`TempPasswordReveal`); só o hash é salvo; `mustChangePassword = true`.
 - Troca da própria senha: `POST /api/band/password` e `POST /api/admin/password` (`lib/change-password.ts`): confere a atual, grava a nova, limpa `mustChangePassword` e atualiza o JWT (`unstable_update`).
+- **Esqueci minha senha (só bandas):** `/esqueci-senha` → `POST /api/password/forgot` (resposta igual exista ou não a conta; rate limit por IP e por email) envia por email um link `/redefinir-senha?token=…` → `POST /api/password/reset`. Token de 256 bits; o banco guarda só o SHA-256 (`Band.passwordResetTokenHash`), vale 1 hora, uso único, um por vez (pedir de novo invalida o anterior; trocar a senha logado também). Regras em `lib/password-reset.ts` (com teste). Em produção o link usa **só** `NEXT_PUBLIC_APP_URL` (nunca o Host da requisição — evita *reset poisoning*); sem ela, nada é enviado. Email: `lib/email.ts` (API da Resend, `RESEND_API_KEY` + `EMAIL_FROM`); sem essas variáveis, em desenvolvimento o email sai no console do `npm run dev`. Sessões JWT já abertas continuam válidas após a redefinição (mesma limitação da troca de senha).
 - Depois de trocar, o formulário faz **navegação completa** (`window.location.assign`): o roteador do Next guardou pré-carregamentos feitos durante a senha provisória (todos redirecionando para a troca).
 
 ## 3. Primeiro acesso (bootstrap)

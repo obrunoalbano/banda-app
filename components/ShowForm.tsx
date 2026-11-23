@@ -30,6 +30,10 @@ type ShowFormData = {
   privateState: string | null;
   cacheCents: number | null;
   paymentStatus: ShowPaymentStatus;
+  /** YYYY-MM-DD ou null. */
+  paymentDueDate: string | null;
+  /** YYYY-MM-DD ou null. */
+  paidAt: string | null;
   isPublic: boolean;
   ticketUrl: string | null;
   cancelled: boolean;
@@ -59,6 +63,8 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
     privateState: show?.privateState?.toUpperCase() ?? "",
     cacheCents: show?.cacheCents ?? null,
     paymentStatus: show?.paymentStatus ?? ("AGUARDANDO_PAGAMENTO" as ShowPaymentStatus),
+    paymentDueDate: show?.paymentDueDate ?? "",
+    paidAt: show?.paidAt ?? "",
     isPublic: show?.isPublic ?? true,
     ticketUrl: show?.ticketUrl ?? "",
     cancelled: show?.cancelled ?? false,
@@ -81,6 +87,9 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
         privateState: isPrivateEvent ? form.privateState : null,
         cacheCents: form.cacheCents,
         paymentStatus: form.paymentStatus,
+        paymentDueDate: form.paymentDueDate,
+        // Vazio com status pago = a API usa hoje.
+        paidAt: form.paymentStatus === "PAGO" ? form.paidAt : null,
         isPublic: form.isPublic,
         ticketUrl: form.ticketUrl,
         cancelled: form.cancelled,
@@ -179,7 +188,6 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
         />
         <SelectField
           label="Status de pagamento"
-          className="sm:col-span-2"
           value={form.paymentStatus}
           onChange={(e) => set({ paymentStatus: e.target.value as ShowPaymentStatus })}
         >
@@ -189,6 +197,23 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
             </option>
           ))}
         </SelectField>
+        {form.paymentStatus === "PAGO" ? (
+          <TextField
+            label="Recebido em"
+            type="date"
+            value={form.paidAt}
+            onChange={(e) => set({ paidAt: e.target.value })}
+            hint="Vazio = hoje."
+          />
+        ) : (
+          <TextField
+            label="Vencimento do cachê"
+            type="date"
+            value={form.paymentDueDate}
+            onChange={(e) => set({ paymentDueDate: e.target.value })}
+            hint="Vazio = vence na data do show."
+          />
+        )}
       </div>
 
       <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-4">

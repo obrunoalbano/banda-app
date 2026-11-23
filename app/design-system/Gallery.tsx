@@ -1,6 +1,7 @@
 "use client";
 
 import { PublicShowList } from "@/components/public/PublicShowList";
+import { FinanceEntryStatusBadge } from "@/components/FinanceEntryStatusBadge";
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { StatusBadge } from "@/components/StatusBadge";
 import { Alert } from "@/components/ui/Alert";
@@ -12,11 +13,12 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
 import { EmptyState } from "@/components/ui/EmptyState";
-import { CheckboxField, CurrencyField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
+import { CheckboxField, CurrencyField, PasswordField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
 import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Sheet } from "@/components/ui/Sheet";
+import { Stat } from "@/components/ui/Stat";
 import { containerClass, type ButtonVariant } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
@@ -165,6 +167,7 @@ export function Gallery() {
           <form className="grid max-w-xl gap-4 sm:grid-cols-2" onSubmit={(e) => e.preventDefault()}>
             <TextField label="Nome da casa" className="sm:col-span-2" required defaultValue="Bar do Zé" />
             <PhoneField label="Telefone" value={phone} onValueChange={setPhone} />
+            <PasswordField label="Senha" autoComplete="new-password" defaultValue="senha-de-exemplo" />
             <SelectField label="Status de envio" defaultValue="ENVIADO">
               <option value="NAO_ENVIADO">Não enviado</option>
               <option value="ENVIADO">Enviado</option>
@@ -204,6 +207,20 @@ export function Gallery() {
           </DetailItem>
           <DetailItem label="Instagram">{null}</DetailItem>
         </DetailList>
+      </Section>
+
+      <Section id="indicadores" title="Indicadores (Stat)">
+        <div className="grid gap-3 sm:grid-cols-3">
+          <Stat label="Recebido" value={formatCents(650000)} />
+          <Stat label="A receber" value={formatCents(150000)} hint={`${formatCents(150000)} atrasado`} />
+          <Stat label="Resultado" value={formatCents(-12000)} hint="Receitas − despesas" tone="danger" />
+        </div>
+        <div className="mt-3 flex flex-wrap gap-2">
+          <ShowPaymentBadge status="AGUARDANDO_PAGAMENTO" overdue />
+          <FinanceEntryStatusBadge status="PAGO" />
+          <FinanceEntryStatusBadge status="PENDENTE" />
+          <FinanceEntryStatusBadge status="ATRASADO" />
+        </div>
       </Section>
 
       <Section id="tabela" title="Tabela (vira cards no mobile)">

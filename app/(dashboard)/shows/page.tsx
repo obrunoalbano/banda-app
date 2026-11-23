@@ -8,10 +8,12 @@ import { ButtonLink } from "@/components/ui/Button";
 import { AddIcon, ShowIcon } from "@/components/ui/icons";
 import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
+import { isShowOverdue } from "@/lib/finance";
 import { formatDateOnly, monthLabel } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
 import { requireBandId } from "@/lib/session";
+import { todayDateOnly } from "@/lib/shows";
 import {
   currentYearMonthUtc,
   groupYearMonths,
@@ -93,6 +95,7 @@ export default async function ShowsPage({ searchParams }: PageProps) {
         ? monthBoundsUtc(effectiveAno, effectiveMes)
         : yearBoundsUtc(effectiveAno);
 
+  const today = todayDateOnly();
   const now = currentYearMonthUtc();
   const shortcutParams = new URLSearchParams({
     ...(casaIdFilter && { casaId: casaIdFilter }),
@@ -116,6 +119,7 @@ export default async function ShowsPage({ searchParams }: PageProps) {
             time: true,
             cacheCents: true,
             paymentStatus: true,
+            paymentDueDate: true,
             cancelledAt: true,
             privateCity: true,
             privateState: true,
@@ -211,7 +215,7 @@ export default async function ShowsPage({ searchParams }: PageProps) {
                   {show.time}
                 </Td>
                 <Td label="Pagamento">
-                  <ShowPaymentBadge status={show.paymentStatus} />
+                  <ShowPaymentBadge status={show.paymentStatus} overdue={isShowOverdue(show, today)} />
                 </Td>
                 <Td label="Ações" align="right">
                   <Link href={`/shows/${show.id}`} className={linkClass}>

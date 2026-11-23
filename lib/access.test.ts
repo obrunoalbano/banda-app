@@ -9,7 +9,7 @@ const opts = { isProduction: true };
 const decide = (path: string, s: SessionClaims) => decideAccess(path, s, opts);
 
 describe("áreas públicas", () => {
-  it.each(["/", "/login", "/cadastro", "/b/banda", "/embed/banda/shows", "/embed.js", "/api/public/v1/bands/x/shows", "/api/auth/session", "/api/register", "/api/leads/ingest", "/admin/login"])(
+  it.each(["/", "/login", "/cadastro", "/b/banda", "/embed/banda/shows", "/embed.js", "/api/public/v1/bands/x/shows", "/api/auth/session", "/api/register", "/api/leads/ingest", "/esqueci-senha", "/redefinir-senha", "/api/password/forgot", "/api/password/reset", "/admin/login"])(
     "%s sem sessão → allow",
     (path) => expect(decide(path, null)).toEqual({ type: "allow" }),
   );

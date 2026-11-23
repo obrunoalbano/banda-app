@@ -2,7 +2,7 @@
 
 import { FormActions } from "@/components/FormActions";
 import { Alert } from "@/components/ui/Alert";
-import { TextField } from "@/components/ui/fields";
+import { PasswordField } from "@/components/ui/fields";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useState } from "react";
 
@@ -48,17 +48,15 @@ export function ChangePasswordForm({
       ) : null}
       {error ? <Alert>{error}</Alert> : null}
       {done ? <Alert tone="success">Senha alterada.</Alert> : null}
-      <TextField
+      <PasswordField
         label={forced ? "Senha provisória" : "Senha atual"}
-        type="password"
         autoComplete="current-password"
         required
         value={form.currentPassword}
         onChange={(e) => setForm((f) => ({ ...f, currentPassword: e.target.value }))}
       />
-      <TextField
+      <PasswordField
         label="Nova senha"
-        type="password"
         autoComplete="new-password"
         minLength={8}
         required
@@ -66,9 +64,8 @@ export function ChangePasswordForm({
         onChange={(e) => setForm((f) => ({ ...f, newPassword: e.target.value }))}
         hint="Mínimo de 8 caracteres"
       />
-      <TextField
+      <PasswordField
         label="Confirme a nova senha"
-        type="password"
         autoComplete="new-password"
         minLength={8}
         required

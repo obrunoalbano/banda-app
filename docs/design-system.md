@@ -1,4 +1,4 @@
-# Design system — Agenda da banda
+# Design system — banda app
 
 Fonte única de verdade para **qualquer UI** do projeto. Antes de criar ou alterar uma tela, leia este documento; ao terminar, rode `npm run check` (o lint barra cores fora do sistema e o teste de tokens barra contraste insuficiente).
 
@@ -157,7 +157,8 @@ Todos ligam `<label htmlFor>` via `useId`, mostram `*` quando `required` e aceit
 
 | Componente | Uso |
 | --- | --- |
-| `TextField` | Texto, email, data, hora, senha (`type`). |
+| `TextField` | Texto, email, data, hora (`type`). |
+| `PasswordField` | Senha, com botão de mostrar/ocultar (ícone olho, `aria-pressed`). Use em **todo** campo de senha. |
 | `TextAreaField` | Textos longos (observações, descrição). |
 | `SelectField` | Opções fechadas (`<option>` como filhos). |
 | `PhoneField` | Telefone/WhatsApp com máscara BR `(11) 99999-0000`. `value` + `onValueChange`. |
@@ -181,12 +182,13 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | `Table` + `Tr` + `Td` | Listagens. `caption` (sr-only) obrigatório; **todo `Td` recebe `label`** (vira rótulo no mobile). `strong` = coluna principal (link para o detalhe); `numeric`; `align="right"` = ações. |
 | `Pagination` + `parsePage`/`pageArgs` | `?pagina=N`, 50 por página, preserva filtros via `searchParams`. |
 | `FilterBar` + `FilterField` | Filtros de listagem como `<form method="get">` (estado na URL). Aplicar/Limpar inclusos; `extraActions` para atalhos. |
-| `Badge` | Status curto (1–3 palavras) por `tone`. Componentes de domínio: `StatusBadge`, `ShowPaymentBadge`. |
+| `Badge` | Status curto (1–3 palavras) por `tone`. Componentes de domínio: `StatusBadge`, `ShowPaymentBadge` (`overdue` → "Atrasado"), `FinanceEntryStatusBadge` (Pago · Pendente · Atrasado). |
+| `Stat` | Indicador numérico de resumo (rótulo, valor grande `tabular`, `hint`). `tone="danger"` só quando o valor tem significado (ex.: resultado negativo). Em grade: `grid gap-3 sm:grid-cols-2 lg:grid-cols-5`. |
 | `Alert` | Feedback em bloco: `tone` `danger`(padrão)·`success`·`warning`·`info`; `title` opcional. |
 | `EmptyState` | Lista vazia: `icon`, `title`, `description`, `action` (`primary: true` = criar o primeiro). |
 | `CodeBlock` | Valores técnicos (URL, token, JSON) com `copyable` e `wrap`. |
 | `StatusPage` | Telas de não encontrado / erro (ícone, título, descrição, ações). |
-| `Brand` / `PRODUCT_NAME` | Marca (ícone + "Agenda da banda"). Nunca escreva o nome do produto à mão. |
+| `Brand` / `PRODUCT_NAME` | Marca: logotipo só em texto, "**banda** app" (minúsculo; "app" em `text-fg-muted`). Nunca escreva o nome do produto à mão. |
 | `AuthLayout` | Telas públicas de autenticação (marca + card + link alternativo no rodapé). |
 
 Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(variant,size)`, `iconButtonClass(size)`, `inputClass`/`inputSmClass`, `labelClass`, `hintClass`, `linkClass`, `subtleLinkClass`, `containerClass`/`containerNarrowClass`/`containerWideClass`, `toneClass`.
@@ -195,7 +197,7 @@ Receitas de classe (`styles.ts`) para casos sem componente: `cx`, `buttonClass(v
 
 ## 5. Modelos de página
 
-Toda página do dashboard exporta `metadata = { title: "…" }` (vira "Título · Agenda da banda" na aba) e começa com `<div className={containerClass}>`.
+Toda página do dashboard exporta `metadata = { title: "…" }` (vira "Título · banda app" na aba) e começa com `<div className={containerClass}>`.
 
 ### Listagem (`/casas`, `/shows`, `/contatos`)
 ```
@@ -252,7 +254,7 @@ Para itens com foto e ações (não cabem numa tabela): `FilterBar` + contagem (
 
 ## 6. Padrões de interação
 
-- **Navegação:** menu lateral por módulos — *Administrativo* (Casas, Shows), *Financeiro* (em breve), *Marketing* (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Recurso ainda não lançado aparece **desabilitado** (sem link, `aria-disabled`) com "Em breve" numa segunda linha abaixo do nome (nomes longos não são cortados); módulo inteiro não lançado mostra só o título com o selo. Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`.
+- **Navegação:** menu lateral por módulos — *Administrativo* (Casas, Shows), *Financeiro* (Visão geral, Lançamentos), *Marketing* (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) e *Configurações* (Integrações → Agenda, Contatos; Minha banda). Recurso ainda não lançado aparece **desabilitado** (sem link, `aria-disabled`) com "Em breve" numa segunda linha abaixo do nome (nomes longos não são cortados); módulo inteiro não lançado mostra só o título com o selo. Itens com `children` mostram submenu indentado (menu expandido); o filho ativo recebe `aria-current`, o pai fica destacado. Com o menu recolhido, só o ícone do pai aparece (ativo para qualquer filho). Recolhível no desktop (só ícones com tooltip; preferência salva), gaveta no mobile (fecha com Esc, clique fora ou ao navegar). Item ativo com `aria-current="page"`. Nova seção → adicionar em `NAV_GROUPS` de `components/DashboardShell.tsx`. Item cuja URL é prefixo de outro item (`/financeiro` × `/financeiro/lancamentos`) usa `exact: true`.
 - **Envio de formulário:** botão com `loading` (spinner + "Salvando…"), erro da API em `Alert` no topo, validação nativa (`required`, `type`, `minLength`) + Zod no servidor.
 - **Confirmação:** ações irreversíveis ou com efeito externo usam `ConfirmButton` (nunca `window.confirm`/`alert`). O título é uma pergunta curta; a descrição explica a consequência; o botão de confirmação repete o verbo.
 - **Bloqueio explicado:** quando uma ação não é permitida, desabilite e explique com `disabledReason` (ex.: casa com shows não pode ser removida).
