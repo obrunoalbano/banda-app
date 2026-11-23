@@ -6,7 +6,7 @@ import { PasswordField } from "@/components/ui/fields";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useState } from "react";
 
-/** Troca da própria senha (banda: /api/band/password · superadmin: /api/admin/password). */
+/** Troca da própria senha (usuário: /api/account/password · superadmin: /api/admin/password). */
 export function ChangePasswordForm({
   endpoint,
   forced,

@@ -9,7 +9,7 @@ import { DEAL_SOURCE_LABELS } from "@/lib/deals";
 import { instagramHref, whatsappHref } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -19,7 +19,7 @@ import { notFound } from "next/navigation";
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function CasaDetalhePage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const { id } = await params;
   const venue = await prisma.venue.findFirst({
     where: { id, bandId },
@@ -41,21 +41,23 @@ export default async function CasaDetalhePage({ params }: PageProps) {
         title={venue.name}
         back={{ href: "/casas", label: "Voltar à listagem" }}
         actions={
-          <>
-            <ButtonLink href={`/casas/${venue.id}/editar`} icon={EditIcon}>
-              Alterar
-            </ButtonLink>
-            <ConfirmDeleteButton
-              endpoint={`/api/venues/${venue.id}`}
-              redirectTo="/casas"
-              itemLabel={`a casa "${venue.name}"`}
-              disabledReason={
-                showCount > 0
-                  ? `Esta casa tem ${showCount} show(s) vinculado(s). Remova ou altere esses shows antes.`
-                  : undefined
-              }
-            />
-          </>
+          canEdit ? (
+            <>
+              <ButtonLink href={`/casas/${venue.id}/editar`} icon={EditIcon}>
+                Alterar
+              </ButtonLink>
+              <ConfirmDeleteButton
+                endpoint={`/api/venues/${venue.id}`}
+                redirectTo="/casas"
+                itemLabel={`a casa "${venue.name}"`}
+                disabledReason={
+                  showCount > 0
+                    ? `Esta casa tem ${showCount} show(s) vinculado(s). Remova ou altere esses shows antes.`
+                    : undefined
+                }
+              />
+            </>
+          ) : null
         }
       >
         <StatusBadge status={venue.sendStatus} />
@@ -82,15 +84,7 @@ export default async function CasaDetalhePage({ params }: PageProps) {
         <DetailItem label="Cidade">{venue.city}</DetailItem>
         <DetailItem label="Estado">{venue.state}</DetailItem>
         <DetailItem label="Instagram" wide>
-          {venue.instagram ? (
-            ig ? (
-              <ExternalLink href={ig}>
-                {venue.instagram}
-              </ExternalLink>
-            ) : (
-              venue.instagram
-            )
-          ) : null}
+          {venue.instagram ? ig ? <ExternalLink href={ig}>{venue.instagram}</ExternalLink> : venue.instagram : null}
         </DetailItem>
         <DetailItem label="Cachê de referência" numeric>
           {venue.valorCacheCents != null ? formatCents(venue.valorCacheCents) : null}

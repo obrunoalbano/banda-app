@@ -7,7 +7,7 @@ import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
 import { resetPasswordSchema } from "@/lib/validations";
 
-/** PÚBLICO — define a nova senha da banda com o token do email (uso único). */
+/** PÚBLICO — define a nova senha do usuário com o token do email (uso único). */
 export async function POST(request: Request) {
   const limited = rateLimit(`reset-password:${clientIp(request)}`, RATE_LIMITS.resetPassword);
   if (!limited.ok) {
@@ -20,7 +20,7 @@ export async function POST(request: Request) {
   if (!parsed.ok) return parsed.response;
 
   // Uma query só: confere token, validade e conta ativa, troca a senha e consome o token.
-  const { count } = await prisma.band.updateMany({
+  const { count } = await prisma.user.updateMany({
     where: {
       passwordResetTokenHash: hashPasswordResetToken(parsed.data.token),
       passwordResetExpiresAt: { gt: new Date() },

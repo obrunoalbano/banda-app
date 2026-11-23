@@ -9,13 +9,17 @@ datasource db {
   provider = "postgresql"
 }
 
+/// Banda (tenant). Todo dado de negócio pertence a uma banda; o acesso é por BandMember (User × Band).
 model Band {
   id                     String         @id @default(cuid())
   name                   String
+  /// Contato da banda (cadastro). Quem entra no app são os User via BandMember.
   responsible            String
   phone                  String
-  email                  String         @unique
-  passwordHash           String
+  /// LEGADO (antes de multi-bandas a banda era a conta). Migrado para User; não usar. Remover num próximo deploy.
+  email                  String?        @unique
+  /// LEGADO — ver `email`.
+  passwordHash           String?
   /// Identificador público (URL da agenda: /b/<slug>). Editável; trocar quebra widgets instalados.
   slug                   String         @unique
   /// Opt-in: agenda pública (página /b/<slug>, widget e API pública de shows).
@@ -24,15 +28,15 @@ model Band {
   leadFormEnabled        Boolean        @default(false)
   /// Origens (https://dominio) autorizadas a enviar o formulário direto do navegador (CORS).
   leadAllowedOrigins     String[]       @default([])
-  /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
+  /// Banda desativada por um superadmin: ninguém acessa (sessões abertas perdem o acesso na hora).
   disabledAt             DateTime?
-  /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
+  /// LEGADO — ver `email`.
   mustChangePassword     Boolean        @default(false)
   /// SHA-256 (hex) do token de ingestão de leads. O token em si nunca é persistido.
   leadIngestTokenHash    String?        @unique
-  /// "Esqueci minha senha": SHA-256 (hex) do token enviado por email (o token nunca é salvo). Um por vez; uso único.
+  /// LEGADO — ver `email`.
   passwordResetTokenHash String?        @unique
-  /// Validade do token de redefinição de senha.
+  /// LEGADO — ver `email`.
   passwordResetExpiresAt DateTime?
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
@@ -41,6 +45,57 @@ model Band {
   leads                  Lead[]
   deals                  Deal[]
   financeEntries         FinanceEntry[]
+  members                BandMember[]
+}
+
+/// Pessoa que entra no app (email + senha). Acessa N bandas via BandMember.
+model User {
+  id                     String       @id @default(cuid())
+  name                   String
+  email                  String       @unique
+  phone                  String?
+  passwordHash           String
+  /// Conta desativada por um superadmin: não faz login e sessões ativas deixam de valer.
+  disabledAt             DateTime?
+  /// Senha provisória (criada/redefinida por superadmin): obriga a trocar no próximo acesso.
+  mustChangePassword     Boolean      @default(false)
+  /// "Esqueci minha senha": SHA-256 (hex) do token enviado por email (o token nunca é salvo). Um por vez; uso único.
+  passwordResetTokenHash String?      @unique
+  passwordResetExpiresAt DateTime?
+  lastLoginAt            DateTime?
+  createdAt              DateTime     @default(now())
+  updatedAt              DateTime     @updatedAt
+  memberships            BandMember[]
+}
+
+/// Papel do integrante na banda: ADMIN altera tudo (inclusive integrantes); VIEWER só visualiza.
+enum BandRole {
+  ADMIN
+  VIEWER
+}
+
+/// Integrante da banda com acesso ao app. `userId` vazio = convite pendente (a pessoa ainda não tem conta).
+model BandMember {
+  id              String    @id @default(cuid())
+  bandId          String
+  band            Band      @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  userId          String?
+  user            User?     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name            String
+  /// Email do convite (minúsculo). Com conta vinculada, o email de login é o do User.
+  email           String
+  role            BandRole  @default(VIEWER)
+  /// Convite pendente: SHA-256 do token do link (o token nunca é salvo). Limpo ao aceitar.
+  inviteTokenHash String?   @unique
+  inviteExpiresAt DateTime?
+  /// Quando passou a ter acesso (conta vinculada).
+  joinedAt        DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@unique([bandId, email])
+  @@unique([bandId, userId])
+  @@index([userId])
 }
 
 enum VenueSendStatus {

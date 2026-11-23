@@ -18,7 +18,7 @@ const tooMany = (retryAfterSeconds: number) =>
   });
 
 /**
- * PÚBLICO — "esqueci minha senha" da banda. Responde sempre igual (exista ou não a conta),
+ * PÚBLICO — "esqueci minha senha" do usuário do app. Responde sempre igual (exista ou não a conta),
  * para não revelar quais emails estão cadastrados.
  */
 export async function POST(request: Request) {
@@ -42,17 +42,17 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: true });
   }
 
-  const band = await prisma.band.findUnique({
+  const user = await prisma.user.findUnique({
     where: { email },
     select: { id: true, name: true, email: true, disabledAt: true },
   });
-  if (band && !band.disabledAt) {
+  if (user && !user.disabledAt) {
     const { token, hash, expiresAt } = generatePasswordResetToken();
-    await prisma.band.update({
-      where: { id: band.id },
+    await prisma.user.update({
+      where: { id: user.id },
       data: { passwordResetTokenHash: hash, passwordResetExpiresAt: expiresAt },
     });
-    await sendEmail({ to: band.email, ...passwordResetEmail({ bandName: band.name, url: passwordResetUrl(baseUrl, token) }) });
+    await sendEmail({ to: user.email, ...passwordResetEmail({ name: user.name, url: passwordResetUrl(baseUrl, token) }) });
   }
   return NextResponse.json({ ok: true });
 }

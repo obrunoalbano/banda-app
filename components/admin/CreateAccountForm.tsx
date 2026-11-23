@@ -9,10 +9,11 @@ import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-type Created = { id: string; email: string; tempPassword: string };
+/** `tempPassword` null = o email já tinha conta (banda criada para ela, sem senha nova). */
+type Created = { id: string; email: string; tempPassword: string | null };
 
 /**
- * Cria conta (banda ou administrador) com senha provisória gerada no servidor.
+ * Cria banda (com o administrador dela) ou administrador do painel, com senha provisória gerada no servidor.
  * Depois de criar, mostra a senha UMA vez e links para seguir.
  */
 export function CreateAccountForm({ kind }: { kind: "band" | "admin" }) {
@@ -35,8 +36,14 @@ export function CreateAccountForm({ kind }: { kind: "band" | "admin" }) {
   if (created) {
     return (
       <div className="flex max-w-xl flex-col gap-5">
-        <Alert tone="success">{kind === "band" ? "Conta da banda criada." : "Administrador criado."}</Alert>
-        <TempPasswordReveal email={created.email} password={created.tempPassword} />
+        <Alert tone="success">
+          {kind === "admin"
+            ? "Administrador criado."
+            : created.tempPassword
+              ? "Banda e conta do administrador criadas."
+              : `Banda criada. ${created.email} já tinha conta e virou administrador(a) dela.`}
+        </Alert>
+        {created.tempPassword ? <TempPasswordReveal email={created.email} password={created.tempPassword} /> : null}
         <div className="flex flex-wrap gap-3">
           {kind === "band" ? (
             <ButtonLink href={`/admin/usuarios/bandas/${created.id}`}>Ver banda</ButtonLink>
@@ -72,18 +79,22 @@ export function CreateAccountForm({ kind }: { kind: "band" | "admin" }) {
           </>
         ) : null}
         <TextField
-          label="Email de acesso"
+          label={kind === "band" ? "Email do administrador da banda" : "Email de acesso"}
           className="sm:col-span-2"
           type="email"
           required
           value={form.email}
           onChange={(e) => set({ email: e.target.value })}
-          hint="Uma senha provisória será gerada; no primeiro acesso a pessoa cria a própria senha."
+          hint={
+            kind === "band"
+              ? "Se o email já tiver conta, a pessoa só ganha a nova banda. Senão, uma senha provisória é gerada (troca obrigatória no primeiro acesso)."
+              : "Uma senha provisória será gerada; no primeiro acesso a pessoa cria a própria senha."
+          }
         />
       </div>
       <FormActions
         loading={loading}
-        submitLabel={kind === "band" ? "Criar conta da banda" : "Criar administrador"}
+        submitLabel={kind === "band" ? "Criar banda" : "Criar administrador"}
         cancelHref={listHref}
       />
     </form>

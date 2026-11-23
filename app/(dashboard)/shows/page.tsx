@@ -12,7 +12,7 @@ import { isShowOverdue } from "@/lib/finance";
 import { formatDateOnly, monthLabel } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import { todayDateOnly } from "@/lib/shows";
 import {
   currentYearMonthUtc,
@@ -28,7 +28,12 @@ import Link from "next/link";
 export const metadata: Metadata = { title: "Shows" };
 
 type PageProps = {
-  searchParams: Promise<{ casaId?: string; ano?: string; mes?: string; pagina?: string }>;
+  searchParams: Promise<{
+    casaId?: string;
+    ano?: string;
+    mes?: string;
+    pagina?: string;
+  }>;
 };
 
 function parseMesQuery(raw: string | undefined): number | null {
@@ -50,7 +55,7 @@ function fetchShowYearMonths(bandId: string) {
 }
 
 export default async function ShowsPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const sp = await searchParams;
   const casaIdFilter = typeof sp.casaId === "string" ? sp.casaId.trim() : "";
   const anoRaw = typeof sp.ano === "string" ? sp.ano.trim() : "";
@@ -145,9 +150,11 @@ export default async function ShowsPage({ searchParams }: PageProps) {
         title="Shows"
         description="Por padrão lista todos os shows. Ano e mês listam só períodos com cadastro."
         actions={
-          <ButtonLink href="/shows/nova" icon={AddIcon}>
-            Novo show
-          </ButtonLink>
+          canEdit ? (
+            <ButtonLink href="/shows/nova" icon={AddIcon}>
+              Novo show
+            </ButtonLink>
+          ) : null
         }
       />
 
@@ -169,13 +176,18 @@ export default async function ShowsPage({ searchParams }: PageProps) {
           icon={ShowIcon}
           title="Nenhum show cadastrado"
           description="Registre seus shows em casas ou eventos particulares para controlar cachê e pagamento."
-          action={{ href: "/shows/nova", label: "Cadastrar o primeiro show", primary: true }}
+          action={
+            canEdit
+              ? {
+                  href: "/shows/nova",
+                  label: "Cadastrar o primeiro show",
+                  primary: true,
+                }
+              : undefined
+          }
         />
       ) : shows.length === 0 ? (
-        <EmptyState
-          title="Nenhum show corresponde aos filtros"
-          action={{ href: "/shows", label: "Limpar filtros" }}
-        />
+        <EmptyState title="Nenhum show corresponde aos filtros" action={{ href: "/shows", label: "Limpar filtros" }} />
       ) : (
         <>
           <Table

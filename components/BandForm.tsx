@@ -8,7 +8,7 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 type BandFormProps = {
-  initial: { name: string; responsible: string; phone: string; email: string };
+  initial: { name: string; responsible: string; phone: string };
 };
 
 export function BandForm({ initial }: BandFormProps) {
@@ -24,7 +24,7 @@ export function BandForm({ initial }: BandFormProps) {
     const data = await submit("/api/band", "PATCH", form, "Não foi possível salvar.");
     if (!data) return;
     setOk(true);
-    // A API já atualizou o JWT; refresh re-renderiza o menu com o novo nome.
+    // Re-renderiza o seletor de banda do menu com o novo nome.
     router.refresh();
   }
 
@@ -47,15 +47,6 @@ export function BandForm({ initial }: BandFormProps) {
           onChange={(e) => set({ responsible: e.target.value })}
         />
         <PhoneField label="Telefone" required value={form.phone} onValueChange={(phone) => set({ phone })} />
-        <TextField
-          label="Email"
-          className="sm:col-span-2"
-          type="email"
-          autoComplete="email"
-          required
-          value={form.email}
-          onChange={(e) => set({ email: e.target.value })}
-        />
       </div>
       <FormActions loading={loading} submitLabel="Salvar alterações" />
     </form>

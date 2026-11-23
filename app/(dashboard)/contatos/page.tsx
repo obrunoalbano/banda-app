@@ -7,7 +7,7 @@ import { containerClass, linkClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatDateTimeShort } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 import Link from "next/link";
 
@@ -16,7 +16,7 @@ export const metadata: Metadata = { title: "Contatos" };
 type PageProps = { searchParams: Promise<{ pagina?: string }> };
 
 export default async function ContatosPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const page = parsePage((await searchParams).pagina);
 
   const [total, leads] = await Promise.all([
@@ -56,7 +56,15 @@ export default async function ContatosPage({ searchParams }: PageProps) {
           icon={LeadIcon}
           title="Nenhum contato recebido ainda"
           description="Conecte o formulário do seu site para receber pedidos de orçamento aqui."
-          action={{ href: "/integracoes/contato", label: "Configurar integração", primary: true }}
+          action={
+            canEdit
+              ? {
+                  href: "/integracoes/contato",
+                  label: "Configurar integração",
+                  primary: true,
+                }
+              : undefined
+          }
         />
       ) : (
         <>

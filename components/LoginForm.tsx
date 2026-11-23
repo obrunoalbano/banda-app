@@ -41,7 +41,7 @@ export function LoginForm() {
   const registered = searchParams.get("registered") === "1";
   const passwordReset = searchParams.get("reset") === "1";
   const urlAuthError = messageForAuthError(searchParams.get("error"), searchParams.get("code"));
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(() => searchParams.get("email") ?? "");
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);

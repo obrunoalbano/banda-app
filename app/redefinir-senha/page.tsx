@@ -13,7 +13,7 @@ export const metadata: Metadata = { title: "Criar nova senha", referrer: "no-ref
 
 async function isValidToken(token: string): Promise<boolean> {
   if (!token || token.length > 200) return false;
-  const band = await prisma.band.findFirst({
+  const user = await prisma.user.findFirst({
     where: {
       passwordResetTokenHash: hashPasswordResetToken(token),
       passwordResetExpiresAt: { gt: new Date() },
@@ -21,7 +21,7 @@ async function isValidToken(token: string): Promise<boolean> {
     },
     select: { id: true },
   });
-  return band !== null;
+  return user !== null;
 }
 
 export default async function RedefinirSenhaPage({ searchParams }: { searchParams: Promise<{ token?: string }> }) {

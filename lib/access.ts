@@ -2,12 +2,13 @@
  * Controle de acesso por rota (executado no proxy.ts). Função pura — coberta por teste.
  *
  * Papéis:
- * - "band"       → conta de banda (app em /casas, /shows… e APIs /api/*).
+ * - "user"       → pessoa com acesso a bandas (app em /casas, /shows… e APIs /api/*). O papel DENTRO
+ *                  de cada banda (administrador × visualizador) é conferido no servidor (lib/session.ts).
  * - "superadmin" → equipe do produto (painel /admin e APIs /api/admin/*).
  * Um papel nunca acessa a área do outro. Senha provisória obriga a trocar antes de qualquer coisa.
  */
 
-export type Role = "band" | "superadmin";
+export type Role = "user" | "superadmin";
 
 export type SessionClaims = { role: Role; mustChangePassword: boolean } | null;
 
@@ -16,7 +17,8 @@ export type AccessDecision =
   | { type: "redirect"; to: string; withCallback?: boolean }
   | { type: "json"; status: 401 | 403; error: string };
 
-export const BAND_PASSWORD_PAGE = "/banda/senha";
+export const USER_PASSWORD_PAGE = "/conta/senha";
+export const USER_PASSWORD_API = "/api/account/password";
 export const ADMIN_PASSWORD_PAGE = "/admin/senha";
 export const ADMIN_LOGIN_PAGE = "/admin/login";
 
@@ -31,6 +33,8 @@ function isPublicPage(path: string, isProduction: boolean): boolean {
     path === "/cadastro" ||
     path === "/esqueci-senha" ||
     path === "/redefinir-senha" ||
+    // Convite para uma banda: a página decide (entrar, cadastrar ou aceitar).
+    path.startsWith("/convite/") ||
     // Galeria do design system: só existe em desenvolvimento (a página dá 404 em produção).
     (!isProduction && path === "/design-system")
   );
@@ -84,8 +88,8 @@ export function decideAccess(
   if (isApi) {
     if (PUBLIC_API.has(path)) return { type: "allow" };
     if (!session) return { type: "json", status: 401, error: "Não autorizado" };
-    if (session.role !== "band") return forbiddenJson("Esta área é das bandas.");
-    if (session.mustChangePassword && path !== "/api/band/password") {
+    if (session.role !== "user") return forbiddenJson("Esta área é das bandas.");
+    if (session.mustChangePassword && path !== USER_PASSWORD_API) {
       return forbiddenJson("Defina uma nova senha antes de continuar.");
     }
     return { type: "allow" };
@@ -95,8 +99,8 @@ export function decideAccess(
   if (isPublicPage(path, isProduction)) return { type: "allow" };
   if (!session) return { type: "redirect", to: "/login", withCallback: true };
   if (session.role === "superadmin") return { type: "redirect", to: "/admin" };
-  if (session.mustChangePassword && path !== BAND_PASSWORD_PAGE) {
-    return { type: "redirect", to: BAND_PASSWORD_PAGE };
+  if (session.mustChangePassword && path !== USER_PASSWORD_PAGE) {
+    return { type: "redirect", to: USER_PASSWORD_PAGE };
   }
   return { type: "allow" };
 }

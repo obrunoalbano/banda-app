@@ -55,6 +55,8 @@ export const RATE_LIMITS = {
   resetPassword: { limit: 10, windowMs: 15 * 60_000 },
   /** Cadastros por IP. */
   register: { limit: 5, windowMs: 60 * 60_000 },
+  /** Convites de integrante por banda (cada um pode enviar um email). */
+  bandInvite: { limit: 30, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */
   leadIngest: { limit: 60, windowMs: 60_000 },
   /** Envios do formulário público por IP + banda. */

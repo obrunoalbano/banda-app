@@ -29,7 +29,7 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
   trustHost: true,
   session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
   providers: [
-    // Login da BANDA (app). id padrão "credentials" — usado por components/LoginForm.tsx.
+    // Login do USUÁRIO do app (acessa N bandas). id padrão "credentials" — usado por components/LoginForm.tsx.
     Credentials({
       credentials: credentialsFields,
       authorize: async (credentials, request) => {
@@ -39,18 +39,19 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         const limited = rateLimit(`login:${input.email}:${clientIp(request)}`, RATE_LIMITS.login);
         if (!limited.ok) throw new RateLimitedSignin();
 
-        const band = await prisma.band.findUnique({ where: { email: input.email } });
-        if (!band) return null;
-        const ok = await compare(input.password, band.passwordHash);
+        const user = await prisma.user.findUnique({ where: { email: input.email } });
+        if (!user) return null;
+        const ok = await compare(input.password, user.passwordHash);
         if (!ok) return null;
         // Só revela "desativada" depois da senha correta (não confirma emails para terceiros).
-        if (band.disabledAt) throw new DisabledSignin();
+        if (user.disabledAt) throw new DisabledSignin();
+        await prisma.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
         return {
-          id: band.id,
-          name: band.name,
-          email: band.email,
-          role: "band",
-          mustChangePassword: band.mustChangePassword,
+          id: user.id,
+          name: user.name,
+          email: user.email,
+          role: "user",
+          mustChangePassword: user.mustChangePassword,
         };
       },
     }),
@@ -88,10 +89,10 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         token.sub = user.id!;
         token.name = user.name;
         token.email = user.email;
-        token.role = user.role ?? "band";
+        token.role = user.role ?? "user";
         token.mustChangePassword = user.mustChangePassword ?? false;
       }
-      // `unstable_update({ user: {...} })`: dados editados pela banda e troca de senha.
+      // `unstable_update({ user: {...} })`: dados da conta editados e troca de senha.
       if (trigger === "update" && session?.user) {
         if (typeof session.user.name === "string") token.name = session.user.name;
         if (typeof session.user.email === "string") token.email = session.user.email;
@@ -104,8 +105,8 @@ export const { handlers, auth, signIn, signOut, unstable_update } = NextAuth({
         session.user.id = token.sub;
         session.user.name = (token.name as string | undefined) ?? null;
         session.user.email = token.email as string;
-        // Tokens emitidos antes dos papéis existirem são de banda.
-        session.user.role = token.role ?? "band";
+        // Tokens antigos ("band" = conta de banda, antes de multi-bandas) são de usuário do app.
+        session.user.role = token.role === "superadmin" ? "superadmin" : "user";
         session.user.mustChangePassword = token.mustChangePassword ?? false;
       }
       return session;

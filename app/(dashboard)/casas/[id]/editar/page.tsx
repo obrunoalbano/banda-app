@@ -2,7 +2,7 @@ import { VenueForm } from "@/components/VenueForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Alterar casa" };
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function EditarCasaPage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId } = await requireBandEditor("/casas");
   const { id } = await params;
   const venue = await prisma.venue.findFirst({ where: { id, bandId } });
   if (!venue) notFound();

@@ -1,35 +1,40 @@
 import { BandForm } from "@/components/BandForm";
-import { ButtonLink } from "@/components/ui/Button";
-import { KeyIcon } from "@/components/ui/icons";
+import { DetailItem, DetailList } from "@/components/ui/DetailList";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Minha banda" };
 
 export default async function BandaPage() {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const band = await prisma.band.findUnique({
     where: { id: bandId },
-    select: { name: true, responsible: true, phone: true, email: true },
+    select: { name: true, responsible: true, phone: true },
   });
-  if (!band) redirect("/login");
+  if (!band) redirect("/bandas");
 
   return (
     <div className={containerClass}>
       <PageHeader
+        eyebrow="Minha banda"
         title="Dados da banda"
-        description="Atualize as informações do seu cadastro."
-        actions={
-          <ButtonLink href="/banda/senha" variant="secondary" icon={KeyIcon}>
-            Alterar senha
-          </ButtonLink>
-        }
+        description={canEdit ? "Atualize as informações da banda." : "Informações da banda (somente leitura)."}
       />
-      <BandForm initial={band} />
+      {canEdit ? (
+        <BandForm initial={band} />
+      ) : (
+        <DetailList>
+          <DetailItem label="Nome da banda" wide>
+            {band.name}
+          </DetailItem>
+          <DetailItem label="Responsável">{band.responsible}</DetailItem>
+          <DetailItem label="Telefone">{band.phone}</DetailItem>
+        </DetailList>
+      )}
     </div>
   );
 }

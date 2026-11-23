@@ -8,7 +8,7 @@ import { CodeBlock } from "@/components/ui/CodeBlock";
 import { containerClass } from "@/components/ui/styles";
 import { formatDateTimeFull, whatsappHref } from "@/lib/format";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 
 export const metadata: Metadata = { title: "Contato" };
@@ -17,11 +17,14 @@ import { notFound } from "next/navigation";
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function ContatoDetalhePage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const { id } = await params;
   const lead = await prisma.lead.findFirst({ where: { id, bandId } });
   if (!lead) notFound();
-  const deal = await prisma.deal.findFirst({ where: { bandId, leadId: lead.id }, select: { id: true, step: true } });
+  const deal = await prisma.deal.findFirst({
+    where: { bandId, leadId: lead.id },
+    select: { id: true, step: true },
+  });
 
   const wa = whatsappHref(lead.whatsapp);
   const metadataStr = lead.metadata == null ? null : JSON.stringify(lead.metadata, null, 2);
@@ -33,22 +36,26 @@ export default async function ContatoDetalhePage({ params }: PageProps) {
         description={`Recebido em ${formatDateTimeFull(lead.createdAt)}`}
         back={{ href: "/contatos", label: "Voltar aos contatos" }}
         actions={
-          <>
-            <ButtonLink href={`/contatos/${lead.id}/editar`} icon={EditIcon}>
-              Alterar
-            </ButtonLink>
-            <ConfirmDeleteButton
-              endpoint={`/api/leads/${lead.id}`}
-              redirectTo="/contatos"
-              itemLabel={`o contato "${lead.name}"`}
-            />
-          </>
+          canEdit ? (
+            <>
+              <ButtonLink href={`/contatos/${lead.id}/editar`} icon={EditIcon}>
+                Alterar
+              </ButtonLink>
+              <ConfirmDeleteButton
+                endpoint={`/api/leads/${lead.id}`}
+                redirectTo="/contatos"
+                itemLabel={`o contato "${lead.name}"`}
+              />
+            </>
+          ) : null
         }
       />
 
-      <div className="mb-6">
-        <AddToFlowButton origin={{ leadId: lead.id }} deal={deal} />
-      </div>
+      {canEdit ? (
+        <div className="mb-6">
+          <AddToFlowButton origin={{ leadId: lead.id }} deal={deal} />
+        </div>
+      ) : null}
 
       <DetailList className="max-w-3xl">
         <DetailItem label="Email" wide>

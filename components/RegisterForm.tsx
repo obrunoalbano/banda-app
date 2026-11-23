@@ -7,45 +7,53 @@ import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export function RegisterForm() {
+/** Convite válido (cadastro pelo link enviado por uma banda). */
+export type RegisterInvite = { token: string; email: string; name: string; bandName: string };
+
+export function RegisterForm({ invite }: { invite?: RegisterInvite }) {
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
-  const [form, setForm] = useState({ name: "", responsible: "", phone: "", email: "", password: "" });
+  const [form, setForm] = useState({
+    name: invite?.name ?? "",
+    phone: "",
+    email: invite?.email ?? "",
+    password: "",
+    bandName: "",
+  });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
-    const data = await submit("/api/register", "POST", form, "Não foi possível cadastrar.");
+    const body = invite
+      ? { name: form.name, phone: form.phone, email: form.email, password: form.password, inviteToken: invite.token }
+      : form;
+    const data = await submit("/api/register", "POST", body, "Não foi possível cadastrar.");
     if (!data) return;
-    router.push("/login?registered=1");
+    const params = new URLSearchParams({ registered: "1", email: form.email.trim().toLowerCase() });
+    router.push(`/login?${params}`);
   }
 
   return (
     <form onSubmit={handleSubmit} className="flex flex-col gap-4">
       {error && <Alert>{error}</Alert>}
       <TextField
-        label="Nome da banda"
+        label="Seu nome"
         required
-        autoComplete="organization"
+        autoComplete="name"
         value={form.name}
         onChange={(e) => set({ name: e.target.value })}
       />
-      <TextField
-        label="Responsável"
-        required
-        autoComplete="name"
-        value={form.responsible}
-        onChange={(e) => set({ responsible: e.target.value })}
-      />
-      <PhoneField label="Telefone" required value={form.phone} onValueChange={(phone) => set({ phone })} />
       <TextField
         label="Email"
         type="email"
         autoComplete="email"
         required
+        readOnly={!!invite}
         value={form.email}
         onChange={(e) => set({ email: e.target.value })}
+        hint={invite ? "O convite vale para este email." : "Você vai usar o email e a senha para entrar."}
       />
+      <PhoneField label="Telefone (opcional)" value={form.phone} onValueChange={(phone) => set({ phone })} />
       <PasswordField
         label="Senha"
         autoComplete="new-password"
@@ -55,8 +63,18 @@ export function RegisterForm() {
         onChange={(e) => set({ password: e.target.value })}
         hint="Mínimo de 8 caracteres"
       />
+      {invite ? null : (
+        <TextField
+          label="Nome da banda"
+          required
+          autoComplete="organization"
+          value={form.bandName}
+          onChange={(e) => set({ bandName: e.target.value })}
+          hint="Você poderá criar outras bandas e convidar os integrantes depois."
+        />
+      )}
       <Button type="submit" loading={loading} className="mt-2 w-full">
-        {loading ? "Cadastrando…" : "Cadastrar banda"}
+        {loading ? "Cadastrando…" : invite ? `Criar conta e entrar na ${invite.bandName}` : "Criar conta"}
       </Button>
     </form>
   );

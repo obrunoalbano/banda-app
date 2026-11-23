@@ -10,8 +10,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 /**
- * Ações sobre a conta de uma banda ou de um administrador: desativar/reativar e
- * (banda) redefinir senha com nova senha provisória.
+ * Ações da equipe: desativar/reativar (banda, conta de usuário ou administrador) e
+ * (usuário) redefinir senha com nova senha provisória.
  */
 export function AccountActions({
   kind,
@@ -21,10 +21,11 @@ export function AccountActions({
   disabled,
   isSelf,
 }: {
-  kind: "band" | "admin";
+  kind: "band" | "user" | "admin";
   id: string;
   name: string;
-  email: string;
+  /** Email de login (usuário/administrador): mostrado junto da senha provisória. */
+  email?: string;
   disabled: boolean;
   /** Administrador vendo a própria conta: não pode se desativar. */
   isSelf?: boolean;
@@ -32,8 +33,12 @@ export function AccountActions({
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
   const [tempPassword, setTempPassword] = useState<string | null>(null);
-  const base = kind === "band" ? `/api/admin/bands/${id}` : `/api/admin/admins/${id}`;
-  const label = kind === "band" ? `a banda "${name}"` : `o administrador "${name}"`;
+  const base = { band: `/api/admin/bands/${id}`, user: `/api/admin/users/${id}`, admin: `/api/admin/admins/${id}` }[kind];
+  const label = { band: `a banda "${name}"`, user: `a conta de "${name}"`, admin: `o administrador "${name}"` }[kind];
+  const disableEffect =
+    kind === "band"
+      ? "Ninguém acessa a banda (inclusive sessões abertas); os integrantes continuam com acesso às outras bandas."
+      : "O acesso é cortado na hora (inclusive sessões abertas).";
 
   async function setDisabled(value: boolean): Promise<string | null> {
     const data = await submit(base, "PATCH", { disabled: value }, "Não foi possível atualizar.");
@@ -53,30 +58,30 @@ export function AccountActions({
   return (
     <div className="flex flex-col gap-4">
       {error ? <Alert>{error}</Alert> : null}
-      {tempPassword ? <TempPasswordReveal email={email} password={tempPassword} /> : null}
+      {tempPassword ? <TempPasswordReveal email={email ?? ""} password={tempPassword} /> : null}
       <div className="flex flex-wrap gap-3">
-        {kind === "band" ? (
+        {kind === "user" ? (
           <ConfirmButton
             label="Redefinir senha"
             variant="secondary"
             icon={KeyIcon}
             title="Redefinir a senha?"
-            description={<>Uma nova senha provisória será gerada para {label}. A senha atual deixa de funcionar e a banda terá que criar outra no próximo acesso.</>}
+            description={<>Uma nova senha provisória será gerada para {label}. A senha atual deixa de funcionar e a pessoa terá que criar outra no próximo acesso.</>}
             confirmLabel="Redefinir"
             onConfirm={resetPassword}
           />
         ) : null}
         {disabled ? (
           <Button variant="secondary" loading={loading} onClick={() => void setDisabled(false)}>
-            Reativar conta
+            {kind === "band" ? "Reativar banda" : "Reativar conta"}
           </Button>
         ) : (
           <ConfirmButton
-            label="Desativar conta"
+            label={kind === "band" ? "Desativar banda" : "Desativar conta"}
             variant="danger"
             icon={DisableIcon}
-            title="Desativar a conta?"
-            description={<>Desativar {label}? O acesso é cortado na hora (inclusive sessões abertas). Os dados são mantidos e a conta pode ser reativada.</>}
+            title={kind === "band" ? "Desativar a banda?" : "Desativar a conta?"}
+            description={<>Desativar {label}? {disableEffect} Os dados são mantidos e é possível reativar.</>}
             confirmLabel="Desativar"
             tone="danger"
             onConfirm={() => setDisabled(true)}

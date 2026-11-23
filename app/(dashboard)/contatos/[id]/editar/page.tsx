@@ -2,7 +2,7 @@ import { LeadForm } from "@/components/LeadForm";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandEditor } from "@/lib/session";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 
@@ -11,7 +11,7 @@ export const metadata: Metadata = { title: "Alterar contato" };
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function EditarContatoPage({ params }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId } = await requireBandEditor("/contatos");
   const { id } = await params;
   const lead = await prisma.lead.findFirst({
     where: { id, bandId },

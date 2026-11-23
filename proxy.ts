@@ -5,7 +5,7 @@ import { decideAccess, isPublicIntegrationPath, type SessionClaims } from "@/lib
 
 /**
  * Proxy (antigo middleware no Next ≤15). Protege tudo por padrão e separa as áreas por papel
- * (banda × superadmin). As regras ficam em lib/access.ts (função pura, com teste).
+ * (usuário × superadmin). As regras ficam em lib/access.ts (função pura, com teste).
  */
 export async function proxy(request: NextRequest) {
   const path = request.nextUrl.pathname;
@@ -25,8 +25,8 @@ export async function proxy(request: NextRequest) {
   const token = secret ? await getToken({ req: request, secret, secureCookie }) : null;
   const session: SessionClaims = token
     ? {
-        // Tokens emitidos antes dos papéis existirem são de banda.
-        role: token.role === "superadmin" ? "superadmin" : "band",
+        // Tokens antigos ("band" ou sem papel) são de usuário do app.
+        role: token.role === "superadmin" ? "superadmin" : "user",
         mustChangePassword: token.mustChangePassword === true,
       }
     : null;

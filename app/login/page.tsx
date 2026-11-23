@@ -11,12 +11,12 @@ export default function LoginPage() {
   return (
     <AuthLayout
       title="Entrar"
-      description="Use o email e a senha cadastrados para sua banda."
+      description="Use o email e a senha da sua conta."
       footer={
         <>
           Ainda não tem conta?{" "}
           <Link href="/cadastro" className={linkClass}>
-            Cadastre sua banda
+            Criar conta
           </Link>
         </>
       }

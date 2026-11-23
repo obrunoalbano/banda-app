@@ -1,5 +1,6 @@
 import { z } from "zod";
 import {
+  BandRole,
   DealStep,
   FinanceCategory,
   FinanceEntryType,
@@ -57,20 +58,55 @@ const optionalUrl = (maxLen: number) =>
 /** Valor monetário em centavos (inteiro, não negativo). */
 const centsSchema = z.number().int().min(0).max(MAX_CENTS, "Valor muito alto");
 
-export const registerBandSchema = z.object({
-  name: requiredText("Nome da banda é obrigatório"),
-  responsible: requiredText("Responsável é obrigatório"),
-  phone: requiredText("Telefone é obrigatório"),
-  email: email(),
-  password: z.string().min(8, "Senha deve ter pelo menos 8 caracteres"),
+/** Senha nova (cadastro, troca e redefinição). */
+const password = z.string().min(8, "Senha deve ter pelo menos 8 caracteres").max(200);
+
+/**
+ * Cadastro público de USUÁRIO. Sem convite cria também a primeira banda (`bandName` obrigatório);
+ * com convite (`inviteToken`) a pessoa entra na banda que convidou e o email é o do convite.
+ */
+export const registerSchema = z
+  .object({
+    name: requiredText("Seu nome é obrigatório").pipe(z.string().max(120)),
+    phone: optionalText(40),
+    email: email(),
+    password,
+    bandName: optionalText(120),
+    inviteToken: z.string().trim().min(1).max(200).optional(),
+  })
+  .refine((d) => d.inviteToken || d.bandName, { message: "Nome da banda é obrigatório", path: ["bandName"] });
+
+/** Dados da conta (usuário). */
+export const accountUpdateSchema = z.object({
+  name: requiredText("Nome é obrigatório").pipe(z.string().max(120)).optional(),
+  phone: optionalText(40),
+  email: email().optional(),
 });
+
+/** Nova banda criada por um usuário logado (vira administrador dela). */
+export const bandCreateSchema = z.object({
+  name: requiredText("Nome da banda é obrigatório").pipe(z.string().max(120)),
+});
+
+/** Escolher a banda ativa. */
+export const activeBandSchema = z.object({ bandId: z.string().trim().min(1).max(64) });
 
 export const bandUpdateSchema = z.object({
   name: requiredText().optional(),
   responsible: requiredText().optional(),
   phone: requiredText().optional(),
-  email: email().optional(),
 });
+
+/** Adicionar integrante (com conta: acesso imediato; sem conta: convite por link). */
+export const bandMemberCreateSchema = z.object({
+  name: requiredText("Nome é obrigatório").pipe(z.string().max(120)),
+  email: email(),
+  role: z.enum(BandRole),
+});
+
+export const bandMemberUpdateSchema = z
+  .object({ name: requiredText().pipe(z.string().max(120)).optional(), role: z.enum(BandRole).optional() })
+  .refine((d) => d.name !== undefined || d.role !== undefined, "Nada para alterar");
 
 export const venueCreateSchema = z.object({
   name: requiredText(),
@@ -279,7 +315,7 @@ export const resetPasswordSchema = z.object({
 
 /* ── Painel superadmin ──────────────────────────────────────────────── */
 
-/** Superadmin cria conta de banda (senha provisória gerada no servidor). */
+/** Superadmin cria banda + administrador (conta existente pelo email, ou nova com senha provisória). */
 export const adminCreateBandSchema = z.object({
   name: requiredText("Nome da banda é obrigatório"),
   responsible: requiredText("Responsável é obrigatório"),
@@ -287,7 +323,7 @@ export const adminCreateBandSchema = z.object({
   email: email(),
 });
 
-/** Superadmin ativa/desativa conta de banda. */
+/** Superadmin ativa/desativa banda ou conta de usuário. */
 export const adminUpdateBandSchema = z.object({ disabled: z.boolean() });
 
 /** Superadmin cria outro superadmin. */

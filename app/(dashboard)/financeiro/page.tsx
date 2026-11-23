@@ -22,7 +22,7 @@ import { entryMoneySelect, fetchPeriodMoney, financeYears, showLabel, showMoneyS
 import { formatDateOnly, monthLabel } from "@/lib/format";
 import { formatCents } from "@/lib/money";
 import { prisma } from "@/lib/prisma";
-import { requireBandId } from "@/lib/session";
+import { requireBandContext } from "@/lib/session";
 import { todayDateOnly } from "@/lib/shows";
 import type { Metadata } from "next";
 import Link from "next/link";
@@ -35,7 +35,14 @@ const UPCOMING_DAYS = 30;
 const LIST_LIMIT = 10;
 
 /** Item de recebimento (cachê de show ou receita avulsa) nas listas "Atrasados" e "Próximos". */
-type ReceivableRow = { key: string; label: string; href: string; due: Date; cents: number; isShow: boolean };
+type ReceivableRow = {
+  key: string;
+  label: string;
+  href: string;
+  due: Date;
+  cents: number;
+  isShow: boolean;
+};
 
 function periodLabel(period: FinancePeriod): string {
   return period.month === null ? `Ano de ${period.year}` : `${monthLabel(period.month)} de ${period.year}`;
@@ -88,7 +95,10 @@ async function fetchReceivables(bandId: string, range: { gte?: Date; lt: Date })
 function ReceivableTable({ caption, rows, empty }: { caption: string; rows: ReceivableRow[]; empty: string }) {
   if (rows.length === 0) return <p className="text-sm text-fg-muted">{empty}</p>;
   return (
-    <Table caption={caption} headers={[{ label: "Descrição" }, { label: "Origem" }, { label: "Vencimento" }, { label: "Valor" }]}>
+    <Table
+      caption={caption}
+      headers={[{ label: "Descrição" }, { label: "Origem" }, { label: "Vencimento" }, { label: "Valor" }]}
+    >
       {rows.map((r) => (
         <Tr key={r.key}>
           <Td label="Descrição" strong>
@@ -110,7 +120,7 @@ function ReceivableTable({ caption, rows, empty }: { caption: string; rows: Rece
 }
 
 export default async function FinanceiroPage({ searchParams }: PageProps) {
-  const bandId = await requireBandId();
+  const { bandId, canEdit } = await requireBandContext();
   const today = todayDateOnly();
   const period = parseFinancePeriod(await searchParams, today);
 
@@ -137,9 +147,11 @@ export default async function FinanceiroPage({ searchParams }: PageProps) {
             <ButtonLink href={exportHref} variant="secondary" icon={DownloadIcon} prefetch={false}>
               Exportar CSV
             </ButtonLink>
-            <ButtonLink href="/financeiro/lancamentos/nova" icon={AddIcon}>
-              Novo lançamento
-            </ButtonLink>
+            {canEdit ? (
+              <ButtonLink href="/financeiro/lancamentos/nova" icon={AddIcon}>
+                Novo lançamento
+              </ButtonLink>
+            ) : null}
           </>
         }
       />
@@ -175,7 +187,11 @@ export default async function FinanceiroPage({ searchParams }: PageProps) {
         <Card
           title="Atrasados"
           description="Cachês e receitas vencidos e não recebidos, de qualquer período."
-          actions={overdue.length > 0 ? <Badge tone="danger">{overdue.length >= LIST_LIMIT ? `${LIST_LIMIT}+` : overdue.length}</Badge> : null}
+          actions={
+            overdue.length > 0 ? (
+              <Badge tone="danger">{overdue.length >= LIST_LIMIT ? `${LIST_LIMIT}+` : overdue.length}</Badge>
+            ) : null
+          }
         >
           <ReceivableTable caption="Recebimentos atrasados" rows={overdue} empty="Nenhum recebimento atrasado." />
         </Card>

@@ -18,6 +18,7 @@ import {
   LeadIcon,
   MenuIcon,
   ShowIcon,
+  SwitchBandIcon,
   VenueIcon,
   type Icon,
 } from "@/components/ui/icons";
@@ -33,11 +34,13 @@ type NavItem = {
   /** `false` evita marcar ativo em `/x/nova` (a página "nova" não pertence ao item). */
   matchNova?: boolean;
   /** Submenu (ex.: Integrações → Agenda, Contatos). O pai fica marcado quando um filho está ativo. */
-  children?: { href: string; label: string }[];
+  children?: { href: string; label: string; exact?: boolean }[];
   /** Ainda não disponível: aparece desabilitado com selo "Em breve" (sem link). */
   soon?: boolean;
   /** Ativo só na própria URL (quando outro item do menu é sub-rota dele, ex.: /financeiro × /financeiro/lancamentos). */
   exact?: boolean;
+  /** Só para administradores da banda (visualizador não vê o item). */
+  adminOnly?: boolean;
 };
 
 type NavGroup = {
@@ -84,12 +87,22 @@ const NAV_GROUPS: NavGroup[] = [
         href: "/integracoes",
         label: "Integrações",
         icon: IntegrationIcon,
+        adminOnly: true,
         children: [
           { href: "/integracoes/agenda", label: "Agenda" },
           { href: "/integracoes/contato", label: "Contatos" },
         ],
       },
-      { href: "/banda", label: "Minha banda", icon: BandIcon },
+      {
+        href: "/banda",
+        label: "Minha banda",
+        icon: BandIcon,
+        children: [
+          // `exact`: /banda/integrantes também começa com /banda.
+          { href: "/banda", label: "Dados da banda", exact: true },
+          { href: "/banda/integrantes", label: "Integrantes" },
+        ],
+      },
     ],
   },
 ];
@@ -106,6 +119,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
         icon: ShieldIcon,
         children: [
           { href: "/admin/usuarios/bandas", label: "Bandas" },
+          { href: "/admin/usuarios/contas", label: "Contas" },
           { href: "/admin/usuarios/administradores", label: "Administradores" },
         ],
       },
@@ -115,7 +129,7 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
 
 /** Configuração por área: o shell é o mesmo, muda menu, início e perfil. */
 const VARIANTS = {
-  band: { groups: NAV_GROUPS, home: "/casas", profile: "/banda", adminBadge: false },
+  band: { groups: NAV_GROUPS, home: "/casas", profile: "/conta", adminBadge: false },
   admin: { groups: ADMIN_NAV_GROUPS, home: "/admin/palcos", profile: "/admin/senha", adminBadge: true },
 } as const;
 
@@ -167,17 +181,54 @@ function subscribe(listener: () => void) {
   return () => listeners.delete(listener);
 }
 
+/** Banda ativa (app da banda). `null` = usuário ainda sem banda (página /bandas). */
+export type ShellBand = { name: string; roleLabel: string; canEdit: boolean } | null;
+
+/** Banda ativa no topo do menu, com atalho para trocar/criar banda. */
+function BandSwitcher({ band, expanded }: { band: NonNullable<ShellBand> | null; expanded: boolean }) {
+  const label = band ? `${band.name} — trocar de banda` : "Escolher banda";
+  if (!expanded) {
+    return (
+      <Link
+        href="/bandas"
+        title={label}
+        aria-label={label}
+        className="flex h-9 items-center justify-center rounded-md text-fg-muted hover:bg-surface-sunken hover:text-fg"
+      >
+        <SwitchBandIcon className="size-5" aria-hidden />
+      </Link>
+    );
+  }
+  return (
+    <Link
+      href="/bandas"
+      title={label}
+      className="flex items-center gap-2 rounded-md border border-line bg-surface px-2.5 py-2 hover:bg-surface-sunken"
+    >
+      <span className="flex min-w-0 flex-1 flex-col leading-tight">
+        <span className="truncate text-sm font-medium text-fg">{band ? band.name : "Nenhuma banda"}</span>
+        <span className="truncate text-xs text-fg-subtle">{band ? band.roleLabel : "Escolha ou crie uma banda"}</span>
+      </span>
+      <SwitchBandIcon className="size-4 shrink-0 text-fg-subtle" aria-hidden />
+      <span className="sr-only">Trocar de banda</span>
+    </Link>
+  );
+}
+
 type DashboardShellProps = {
   /** "admin" = painel superadmin (menu e links próprios, selo "Admin" na marca). */
   variant?: keyof typeof VARIANTS;
   userName?: string | null;
+  /** App da banda: banda ativa (seletor no topo do menu; esconde itens só de administrador). */
+  band?: ShellBand;
   /** Rodapé do menu (botão Sair). Use `group-data-[collapsed=true]:…` para adaptar ao menu recolhido. */
   footer: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function DashboardShell({ variant = "band", userName, footer, children }: DashboardShellProps) {
+export function DashboardShell({ variant = "band", userName, band = null, footer, children }: DashboardShellProps) {
   const config = VARIANTS[variant];
+  const isBandApp = variant === "band";
   const pathname = usePathname();
   const collapsed = useSyncExternalStore(subscribe, readCollapsed, () => false);
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -247,7 +298,8 @@ export function DashboardShell({ variant = "band", userName, footer, children }:
               {expanded ? "Painel administrativo" : "ADM"}
             </p>
           ) : null}
-          {config.groups.map((group) => (
+          {isBandApp ? <BandSwitcher band={band} expanded={expanded} /> : null}
+          {(isBandApp && !band ? [] : config.groups).map((group) => (
             <div key={group.label}>
               {group.soon ? (
                 expanded ? (
@@ -277,7 +329,7 @@ export function DashboardShell({ variant = "band", userName, footer, children }:
                 <hr className="mx-2 mb-2 border-line" aria-hidden />
               )}
               <ul className="flex flex-col gap-0.5">
-                {group.items.map((item) => {
+                {group.items.filter((item) => !item.adminOnly || !isBandApp || band?.canEdit).map((item) => {
                   const active = navActive(pathname, item);
                   const ItemIcon = item.icon;
                   const hasChildren = !!item.children?.length;
@@ -329,7 +381,8 @@ export function DashboardShell({ variant = "band", userName, footer, children }:
                       {hasChildren && expanded ? (
                         <ul className="mb-1 ml-[1.375rem] mt-0.5 flex flex-col gap-0.5 border-l border-line pl-3">
                           {item.children!.map((child) => {
-                            const childActive = pathname === child.href || pathname.startsWith(`${child.href}/`);
+                            const childActive =
+                              pathname === child.href || (!child.exact && pathname.startsWith(`${child.href}/`));
                             return (
                               <li key={child.href}>
                                 <Link

@@ -50,5 +50,10 @@ export {
   EyeOff as HidePasswordIcon,
   Download as DownloadIcon,
   Receipt as FinanceEntryIcon,
+  Users as MembersIcon,
+  UserPlus as InviteIcon,
+  ArrowLeftRight as SwitchBandIcon,
+  CircleUserRound as AccountIcon,
+  Link as LinkIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";
