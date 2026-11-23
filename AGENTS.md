@@ -202,6 +202,7 @@ npm run dev
 npm run check        # lint + typecheck + testes (mesmo que o CI)
 npm run test         # Vitest
 npm run build        # prisma generate + next build
+npm run deploy:check -- --pr <n>   # verificação pré-deploy (só leitura); `post --sha <sha>` espera o deploy e faz smoke test — docs/deploy.md
 
 npm run admin:create -- --email … --name …   # primeiro superadmin (painel /admin)
 npm run stages:import -- --file <json> --dry-run   # importação em lote de palcos (docs/admin.md §6)
@@ -215,6 +216,8 @@ npm run dev:local         # next dev apontando para o banco local
 ```
 
 **Antes de `npm run db:deploy` em produção, rode a migration no banco local** (`db:local:migrate`) e valide o fluxo com `dev:local`. `scripts/with-local-db.mjs <cmd>` roda qualquer comando apontando para o banco local. O `.env.local` aponta para o Supabase de produção — nunca rode seed/testes destrutivos sem o wrapper local.
+
+**Deploy:** quando o usuário pedir "deploy", use a skill `.claude/skills/deploy` (processo completo em `docs/deploy.md`: verificação → migrations em produção antes do merge → merge do PR → espera do deploy na Vercel → smoke test). Migrations precisam ser aditivas.
 
 CI: `.github/workflows/ci.yml` (lint, typecheck, testes, `prisma validate`, build) em push/PR para `main`.
 Testes: funções puras em `lib/` têm `*.test.ts` ao lado. Ao criar regra de negócio, extraia para `lib/` e teste lá.

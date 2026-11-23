@@ -19,7 +19,11 @@ export function argValue(name) {
   return i >= 0 ? args[i + 1] : undefined;
 }
 
-export async function connectDb() {
+/**
+ * `readOnly`: dispensa --confirm-remote, mas a sessão fica somente leitura no Postgres
+ * (qualquer escrita falha) — para verificações como `npm run deploy:check`.
+ */
+export async function connectDb({ readOnly = false } = {}) {
   const rawUrl = process.env.DIRECT_URL || process.env.DATABASE_URL;
   if (!rawUrl) {
     console.error("DATABASE_URL não definida.");
@@ -27,8 +31,8 @@ export async function connectDb() {
   }
   const url = new URL(rawUrl);
   const isLocal = ["127.0.0.1", "localhost"].includes(url.hostname);
-  console.log(`Banco: ${url.hostname}:${url.port || 5432} ${isLocal ? "(local)" : "(REMOTO)"}`);
-  if (!isLocal && !hasFlag("confirm-remote")) {
+  console.log(`Banco: ${url.hostname}:${url.port || 5432} ${isLocal ? "(local)" : "(REMOTO)"}${readOnly ? " · somente leitura" : ""}`);
+  if (!isLocal && !readOnly && !hasFlag("confirm-remote")) {
     console.error("Banco remoto: repita o comando com --confirm-remote se tem certeza.");
     process.exit(1);
   }
@@ -40,6 +44,7 @@ export async function connectDb() {
     ssl: isLocal ? false : { rejectUnauthorized: !insecure },
   });
   await client.connect();
+  if (readOnly) await client.query("SET SESSION CHARACTERISTICS AS TRANSACTION READ ONLY");
   client.host = url.hostname;
   return client;
 }
