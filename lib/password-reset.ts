@@ -21,22 +21,38 @@ export function generatePasswordResetToken(now: number = Date.now()) {
 }
 
 /**
- * Base do link no email. Em produção só confia em NEXT_PUBLIC_APP_URL: montar o link com o
- * Host da requisição permitiria a um atacante enviar à vítima um link para o domínio dele
- * (password reset poisoning). Fora de produção usa a origem da requisição.
+ * Base dos links enviados por email (redefinição de senha, convite). Em produção não confia no
+ * Host da requisição — isso permitiria a um atacante enviar à vítima um link para o domínio dele
+ * (password reset poisoning). Ordem: NEXT_PUBLIC_APP_URL → domínio de produção do projeto na
+ * Vercel (`VERCEL_PROJECT_PRODUCTION_URL`, variável de sistema, sem protocolo) → origem da
+ * requisição só fora de produção.
  */
 export function passwordResetBaseUrl({
   appUrl,
+  vercelProductionHost,
   requestUrl,
   isProduction,
 }: {
   appUrl: string | undefined;
+  vercelProductionHost?: string | undefined;
   requestUrl: string;
   isProduction: boolean;
 }): string | null {
   const fromEnv = appUrl?.trim().replace(/\/+$/, "");
   if (fromEnv) return fromEnv;
+  const host = vercelProductionHost?.trim().replace(/^https?:\/\//, "").replace(/\/+$/, "");
+  if (host) return `https://${host}`;
   return isProduction ? null : new URL(requestUrl).origin;
+}
+
+/** `passwordResetBaseUrl` com as variáveis de ambiente do processo. */
+export function emailLinkBaseUrl(requestUrl: string): string | null {
+  return passwordResetBaseUrl({
+    appUrl: process.env.NEXT_PUBLIC_APP_URL,
+    vercelProductionHost: process.env.VERCEL_PROJECT_PRODUCTION_URL,
+    requestUrl,
+    isProduction: process.env.NODE_ENV === "production",
+  });
 }
 
 export function passwordResetUrl(baseUrl: string, token: string): string {

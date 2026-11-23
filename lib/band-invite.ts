@@ -29,7 +29,7 @@ export async function inviteMember(
   });
   const baseUrl = appBaseUrl(request);
   if (!baseUrl) {
-    console.error("[convite] NEXT_PUBLIC_APP_URL não configurada — link de convite não gerado.");
+    console.error("[convite] NEXT_PUBLIC_APP_URL/VERCEL_PROJECT_PRODUCTION_URL ausentes — link de convite não gerado.");
     return { status: "invited", inviteUrl: null, emailSent: false };
   }
   const url = inviteUrl(baseUrl, token);
