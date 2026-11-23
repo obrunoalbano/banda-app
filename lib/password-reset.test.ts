@@ -33,6 +33,24 @@ describe("base do link", () => {
     expect(passwordResetBaseUrl({ appUrl: undefined, requestUrl, isProduction: true })).toBeNull();
     expect(passwordResetBaseUrl({ appUrl: "  ", requestUrl, isProduction: true })).toBeNull();
   });
+  it("Vercel: domínio de produção do projeto (sem protocolo) quando não há NEXT_PUBLIC_APP_URL", () => {
+    expect(
+      passwordResetBaseUrl({
+        appUrl: undefined,
+        vercelProductionHost: "banda-app.vercel.app",
+        requestUrl,
+        isProduction: true,
+      }),
+    ).toBe("https://banda-app.vercel.app");
+    expect(
+      passwordResetBaseUrl({
+        appUrl: "https://app.banda.com",
+        vercelProductionHost: "x.vercel.app",
+        requestUrl,
+        isProduction: true,
+      }),
+    ).toBe("https://app.banda.com");
+  });
   it("desenvolvimento: origem da requisição", () => {
     expect(
       passwordResetBaseUrl({ appUrl: undefined, requestUrl: "http://localhost:3000/api/x", isProduction: false }),

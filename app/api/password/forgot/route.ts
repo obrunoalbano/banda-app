@@ -3,7 +3,7 @@ import { jsonError, parseBody } from "@/lib/api";
 import { sendEmail } from "@/lib/email";
 import {
   generatePasswordResetToken,
-  passwordResetBaseUrl,
+  emailLinkBaseUrl,
   passwordResetEmail,
   passwordResetUrl,
 } from "@/lib/password-reset";
@@ -32,13 +32,9 @@ export async function POST(request: Request) {
   const byEmail = rateLimit(`forgot-password-email:${email}`, RATE_LIMITS.forgotPasswordEmail);
   if (!byEmail.ok) return tooMany(byEmail.retryAfterSeconds);
 
-  const baseUrl = passwordResetBaseUrl({
-    appUrl: process.env.NEXT_PUBLIC_APP_URL,
-    requestUrl: request.url,
-    isProduction: process.env.NODE_ENV === "production",
-  });
+  const baseUrl = emailLinkBaseUrl(request.url);
   if (!baseUrl) {
-    console.error("[password-reset] NEXT_PUBLIC_APP_URL não configurada — link de redefinição não enviado.");
+    console.error("[password-reset] NEXT_PUBLIC_APP_URL/VERCEL_PROJECT_PRODUCTION_URL ausentes — link de redefinição não enviado.");
     return NextResponse.json({ ok: true });
   }
 

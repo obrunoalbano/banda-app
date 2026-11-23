@@ -2,7 +2,7 @@ import type { NextResponse } from "next/server";
 import { isUniqueViolation } from "@/lib/api";
 import { findAvailableSlug } from "@/lib/band-slug";
 import { hashInviteToken } from "@/lib/members";
-import { passwordResetBaseUrl } from "@/lib/password-reset";
+import { emailLinkBaseUrl } from "@/lib/password-reset";
 import { prisma } from "@/lib/prisma";
 import { ACTIVE_BAND_COOKIE, activeBandCookieOptions } from "@/lib/session";
 
@@ -64,11 +64,7 @@ export async function claimInvite(memberId: string, userId: string): Promise<boo
 
 /** Base dos links enviados por email (mesma regra anti-poisoning do "esqueci minha senha"). */
 export function appBaseUrl(request: Request): string | null {
-  return passwordResetBaseUrl({
-    appUrl: process.env.NEXT_PUBLIC_APP_URL,
-    requestUrl: request.url,
-    isProduction: process.env.NODE_ENV === "production",
-  });
+  return emailLinkBaseUrl(request.url);
 }
 
 export function setActiveBandCookie(response: NextResponse, bandId: string): NextResponse {

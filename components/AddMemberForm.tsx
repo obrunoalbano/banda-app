@@ -11,9 +11,7 @@ import { BAND_ROLE_OPTIONS } from "@/lib/band-roles";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export type InviteResult =
-  | { status: "linked" }
-  | { status: "invited"; inviteUrl: string | null; emailSent: boolean };
+export type InviteResult = { status: "linked" } | { status: "invited"; inviteUrl: string | null; emailSent: boolean };
 
 /** Resultado do convite: acesso imediato (já tinha conta) ou link para criar a conta. */
 export function InviteResultAlert({ result, email }: { result: InviteResult; email: string }) {
@@ -30,7 +28,9 @@ export function InviteResultAlert({ result, email }: { result: InviteResult; ema
         {result.emailSent
           ? `Enviamos um email para ${email} com o link para criar a conta.`
           : `Não foi possível enviar o email para ${email}.`}{" "}
-        Você também pode mandar o link abaixo (vale por 14 dias, uma única vez).
+        {result.inviteUrl
+          ? "Você também pode mandar o link abaixo (vale por 14 dias, uma única vez)."
+          : "O link não pôde ser gerado agora. Tente “Novo link” na lista de integrantes em instantes."}
       </Alert>
       {result.inviteUrl ? (
         <CodeBlock label="Link do convite" copyable>
@@ -65,7 +65,13 @@ export function AddMemberForm() {
       {error ? <Alert>{error}</Alert> : null}
       {result ? <InviteResultAlert result={result.result} email={result.email} /> : null}
       <div className="grid gap-4 sm:grid-cols-2">
-        <TextField label="Nome" required maxLength={120} value={form.name} onChange={(e) => set({ name: e.target.value })} />
+        <TextField
+          label="Nome"
+          required
+          maxLength={120}
+          value={form.name}
+          onChange={(e) => set({ name: e.target.value })}
+        />
         <TextField
           label="Email"
           type="email"
