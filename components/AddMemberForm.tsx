@@ -11,7 +11,8 @@ import { BAND_ROLE_OPTIONS } from "@/lib/band-roles";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 
-export type InviteResult = { status: "linked" } | { status: "invited"; inviteUrl: string | null; emailSent: boolean };
+export type InviteResult =
+  { status: "linked" } | { status: "invited"; inviteUrl: string | null; emailSent: boolean; emailError?: string };
 
 /** Resultado do convite: acesso imediato (já tinha conta) ou link para criar a conta. */
 export function InviteResultAlert({ result, email }: { result: InviteResult; email: string }) {
@@ -23,7 +24,7 @@ export function InviteResultAlert({ result, email }: { result: InviteResult; ema
     );
   }
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex min-w-0 flex-col gap-3">
       <Alert tone={result.emailSent ? "success" : "warning"} title="Convite criado">
         {result.emailSent
           ? `Enviamos um email para ${email} com o link para criar a conta.`
@@ -31,9 +32,10 @@ export function InviteResultAlert({ result, email }: { result: InviteResult; ema
         {result.inviteUrl
           ? "Você também pode mandar o link abaixo (vale por 14 dias, uma única vez)."
           : "O link não pôde ser gerado agora. Tente “Novo link” na lista de integrantes em instantes."}
+        {result.emailError ? <span className="mt-1 block text-xs opacity-80">Motivo: {result.emailError}</span> : null}
       </Alert>
       {result.inviteUrl ? (
-        <CodeBlock label="Link do convite" copyable>
+        <CodeBlock label="Link do convite" copyable wrap>
           {result.inviteUrl}
         </CodeBlock>
       ) : null}

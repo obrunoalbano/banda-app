@@ -38,6 +38,11 @@ model Band {
   passwordResetTokenHash String?        @unique
   /// LEGADO — ver `email`.
   passwordResetExpiresAt DateTime?
+  /// Link de convite da banda (reutilizável, para o grupo): parte pública do token. O link só vale
+  /// com a assinatura HMAC (AUTH_SECRET) — vazar o banco não vaza links. Vazio = link desativado.
+  inviteLinkNonce        String?        @unique
+  /// Acesso de quem entra pelo link da banda.
+  inviteLinkRole         BandRole       @default(VIEWER)
   createdAt              DateTime       @default(now())
   updatedAt              DateTime       @updatedAt
   venues                 Venue[]

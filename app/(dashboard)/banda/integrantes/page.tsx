@@ -1,13 +1,16 @@
 import { AddMemberForm } from "@/components/AddMemberForm";
+import { BandInviteLinkPanel } from "@/components/BandInviteLinkPanel";
 import { MemberActions } from "@/components/MemberActions";
 import { Badge } from "@/components/ui/Badge";
 import { Card } from "@/components/ui/Card";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { containerClass } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
+import { bandLinkUrl } from "@/lib/band-link";
 import { BAND_ROLE_SHORT, BAND_ROLE_TONES } from "@/lib/band-roles";
 import { lastAdminBlock, memberStatus } from "@/lib/members";
 import { prisma } from "@/lib/prisma";
+import { getPublicBaseUrl } from "@/lib/public-base-url";
 import { requireBandContext } from "@/lib/session";
 import type { Metadata } from "next";
 
@@ -35,6 +38,10 @@ export default async function IntegrantesPage() {
     },
   });
   const now = new Date();
+  const link = canEdit
+    ? await prisma.band.findUnique({ where: { id: bandId }, select: { inviteLinkNonce: true, inviteLinkRole: true } })
+    : null;
+  const linkUrl = link?.inviteLinkNonce ? bandLinkUrl(await getPublicBaseUrl(), link.inviteLinkNonce) : null;
 
   return (
     <div className={containerClass}>
@@ -98,6 +105,15 @@ export default async function IntegrantesPage() {
             );
           })}
         </Table>
+
+        {canEdit && link ? (
+          <Card
+            title="Link de convite da banda"
+            description="Um link só para mandar no grupo da banda: cada pessoa cria a conta (ou entra) e já vira integrante."
+          >
+            <BandInviteLinkPanel url={linkUrl} role={link.inviteLinkRole} />
+          </Card>
+        ) : null}
 
         {canEdit ? (
           <Card

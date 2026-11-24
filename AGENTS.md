@@ -31,6 +31,7 @@ app/
   page.tsx                 landing (redireciona p/ /casas se logado)
   login/, cadastro/        páginas públicas (cadastro = conta + 1ª banda, ou conta via convite ?convite=)
   convite/[token]/         PÚBLICO — link de convite para uma banda (aceitar, cadastrar ou entrar)
+  convite/banda/[token]/   PÚBLICO — link de convite da banda (grupo, reutilizável; cadastro = /cadastro?banda=)
   esqueci-senha/, redefinir-senha/  "esqueci minha senha" da banda (link por email — docs/admin.md §2)
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
@@ -53,9 +54,10 @@ app/
     password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
     band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste)
-    band/members (POST), band/members/[id] (PATCH, DELETE), band/members/[id]/invite (POST: novo link)
+    band/members (POST), band/members/[id] (PATCH, DELETE), band/members/[id]/invite (POST: novo link),
+    band/invite-link (PATCH: link de convite da banda — ativar, regenerar, acesso, desativar)
     account (PATCH), account/password (POST), bands (POST: nova banda), bands/current (POST: trocar),
-    invites/[token] (POST: aceitar convite logado)   ← rotas da CONTA usam withUser
+    invites/[token] (POST: aceitar convite logado), invites/band/[token] (POST: entrar pelo link da banda)   ← rotas da CONTA usam withUser
     admin/*                SUPERADMIN (withAdmin): stages, bands, users (+reset-password), admins, password
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
@@ -83,6 +85,7 @@ hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (
 lib/
   api.ts                   withBand (só ADMIN da banda por padrão; { viewer: true } libera leitura), withUser, withAdmin, parseBody, jsonError…
   session.ts               getBandContext/requireBandContext (banda ativa + papel + canEdit), requireBandEditor, requireUserId, requireAdminId…
+  band-link.ts             link de convite da banda: token = nonce + HMAC (AUTH_SECRET), só o nonce no banco (com teste)
   members.ts               convites (token só hash), lastAdminBlock, banda ativa (com teste) · band-roles.ts: labels/tons dos papéis
   band-access.ts           criar banda com admin, achar/aceitar convite, cookie da banda ativa · band-invite.ts: convidar/vincular
   access.ts                regras de acesso por rota e papel (proxy.ts) — função pura com teste
@@ -118,7 +121,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 - **User** — pessoa que faz login (`email` único, `passwordHash`, `disabledAt`, `mustChangePassword`, `passwordResetTokenHash/ExpiresAt`, `lastLoginAt`).
 - **BandMember** — integrante: `bandId`, `userId?` (vazio = convite pendente), `name`, `email`, `role` (`ADMIN | VIEWER`), `inviteTokenHash`/`inviteExpiresAt`, `joinedAt`. Únicos `(bandId, email)` e `(bandId, userId)`.
-- **Band** — tenant. `responsible`/`phone` (contato), `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `disabledAt` (banda desativada pelo painel). `email`/`passwordHash`/`mustChangePassword`/`passwordReset*` são **legado** (pré multi-bandas; anuláveis, não usar).
+- **Band** — tenant. `responsible`/`phone` (contato), `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `disabledAt` (banda desativada pelo painel), `inviteLinkNonce`/`inviteLinkRole` (link de convite da banda — `lib/band-link.ts`). `email`/`passwordHash`/`mustChangePassword`/`passwordReset*` são **legado** (pré multi-bandas; anuláveis, não usar).
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
 - **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`; `paymentDueDate` (vencimento do cachê, vazio = data do show) e `paidAt` (data do recebimento, preenchida ao marcar pago — `resolveShowPaidAt`), ambos data pura. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.

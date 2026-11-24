@@ -10,7 +10,10 @@ import { useState } from "react";
 /** Convite válido (cadastro pelo link enviado por uma banda). */
 export type RegisterInvite = { token: string; email: string; name: string; bandName: string };
 
-export function RegisterForm({ invite }: { invite?: RegisterInvite }) {
+/** Link de convite da banda (grupo): qualquer email, entra na banda do link. */
+export type RegisterBandLink = { token: string; bandName: string };
+
+export function RegisterForm({ invite, bandLink }: { invite?: RegisterInvite; bandLink?: RegisterBandLink }) {
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
   const [form, setForm] = useState({
@@ -24,9 +27,12 @@ export function RegisterForm({ invite }: { invite?: RegisterInvite }) {
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
+    const account = { name: form.name, phone: form.phone, email: form.email, password: form.password };
     const body = invite
-      ? { name: form.name, phone: form.phone, email: form.email, password: form.password, inviteToken: invite.token }
-      : form;
+      ? { ...account, inviteToken: invite.token }
+      : bandLink
+        ? { ...account, bandLinkToken: bandLink.token }
+        : form;
     const data = await submit("/api/register", "POST", body, "Não foi possível cadastrar.");
     if (!data) return;
     const params = new URLSearchParams({ registered: "1", email: form.email.trim().toLowerCase() });
@@ -63,7 +69,7 @@ export function RegisterForm({ invite }: { invite?: RegisterInvite }) {
         onChange={(e) => set({ password: e.target.value })}
         hint="Mínimo de 8 caracteres"
       />
-      {invite ? null : (
+      {invite || bandLink ? null : (
         <TextField
           label="Nome da banda"
           required
@@ -74,7 +80,11 @@ export function RegisterForm({ invite }: { invite?: RegisterInvite }) {
         />
       )}
       <Button type="submit" loading={loading} className="mt-2 w-full">
-        {loading ? "Cadastrando…" : invite ? `Criar conta e entrar na ${invite.bandName}` : "Criar conta"}
+        {loading
+          ? "Cadastrando…"
+          : invite || bandLink
+            ? `Criar conta e entrar na ${(invite ?? bandLink)!.bandName}`
+            : "Criar conta"}
       </Button>
     </form>
   );
