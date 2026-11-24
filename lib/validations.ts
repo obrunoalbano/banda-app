@@ -6,6 +6,7 @@ import {
   FinanceEntryType,
   AttendanceStatus,
   RehearsalRecurrence,
+  RehearsalSongStatus,
   ShowPaymentStatus,
   StageStatus,
   StageType,
@@ -417,6 +418,8 @@ export { MAX_REPERTOIRE_SONGS };
 /** Música do repertório. Link do Spotify vira o link canônico + ID da faixa (`spotifyTrackId`). */
 const repertoireSongSchema = z
   .object({
+    /** Música que já existe (mantém o id: ordem e marcações dos ensaios dependem dele). */
+    id: z.string().trim().min(1).max(40).optional(),
     title: requiredText("Informe o nome da música").pipe(z.string().max(200, "Nome da música muito longo")),
     artists: optionalText(300),
     spotifyUrl: optionalText(500),
@@ -441,6 +444,7 @@ const repertoireSongSchema = z
       return z.NEVER;
     }
     return {
+      id: song.id,
       title: song.title,
       artists: song.artists ?? null,
       spotifyTrackId: trackId,
@@ -493,4 +497,16 @@ export const rehearsalUpdateSchema = rehearsalBaseSchema.partial();
 export const rehearsalAttendanceSchema = z.object({
   occurrenceDate: dateOnly(),
   status: z.enum(AttendanceStatus, "Escolha se vai ou não"),
+});
+
+/** Ordem das músicas no ensaio (ids das músicas do repertório, todas, na nova ordem). */
+export const rehearsalSongOrderSchema = z.object({
+  songIds: z.array(z.string().min(1).max(40)).max(MAX_REPERTOIRE_SONGS),
+});
+
+/** Marca uma música como ensaiada/que faltou numa data do ensaio (`null` = tira a marcação). */
+export const rehearsalSongCheckSchema = z.object({
+  songId: z.string().min(1).max(40),
+  occurrenceDate: dateOnly(),
+  status: z.enum(RehearsalSongStatus).nullable(),
 });

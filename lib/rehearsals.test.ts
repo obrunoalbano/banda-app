@@ -2,6 +2,10 @@ import { describe, expect, it } from "vitest";
 import {
   attendanceCounts,
   isOccurrence,
+  isRepertoireOrder,
+  orderRehearsalSongs,
+  pastOccurrences,
+  songCheckCounts,
   nextOccurrence,
   recurrenceDescription,
   rehearsalInviteEmail,
@@ -105,5 +109,56 @@ describe("email do ensaio", () => {
     expect(email.html).toContain("&#60;Os Ruídos&#62;");
     expect(email.text).toContain("https://app/ensaios/1");
     expect(email.text).toContain("(toda terça-feira)");
+  });
+});
+
+describe("pastOccurrences", () => {
+  it("semanal: as mais recentes primeiro, até hoje inclusive", () => {
+    expect(pastOccurrences(rule("2026-11-03", "WEEKLY"), d("2026-11-24"), 3).map(ymd)).toEqual([
+      "2026-11-24",
+      "2026-11-17",
+      "2026-11-10",
+    ]);
+  });
+  it("respeita o fim da recorrência", () => {
+    expect(pastOccurrences(rule("2026-11-03", "WEEKLY", "2026-11-12"), d("2026-11-24"), 5).map(ymd)).toEqual([
+      "2026-11-10",
+      "2026-11-03",
+    ]);
+  });
+  it("único: só se já aconteceu", () => {
+    expect(pastOccurrences(rule("2026-11-20", "NONE"), d("2026-11-24"), 5).map(ymd)).toEqual(["2026-11-20"]);
+    expect(pastOccurrences(rule("2026-12-01", "NONE"), d("2026-11-24"), 5)).toEqual([]);
+  });
+  it("primeira data ainda no futuro → nenhuma", () => {
+    expect(pastOccurrences(rule("2026-12-01", "WEEKLY"), d("2026-11-24"), 5)).toEqual([]);
+  });
+});
+
+describe("músicas do ensaio", () => {
+  const songs = ["a", "b", "c", "d"].map((id) => ({ id }));
+  const ids = (list: { id: string }[]) => list.map((s) => s.id);
+
+  it("sem ordem salva = ordem do repertório", () => {
+    expect(ids(orderRehearsalSongs(songs, []))).toEqual(["a", "b", "c", "d"]);
+  });
+  it("aplica a ordem do ensaio; novas no fim; ids removidos ignorados", () => {
+    expect(ids(orderRehearsalSongs(songs, ["c", "x", "a"]))).toEqual(["c", "a", "b", "d"]);
+  });
+  it("detecta a ordem do repertório", () => {
+    expect(isRepertoireOrder(["a", "b"], ["a", "b"])).toBe(true);
+    expect(isRepertoireOrder(["b", "a"], ["a", "b"])).toBe(false);
+  });
+  it("conta ensaiadas, que faltaram e sem marcação", () => {
+    expect(
+      songCheckCounts(
+        ["a", "b", "c"],
+        [
+          { songId: "a", status: "REHEARSED" },
+          { songId: "b", status: "MISSED" },
+          { songId: "z", status: "REHEARSED" },
+        ],
+      ),
+    ).toEqual({ REHEARSED: 1, MISSED: 1, NONE: 1 });
   });
 });

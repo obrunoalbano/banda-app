@@ -73,5 +73,7 @@ export {
   ThumbsUp as ConfirmIcon,
   ThumbsDown as DeclineIcon,
   ListPlus as PlaylistIcon,
+  Image as ImageIcon,
+  Type as TextIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

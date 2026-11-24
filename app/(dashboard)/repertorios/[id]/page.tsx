@@ -1,3 +1,4 @@
+import { ShareRepertoireButton } from "@/components/repertoire/ShareRepertoireButton";
 import { SongList } from "@/components/repertoire/SongList";
 import { ButtonLink } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
@@ -17,7 +18,7 @@ export const metadata: Metadata = { title: "Repertório" };
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function RepertorioPage({ params }: PageProps) {
-  const { bandId, canEdit } = await requireBandContext();
+  const { bandId, bandName, canEdit } = await requireBandContext();
   const { id } = await params;
   const repertoire = await prisma.repertoire.findFirst({
     where: { id, bandId },
@@ -52,18 +53,28 @@ export default async function RepertorioPage({ params }: PageProps) {
         description={repertoire.description ?? undefined}
         back={{ href: "/repertorios", label: "Voltar à listagem" }}
         actions={
-          canEdit ? (
-            <>
-              <ButtonLink href={`/repertorios/${repertoire.id}/editar`} icon={EditIcon}>
-                Alterar
-              </ButtonLink>
-              <ConfirmDeleteButton
-                endpoint={`/api/repertoires/${repertoire.id}`}
-                redirectTo="/repertorios"
-                itemLabel={`o repertório "${repertoire.name}"${repertoire.rehearsals.length ? " (os ensaios que o usam ficam sem repertório)" : ""}`}
+          <>
+            {repertoire.songs.length ? (
+              <ShareRepertoireButton
+                bandName={bandName}
+                name={repertoire.name}
+                description={repertoire.description}
+                songs={repertoire.songs}
               />
-            </>
-          ) : null
+            ) : null}
+            {canEdit ? (
+              <>
+                <ButtonLink href={`/repertorios/${repertoire.id}/editar`} icon={EditIcon}>
+                  Alterar
+                </ButtonLink>
+                <ConfirmDeleteButton
+                  endpoint={`/api/repertoires/${repertoire.id}`}
+                  redirectTo="/repertorios"
+                  itemLabel={`o repertório "${repertoire.name}"${repertoire.rehearsals.length ? " (os ensaios que o usam ficam sem repertório)" : ""}`}
+                />
+              </>
+            ) : null}
+          </>
         }
       >
         <Badge>

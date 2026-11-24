@@ -41,6 +41,8 @@ import { useRouter } from "next/navigation";
 import { useState } from "react";
 
 export type SongInput = {
+  /** Música já salva (mantém o id ao salvar). */
+  id?: string;
   title: string;
   artists: string | null;
   spotifyUrl: string | null;
@@ -51,6 +53,7 @@ export type SongInput = {
 
 type SongRow = {
   key: string;
+  id?: string;
   title: string;
   artists: string;
   spotifyUrl: string | null;
@@ -71,6 +74,7 @@ const newKey = () => `s${++keySeq}-${Date.now()}`;
 
 const toRow = (s: SongInput): SongRow => ({
   key: newKey(),
+  id: s.id,
   title: s.title,
   artists: s.artists ?? "",
   spotifyUrl: s.spotifyUrl,
@@ -292,6 +296,7 @@ export function RepertoireForm({
       name,
       description,
       songs: songs.map((s) => ({
+        id: s.id,
         title: s.title,
         artists: s.artists,
         spotifyUrl: s.spotifyUrl,

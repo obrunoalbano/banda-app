@@ -1,4 +1,4 @@
-import type { AttendanceStatus, RehearsalRecurrence } from "@/app/generated/prisma/enums";
+import type { AttendanceStatus, RehearsalRecurrence, RehearsalSongStatus } from "@/app/generated/prisma/enums";
 import type { Tone } from "@/components/ui/styles";
 import { PRODUCT_NAME } from "@/components/ui/Brand";
 
@@ -116,6 +116,65 @@ export function upcomingOccurrences(rule: RecurrenceRule, today: Date, count: nu
     from = new Date(next.getTime() + DAY_MS);
   }
   return result;
+}
+
+/**
+ * Ocorrências que já aconteceram (até `today`, inclusive), da mais recente para a mais antiga,
+ * no máximo `count` (para marcar músicas ensaiadas).
+ */
+export function pastOccurrences(rule: RecurrenceRule, today: Date, count: number): Date[] {
+  const window: Date[] = [];
+  let from = rule.date;
+  // Teto de iterações: ~20 anos de ensaios semanais.
+  for (let i = 0; i < 1100; i++) {
+    const next = nextOccurrence(rule, from);
+    if (!next || next > today) break;
+    window.push(next);
+    if (window.length > count) window.shift();
+    if (rule.recurrence === "NONE") break;
+    from = new Date(next.getTime() + DAY_MS);
+  }
+  return window.reverse();
+}
+
+/* ── Músicas do ensaio: ordem própria e marcação de ensaiadas ─────── */
+
+export const SONG_CHECK_LABELS: Record<RehearsalSongStatus | "NONE", string> = {
+  REHEARSED: "Ensaiada",
+  MISSED: "Faltou",
+  NONE: "Sem marcação",
+};
+
+export const SONG_CHECK_TONES: Record<RehearsalSongStatus | "NONE", Tone> = {
+  REHEARSED: "success",
+  MISSED: "danger",
+  NONE: "neutral",
+};
+
+/**
+ * Músicas do repertório na ordem do ensaio (`songOrder`). Músicas que não estão na ordem salva
+ * (adicionadas ao repertório depois) vão para o fim, na ordem do repertório; ids que não
+ * existem mais são ignorados.
+ */
+export function orderRehearsalSongs<T extends { id: string }>(songs: T[], songOrder: string[]): T[] {
+  if (songOrder.length === 0) return songs;
+  const rank = new Map(songOrder.map((id, i) => [id, i]));
+  const ordered = songs.filter((s) => rank.has(s.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+  return [...ordered, ...songs.filter((s) => !rank.has(s.id))];
+}
+
+/** A ordem enviada é a mesma do repertório? (então salva vazia = segue o repertório). */
+export function isRepertoireOrder(songIds: string[], repertoireIds: string[]): boolean {
+  return songIds.length === repertoireIds.length && songIds.every((id, i) => id === repertoireIds[i]);
+}
+
+export type SongCheckCounts = Record<RehearsalSongStatus | "NONE", number>;
+
+export function songCheckCounts(songIds: string[], checks: { songId: string; status: RehearsalSongStatus }[]) {
+  const bySong = new Map(checks.map((c) => [c.songId, c.status]));
+  const counts: SongCheckCounts = { REHEARSED: 0, MISSED: 0, NONE: 0 };
+  for (const id of songIds) counts[bySong.get(id) ?? "NONE"]++;
+  return counts;
 }
 
 export type AttendanceCounts = Record<AttendanceStatus | "PENDING", number>;

@@ -15,7 +15,12 @@ export const PATCH = withBand<{ id: string }>(async (request, { bandId, params: 
 
   const current = await prisma.rehearsal.findFirst({
     where: { id, bandId },
-    select: { date: true, recurrence: true, recurrenceUntil: true },
+    select: {
+      date: true,
+      recurrence: true,
+      recurrenceUntil: true,
+      repertoireId: true,
+    },
   });
   if (!current) return jsonError(404, "Ensaio não encontrado");
 
@@ -30,25 +35,36 @@ export const PATCH = withBand<{ id: string }>(async (request, { bandId, params: 
   }
   if (
     repertoireId &&
-    !(await prisma.repertoire.findFirst({ where: { id: repertoireId, bandId }, select: { id: true } }))
+    !(await prisma.repertoire.findFirst({
+      where: { id: repertoireId, bandId },
+      select: { id: true },
+    }))
   ) {
     return jsonError(400, "Repertório inválido");
   }
 
-  await prisma.rehearsal.updateMany({
-    where: { id, bandId },
-    data: {
-      ...data,
-      date: dateValue,
-      recurrenceUntil: untilValue,
-      ...(repertoireId !== undefined && { repertoireId }),
-    },
-  });
+  // Trocou o repertório: a ordem própria e as marcações de ensaiada eram do repertório antigo.
+  const repertoireChanged = repertoireId !== undefined && repertoireId !== current.repertoireId;
+  await prisma.$transaction([
+    prisma.rehearsal.updateMany({
+      where: { id, bandId },
+      data: {
+        ...data,
+        date: dateValue,
+        recurrenceUntil: untilValue,
+        ...(repertoireId !== undefined && { repertoireId }),
+        ...(repertoireChanged && { songOrder: [] }),
+      },
+    }),
+    ...(repertoireChanged ? [prisma.rehearsalSongCheck.deleteMany({ where: { rehearsalId: id } })] : []),
+  ]);
   return NextResponse.json({ id });
 });
 
 export const DELETE = withBand<{ id: string }>(async (_request, { bandId, params: { id } }) => {
-  const { count } = await prisma.rehearsal.deleteMany({ where: { id, bandId } });
+  const { count } = await prisma.rehearsal.deleteMany({
+    where: { id, bandId },
+  });
   if (count === 0) return jsonError(404, "Ensaio não encontrado");
   return NextResponse.json({ id });
 });
