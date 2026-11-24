@@ -4,6 +4,8 @@ import {
   DealStep,
   FinanceCategory,
   FinanceEntryType,
+  AttendanceStatus,
+  RehearsalRecurrence,
   ShowPaymentStatus,
   StageStatus,
   StageType,
@@ -12,6 +14,8 @@ import {
 import { isCategoryAllowed } from "./finance-categories";
 import { MAX_CENTS } from "@/lib/money";
 import { slugError } from "@/lib/slug";
+import { MAX_REPERTOIRE_SONGS } from "@/lib/repertoire";
+import { parseSpotifyTrackId, safeSpotifyImage, spotifyTrackUrl } from "@/lib/spotify";
 import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
 
 /*
@@ -23,8 +27,7 @@ import { MAX_ALLOWED_ORIGINS, normalizeOrigin } from "@/lib/origins";
 const requiredText = (message?: string) => z.string().trim().min(1, message);
 
 /** Email normalizado (trim + minúsculo). */
-const email = (message = "Email inválido") =>
-  z.string().trim().toLowerCase().pipe(z.email(message).max(320));
+const email = (message = "Email inválido") => z.string().trim().toLowerCase().pipe(z.email(message).max(320));
 
 /**
  * Texto opcional: aceita omissão, null, string ou número (formulários externos).
@@ -149,7 +152,11 @@ export const dealUpdateSchema = z
   .refine((d) => d.step !== undefined || d.notes !== undefined, "Nada para alterar");
 
 /** Data pura "YYYY-MM-DD" (a rota converte com `parseDateOnly`). */
-const dateOnly = (message = "Data inválida") => z.string().trim().regex(/^\d{4}-\d{2}-\d{2}$/, message);
+const dateOnly = (message = "Data inválida") =>
+  z
+    .string()
+    .trim()
+    .regex(/^\d{4}-\d{2}-\d{2}$/, message);
 
 /** Data pura opcional: "" → null. */
 const optionalDateOnly = (message?: string) =>
@@ -345,22 +352,23 @@ export const adminCreateAdminSchema = z.object({
 });
 
 /** Estilos musicais: texto livre separado por vírgula → lista normalizada (minúsculas, sem repetição). */
-const genresList = z
-  .union([z.array(z.string()), z.string()])
-  .transform((v) => {
-    const list = (Array.isArray(v) ? v : v.split(","))
-      .map((g) => g.trim().toLowerCase())
-      .filter(Boolean)
-      .map((g) => g.slice(0, 40));
-    return [...new Set(list)].slice(0, 15);
-  });
+const genresList = z.union([z.array(z.string()), z.string()]).transform((v) => {
+  const list = (Array.isArray(v) ? v : v.split(","))
+    .map((g) => g.trim().toLowerCase())
+    .filter(Boolean)
+    .map((g) => g.slice(0, 40));
+  return [...new Set(list)].slice(0, 15);
+});
 
 /** Instagram: "@casa", "casa" ou URL → "@casa". */
 const instagramHandle = optionalText(200).transform((v) => {
   // Ausente continua ausente (PATCH parcial não pode apagar o campo); vazio vira null.
   if (v === undefined) return undefined;
   if (!v) return null;
-  const handle = v.replace(/^https?:\/\/(www\.)?instagram\.com\//i, "").replace(/^@/, "").replace(/\/.*$/, "");
+  const handle = v
+    .replace(/^https?:\/\/(www\.)?instagram\.com\//i, "")
+    .replace(/^@/, "")
+    .replace(/\/.*$/, "");
   return handle ? `@${handle}` : null;
 });
 
@@ -400,4 +408,89 @@ export const stageUpdateSchema = stageBaseSchema.partial().extend({
   status: z.enum(StageStatus).optional(),
   /** true = marca como verificado agora (pela pessoa logada). */
   verify: z.boolean().optional(),
+});
+
+/* ── Repertórios e ensaios (docs/ensaios.md) ───────────────────────── */
+
+export { MAX_REPERTOIRE_SONGS };
+
+/** Música do repertório. Link do Spotify vira o link canônico + ID da faixa (`spotifyTrackId`). */
+const repertoireSongSchema = z
+  .object({
+    title: requiredText("Informe o nome da música").pipe(z.string().max(200, "Nome da música muito longo")),
+    artists: optionalText(300),
+    spotifyUrl: optionalText(500),
+    imageUrl: optionalText(500),
+    durationMs: z
+      .number()
+      .int()
+      .min(0)
+      .max(24 * 60 * 60_000)
+      .nullable()
+      .optional(),
+    notes: optionalText(300),
+  })
+  .transform((song, ctx) => {
+    const trackId = song.spotifyUrl ? parseSpotifyTrackId(song.spotifyUrl) : null;
+    if (song.spotifyUrl && !trackId) {
+      ctx.addIssue({
+        code: "custom",
+        path: ["spotifyUrl"],
+        message: "Link do Spotify inválido (use o link da música)",
+      });
+      return z.NEVER;
+    }
+    return {
+      title: song.title,
+      artists: song.artists ?? null,
+      spotifyTrackId: trackId,
+      spotifyUrl: trackId ? spotifyTrackUrl(trackId) : null,
+      imageUrl: trackId ? safeSpotifyImage(song.imageUrl) : null,
+      durationMs: song.durationMs ?? null,
+      notes: song.notes ?? null,
+    };
+  });
+
+/** Repertório completo: a ordem de `songs` é a ordem da lista (a rota grava `position`). */
+export const repertoireSchema = z.object({
+  name: requiredText("Informe o nome do repertório").pipe(z.string().max(120, "Nome muito longo")),
+  description: optionalText(1000),
+  songs: z.array(repertoireSongSchema).max(MAX_REPERTOIRE_SONGS, `No máximo ${MAX_REPERTOIRE_SONGS} músicas`),
+});
+
+export const repertoireUpdateSchema = repertoireSchema.partial();
+
+/** Busca de música no Spotify pelo link. */
+export const spotifyLookupSchema = z.object({ url: z.string().trim().min(1, "Cole o link da música").max(500) });
+
+/** Importação de playlist pública do Spotify pelo link. */
+export const spotifyPlaylistSchema = z.object({ url: z.string().trim().min(1, "Cole o link da playlist").max(500) });
+
+const rehearsalBaseSchema = z.object({
+  name: requiredText("Informe o nome do ensaio").pipe(z.string().max(120, "Nome muito longo")),
+  description: optionalText(1000),
+  location: requiredText("Informe o local do ensaio").pipe(z.string().max(200, "Local muito longo")),
+  date: dateOnly(),
+  time: z
+    .string()
+    .trim()
+    .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Horário inválido"),
+  recurrence: z.enum(RehearsalRecurrence).default("NONE"),
+  recurrenceUntil: optionalDateOnly("Data final inválida"),
+  repertoireId: optionalText(64),
+});
+
+const untilAfterStart = (d: { date?: string; recurrenceUntil?: string | null; recurrence?: RehearsalRecurrence }) =>
+  !d.recurrenceUntil || !d.date || d.recurrence === "NONE" || d.recurrenceUntil >= d.date;
+const untilIssue = { message: "A data final precisa ser depois da data do ensaio", path: ["recurrenceUntil"] };
+
+export const rehearsalCreateSchema = rehearsalBaseSchema.refine(untilAfterStart, untilIssue);
+
+/** PATCH parcial: a rota revalida a data final contra o estado final. */
+export const rehearsalUpdateSchema = rehearsalBaseSchema.partial();
+
+/** Resposta de presença de um integrante para uma ocorrência do ensaio. */
+export const rehearsalAttendanceSchema = z.object({
+  occurrenceDate: dateOnly(),
+  status: z.enum(AttendanceStatus, "Escolha se vai ou não"),
 });

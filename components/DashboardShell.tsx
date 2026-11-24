@@ -18,6 +18,8 @@ import {
   DealIcon,
   LeadIcon,
   MenuIcon,
+  RehearsalIcon,
+  RepertoireIcon,
   ShowIcon,
   SwitchBandIcon,
   VenueIcon,
@@ -32,7 +34,7 @@ type NavItem = {
   href: string;
   label: string;
   icon: Icon;
-  /** `false` evita marcar ativo em `/x/nova` (a página "nova" não pertence ao item). */
+  /** `false` evita marcar ativo em `/x/nova` ou `/x/novo` (a página de criar não pertence ao item). */
   matchNova?: boolean;
   /** Submenu (ex.: Integrações → Agenda, Contatos). O pai fica marcado quando um filho está ativo. */
   children?: { href: string; label: string; exact?: boolean }[];
@@ -61,6 +63,8 @@ const NAV_GROUPS: NavGroup[] = [
     items: [
       { href: "/casas", label: "Casas", icon: VenueIcon, matchNova: false },
       { href: "/shows", label: "Shows", icon: ShowIcon, matchNova: false },
+      { href: "/ensaios", label: "Ensaios", icon: RehearsalIcon, matchNova: false },
+      { href: "/repertorios", label: "Repertórios", icon: RepertoireIcon, matchNova: false },
     ],
   },
   {
@@ -170,7 +174,9 @@ function SoonBadge() {
 function navActive(pathname: string, item: NavItem): boolean {
   if (pathname === item.href) return true;
   if (item.exact || !pathname.startsWith(`${item.href}/`)) return false;
-  if (item.matchNova === false) return !pathname.startsWith(`${item.href}/nova`);
+  if (item.matchNova === false) {
+    return !pathname.startsWith(`${item.href}/nova`) && !pathname.startsWith(`${item.href}/novo`);
+  }
   return true;
 }
 
@@ -198,7 +204,13 @@ function subscribe(listener: () => void) {
 }
 
 /** Banda ativa (app da banda). `null` = usuário ainda sem banda (página /bandas). */
-export type ShellBand = { name: string; roleLabel: string; canEdit: boolean } | null;
+export type ShellBand = {
+  name: string;
+  roleLabel: string;
+  canEdit: boolean;
+  /** Selos numéricos por item do menu (href → quantidade), ex.: ensaios sem resposta. */
+  badges?: Record<string, number>;
+} | null;
 
 /** Banda ativa no topo do menu, com atalho para trocar/criar banda. */
 function BandSwitcher({ band, expanded }: { band: NonNullable<ShellBand> | null; expanded: boolean }) {
@@ -364,6 +376,7 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
                     const active = navActive(pathname, item);
                     const ItemIcon = item.icon;
                     const hasChildren = !!item.children?.length;
+                    const badge = isBandApp ? band?.badges?.[item.href] : undefined;
                     if (item.soon) {
                       return (
                         <li key={item.href}>
@@ -406,11 +419,27 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
                             !expanded && "justify-center px-0",
                           )}
                         >
-                          <ItemIcon
-                            className={cx("size-5 shrink-0", active ? "text-fg" : "text-fg-subtle")}
-                            aria-hidden
-                          />
+                          <span className="relative shrink-0">
+                            <ItemIcon className={cx("size-5", active ? "text-fg" : "text-fg-subtle")} aria-hidden />
+                            {!expanded && badge ? (
+                              <span
+                                className="absolute -right-1 -top-1 size-2 rounded-full bg-warning-fg"
+                                aria-hidden
+                              />
+                            ) : null}
+                          </span>
                           <span className={expanded ? "truncate" : "sr-only"}>{item.label}</span>
+                          {badge ? (
+                            <span
+                              className={cx(
+                                "ml-auto rounded-full bg-warning-bg px-1.5 text-xs font-semibold leading-5 text-warning-fg",
+                                !expanded && "sr-only",
+                              )}
+                            >
+                              {badge}
+                              <span className="sr-only"> para responder</span>
+                            </span>
+                          ) : null}
                         </Link>
                         {hasChildren && expanded ? (
                           <ul className="mb-1 ml-[1.375rem] mt-0.5 flex flex-col gap-0.5 border-l border-line pl-3">

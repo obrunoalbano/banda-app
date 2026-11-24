@@ -36,6 +36,8 @@ app/
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
+    ensaios/               Rehearsal: lista (próximos + anteriores, Vou/Não vou), detalhe (presença), novo, editar — docs/ensaios.md
+    repertorios/           Repertoire: lista, detalhe, novo (pode começar de playlist do Spotify), editar (músicas: Spotify ou manual, ordem por arrastar)
     contatos/              Lead: lista (paginada, coluna Fluxo), detalhe ("Adicionar ao fluxo"), editar
     financeiro/            Financeiro (docs/financeiro.md): visão geral (resumo do período, atrasados, próximos),
       lancamentos/         FinanceEntry: lista (filtro período/tipo/situação), nova (?showId&tipo), [id]/editar
@@ -62,6 +64,8 @@ app/
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
+    rehearsals (POST: cria e avisa integrantes), rehearsals/[id] (PATCH, DELETE), rehearsals/[id]/attendance (POST: própria presença, visualizador também)
+    repertoires (POST), repertoires/[id] (PATCH: substitui as músicas, DELETE), spotify/track (POST: dados da música pelo link), spotify/playlist (POST: músicas de playlist pública, não grava)
     finance-entries (POST), finance-entries/[id] (PATCH, DELETE)  lançamentos do Financeiro
     leads/[id] (PATCH, DELETE)
     leads/ingest           PÚBLICO — recebe leads de sites externos via token
@@ -97,6 +101,8 @@ lib/
   deals.ts                 Fluxo de contatos: etapas/labels/tons, origem, canAddToVenues, pré-preenchimento da casa
   validations.ts           schemas Zod que validam E normalizam
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas, data de recebimento)
+  rehearsals.ts            Ensaios: recorrência, próxima ocorrência, presença, email (com teste) · rehearsal-query.ts / rehearsal-notify.ts
+  spotify.ts               link do Spotify → faixa ou playlist pública (Web API, metatags ou página do player) (com teste) · repertoire.ts: limite de músicas
   finance.ts               Financeiro: resumo do período, atraso/vencimento, resultado do show, período, CSV (com teste)
   finance-categories.ts    tipos/categorias de lançamento (labels, categorias por tipo) · finance-query.ts: consultas
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
@@ -113,6 +119,7 @@ prisma/schema.prisma       modelo de dados
 docs/design-system.md      tokens, componentes, modelos de página, microcopy, acessibilidade
 docs/integracoes.md        agenda pública + formulário: contratos, privacidade, fases futuras
 docs/admin.md              painel superadmin: papéis, acesso, senhas provisórias, bootstrap, palcos
+docs/ensaios.md            Ensaios e Repertórios: recorrência, presença, aviso aos integrantes, Spotify
 docs/mobile.md             app no celular (PWA): instalação, service worker, barra de abas, safe areas
 docs/modulos-marketing.md  engenharia reversa (Palcos do Brasil) + desenho de EPK, Explorar Palcos e Abordagem com IA
 public/embed.js            script de auto-altura do widget (contrato público)
@@ -131,6 +138,8 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
 - **FinanceEntry** — lançamento do Financeiro: `type` (`RECEITA | DESPESA`), `category` (`FinanceCategory`; quais valem por tipo em `lib/finance-categories.ts`, conferido no schema e no PATCH), `description`, `amountCents`, `date` e `paidAt` (datas puras; `paidAt` vazio = pendente), `showId?` (`onDelete: SetNull`). **O cachê do show não vira lançamento** — os totais somam `Show.cacheCents` + lançamentos (show cancelado fica fora).
+- **Repertoire** / **RepertoireSong** — repertório e músicas em ordem (`position`); dados do Spotify são cópia editável (`spotifyUrl` canônico, `spotifyTrackId`, `imageUrl` só i.scdn.co, `durationMs`), `notes` por música.
+- **Rehearsal** — ensaio: `name`, `description`, `location`, `date` (data pura; 1ª ocorrência se recorrente), `time`, `recurrence` (`NONE | WEEKLY | BIWEEKLY | MONTHLY`), `recurrenceUntil?`, `repertoireId?` (`SetNull`). **RehearsalAttendance** — resposta por ocorrência: `memberId` (BandMember), `occurrenceDate`, `status` (`CONFIRMED | DECLINED`); sem registro = sem resposta.
 - **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), `notes` (observações da banda), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
 
 Todas as entidades pertencem a uma banda (`bandId`, `onDelete: Cascade`). Exceção: `Show.venueId` é `onDelete: NoAction` — **casa com shows não pode ser apagada** (a API devolve 409 e a UI desabilita o botão). Não troque para `Restrict`: quebraria o cascade Band → Venue/Show.
@@ -200,7 +209,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). O nome do usuário no rodapé leva a `/conta`. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows, Ensaios — com selo de pendências, Repertórios) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). O nome do usuário no rodapé leva a `/conta`. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`/`novo`; selos numéricos por item via `band.badges` (href → número); `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 - **Mobile/PWA** (`docs/mobile.md`): no celular o app da banda tem barra de abas fixa embaixo (`MOBILE_TABS`) — elementos fixos no rodapé precisam considerar essa barra e `env(safe-area-inset-bottom)`; campos com ≥ 16px no celular (zoom do iPhone).
 

@@ -51,6 +51,8 @@ model Band {
   deals                  Deal[]
   financeEntries         FinanceEntry[]
   members                BandMember[]
+  repertoires            Repertoire[]
+  rehearsals             Rehearsal[]
 }
 
 /// Pessoa que entra no app (email + senha). Acessa N bandas via BandMember.
@@ -97,6 +99,8 @@ model BandMember {
   joinedAt        DateTime?
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
+
+  rehearsalAttendances RehearsalAttendance[]
 
   @@unique([bandId, email])
   @@unique([bandId, userId])
@@ -375,4 +379,91 @@ model FinanceEntry {
 
   @@index([bandId, date])
   @@index([showId])
+}
+
+/// Repertório da banda (módulo Administrativo): lista ordenada de músicas para ensaiar/tocar.
+model Repertoire {
+  id          String           @id @default(cuid())
+  bandId      String
+  band        Band             @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name        String
+  description String?
+  createdAt   DateTime         @default(now())
+  updatedAt   DateTime         @updatedAt
+  songs       RepertoireSong[]
+  rehearsals  Rehearsal[]
+
+  @@index([bandId, name])
+}
+
+/// Música de um repertório. `position` = ordem na lista (0, 1, 2…). Dados do Spotify são uma cópia
+/// (título/artistas editáveis); sem link, a banda preenche à mão.
+model RepertoireSong {
+  id             String     @id @default(cuid())
+  repertoireId   String
+  repertoire     Repertoire @relation(fields: [repertoireId], references: [id], onDelete: Cascade)
+  position       Int
+  title          String
+  artists        String?
+  /// Link canônico https://open.spotify.com/track/<id> (normalizado no schema Zod).
+  spotifyUrl     String?
+  spotifyTrackId String?
+  /// Capa do álbum (só i.scdn.co, servida pelo Spotify).
+  imageUrl       String?
+  durationMs     Int?
+  /// Observação curta (ex.: "toca em um tom a menos").
+  notes          String?
+
+  @@index([repertoireId, position])
+}
+
+enum RehearsalRecurrence {
+  NONE
+  WEEKLY
+  BIWEEKLY
+  MONTHLY
+}
+
+/// Ensaio da banda. `date` = data pura (UTC 00:00) do ensaio ou da 1ª ocorrência se recorrente;
+/// o dia da semana/mês da recorrência sai dela. `time` = "HH:mm".
+model Rehearsal {
+  id              String                @id @default(cuid())
+  bandId          String
+  band            Band                  @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  location        String
+  date            DateTime
+  time            String
+  recurrence      RehearsalRecurrence   @default(NONE)
+  /// Último dia da recorrência (data pura); vazio = sem fim.
+  recurrenceUntil DateTime?
+  repertoireId    String?
+  repertoire      Repertoire?           @relation(fields: [repertoireId], references: [id], onDelete: SetNull)
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+  attendances     RehearsalAttendance[]
+
+  @@index([bandId, date])
+}
+
+enum AttendanceStatus {
+  CONFIRMED
+  DECLINED
+}
+
+/// Resposta de um integrante para UMA ocorrência do ensaio (sem registro = ainda não respondeu).
+model RehearsalAttendance {
+  id             String           @id @default(cuid())
+  rehearsalId    String
+  rehearsal      Rehearsal        @relation(fields: [rehearsalId], references: [id], onDelete: Cascade)
+  memberId       String
+  member         BandMember       @relation(fields: [memberId], references: [id], onDelete: Cascade)
+  /// Data pura da ocorrência respondida.
+  occurrenceDate DateTime
+  status         AttendanceStatus
+  respondedAt    DateTime         @default(now())
+
+  @@unique([rehearsalId, memberId, occurrenceDate])
+  @@index([memberId])
 }
