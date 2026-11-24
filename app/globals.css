@@ -136,6 +136,22 @@ body {
   font-family: var(--font-sans), ui-sans-serif, system-ui, sans-serif;
 }
 
+/* Mobile / app instalado: sem o "flash" cinza ao tocar (o hover/active dos componentes já dá retorno). */
+html {
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* Tocar em botões/links não espera o duplo toque (zoom) — resposta imediata. */
+a,
+button,
+[role="button"],
+input,
+select,
+textarea,
+label {
+  touch-action: manipulation;
+}
+
 /* Foco de teclado consistente em todo elemento interativo (mouse não mostra). */
 :focus-visible {
   outline: 2px solid var(--focus);

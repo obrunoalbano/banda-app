@@ -1,5 +1,6 @@
 "use client";
 
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { Brand } from "@/components/ui/Brand";
 import {
   AiIcon,
@@ -133,6 +134,21 @@ const VARIANTS = {
   admin: { groups: ADMIN_NAV_GROUPS, home: "/admin/palcos", profile: "/admin/senha", adminBadge: true },
 } as const;
 
+/**
+ * Barra de abas do celular (app da banda): atalhos para os módulos mais usados + "Menu" (gaveta
+ * com tudo). Só no mobile; no desktop o menu lateral já está sempre visível.
+ */
+const MOBILE_TABS: { href: string; label: string; icon: Icon; match: string[] }[] = [
+  { href: "/casas", label: "Casas", icon: VenueIcon, match: ["/casas"] },
+  { href: "/shows", label: "Shows", icon: ShowIcon, match: ["/shows"] },
+  { href: "/financeiro", label: "Financeiro", icon: FinanceIcon, match: ["/financeiro"] },
+  { href: "/contatos", label: "Contatos", icon: LeadIcon, match: ["/contatos", "/fluxo"] },
+];
+
+function tabActive(pathname: string, match: string[]): boolean {
+  return match.some((m) => pathname === m || pathname.startsWith(`${m}/`));
+}
+
 /** Marca o painel superadmin (sempre visível ao lado da marca). */
 function AdminBadge() {
   return (
@@ -249,9 +265,11 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
 
   // Na gaveta mobile o menu é sempre expandido.
   const expanded = mobileOpen || !collapsed;
+  // Abas inferiores no celular: app da banda com banda ativa (o painel /admin tem poucos itens).
+  const showTabs = isBandApp && !!band;
 
   return (
-    <div className="flex min-h-screen">
+    <div className="flex min-h-dvh">
       <a
         href="#conteudo"
         className="sr-only z-50 rounded-md bg-primary px-3 py-2 text-sm font-medium text-on-primary focus:not-sr-only focus:fixed focus:left-3 focus:top-3"
@@ -266,12 +284,17 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
         id="dashboard-nav"
         data-collapsed={!expanded}
         className={cx(
-          "group fixed inset-y-0 left-0 z-40 flex w-64 shrink-0 flex-col border-r border-line bg-surface-muted transition-[width,transform] duration-200 ease-out md:sticky md:top-0 md:h-screen md:translate-x-0",
+          "group fixed inset-y-0 left-0 z-40 flex w-[min(18rem,85vw)] shrink-0 flex-col overscroll-contain border-r border-line bg-surface-muted pb-[env(safe-area-inset-bottom)] pl-[env(safe-area-inset-left)] pt-[env(safe-area-inset-top)] transition-[width,transform] duration-200 ease-out md:sticky md:top-0 md:h-screen md:translate-x-0 md:p-0",
           mobileOpen ? "translate-x-0" : "-translate-x-full",
           expanded ? "md:w-64" : "md:w-16",
         )}
       >
-        <div className={cx("flex h-14 items-center border-b border-line px-3", expanded ? "justify-between" : "justify-center")}>
+        <div
+          className={cx(
+            "flex h-14 items-center border-b border-line px-3",
+            expanded ? "justify-between" : "justify-center",
+          )}
+        >
           {expanded ? <Brand href={config.home} /> : null}
           <button
             type="button"
@@ -282,7 +305,13 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
             aria-label={mobileOpen ? "Fechar menu" : expanded ? "Recolher menu" : "Expandir menu"}
             title={mobileOpen ? "Fechar menu" : expanded ? "Recolher menu" : "Expandir menu"}
           >
-            {mobileOpen ? <CloseIcon aria-hidden /> : expanded ? <CollapseIcon aria-hidden /> : <ExpandIcon aria-hidden />}
+            {mobileOpen ? (
+              <CloseIcon aria-hidden />
+            ) : expanded ? (
+              <CollapseIcon aria-hidden />
+            ) : (
+              <ExpandIcon aria-hidden />
+            )}
           </button>
         </div>
 
@@ -329,88 +358,98 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
                 <hr className="mx-2 mb-2 border-line" aria-hidden />
               )}
               <ul className="flex flex-col gap-0.5">
-                {group.items.filter((item) => !item.adminOnly || !isBandApp || band?.canEdit).map((item) => {
-                  const active = navActive(pathname, item);
-                  const ItemIcon = item.icon;
-                  const hasChildren = !!item.children?.length;
-                  if (item.soon) {
+                {group.items
+                  .filter((item) => !item.adminOnly || !isBandApp || band?.canEdit)
+                  .map((item) => {
+                    const active = navActive(pathname, item);
+                    const ItemIcon = item.icon;
+                    const hasChildren = !!item.children?.length;
+                    if (item.soon) {
+                      return (
+                        <li key={item.href}>
+                          <span
+                            aria-disabled="true"
+                            title={`${item.label} (em breve)`}
+                            className={cx(
+                              "flex cursor-default items-center gap-3 rounded-md px-2.5 text-sm text-fg-subtle",
+                              expanded ? "py-1.5" : "h-9 justify-center px-0 opacity-50",
+                            )}
+                          >
+                            <ItemIcon className="size-5 shrink-0" aria-hidden />
+                            {expanded ? (
+                              // Nome inteiro + "Em breve" em segunda linha (nomes longos não são cortados).
+                              <span className="flex min-w-0 flex-col leading-tight">
+                                <span className="truncate">{item.label}</span>
+                                <span className="text-[0.65rem] font-medium uppercase tracking-wide">Em breve</span>
+                              </span>
+                            ) : (
+                              <span className="sr-only">{item.label} (em breve)</span>
+                            )}
+                          </span>
+                        </li>
+                      );
+                    }
                     return (
                       <li key={item.href}>
-                        <span
-                          aria-disabled="true"
-                          title={`${item.label} (em breve)`}
+                        <Link
+                          href={item.href}
+                          title={expanded ? undefined : item.label}
+                          // Com submenu, quem recebe aria-current é o filho (a página); o pai só destaca a seção.
+                          aria-current={active && (!hasChildren || !expanded) ? "page" : undefined}
                           className={cx(
-                            "flex cursor-default items-center gap-3 rounded-md px-2.5 text-sm text-fg-subtle",
-                            expanded ? "py-1.5" : "h-9 justify-center px-0 opacity-50",
+                            "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors",
+                            active && (!hasChildren || !expanded)
+                              ? "bg-surface-sunken font-medium text-fg"
+                              : active
+                                ? "font-medium text-fg hover:bg-surface-sunken"
+                                : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
+                            !expanded && "justify-center px-0",
                           )}
                         >
-                          <ItemIcon className="size-5 shrink-0" aria-hidden />
-                          {expanded ? (
-                            // Nome inteiro + "Em breve" em segunda linha (nomes longos não são cortados).
-                            <span className="flex min-w-0 flex-col leading-tight">
-                              <span className="truncate">{item.label}</span>
-                              <span className="text-[0.65rem] font-medium uppercase tracking-wide">Em breve</span>
-                            </span>
-                          ) : (
-                            <span className="sr-only">{item.label} (em breve)</span>
-                          )}
-                        </span>
+                          <ItemIcon
+                            className={cx("size-5 shrink-0", active ? "text-fg" : "text-fg-subtle")}
+                            aria-hidden
+                          />
+                          <span className={expanded ? "truncate" : "sr-only"}>{item.label}</span>
+                        </Link>
+                        {hasChildren && expanded ? (
+                          <ul className="mb-1 ml-[1.375rem] mt-0.5 flex flex-col gap-0.5 border-l border-line pl-3">
+                            {item.children!.map((child) => {
+                              const childActive =
+                                pathname === child.href || (!child.exact && pathname.startsWith(`${child.href}/`));
+                              return (
+                                <li key={child.href}>
+                                  <Link
+                                    href={child.href}
+                                    aria-current={childActive ? "page" : undefined}
+                                    className={cx(
+                                      "flex h-8 items-center rounded-md px-2.5 text-sm transition-colors",
+                                      childActive
+                                        ? "bg-surface-sunken font-medium text-fg"
+                                        : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
+                                    )}
+                                  >
+                                    {child.label}
+                                  </Link>
+                                </li>
+                              );
+                            })}
+                          </ul>
+                        ) : null}
                       </li>
                     );
-                  }
-                  return (
-                    <li key={item.href}>
-                      <Link
-                        href={item.href}
-                        title={expanded ? undefined : item.label}
-                        // Com submenu, quem recebe aria-current é o filho (a página); o pai só destaca a seção.
-                        aria-current={active && (!hasChildren || !expanded) ? "page" : undefined}
-                        className={cx(
-                          "flex h-9 items-center gap-3 rounded-md px-2.5 text-sm transition-colors",
-                          active && (!hasChildren || !expanded)
-                            ? "bg-surface-sunken font-medium text-fg"
-                            : active
-                              ? "font-medium text-fg hover:bg-surface-sunken"
-                              : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
-                          !expanded && "justify-center px-0",
-                        )}
-                      >
-                        <ItemIcon className={cx("size-5 shrink-0", active ? "text-fg" : "text-fg-subtle")} aria-hidden />
-                        <span className={expanded ? "truncate" : "sr-only"}>{item.label}</span>
-                      </Link>
-                      {hasChildren && expanded ? (
-                        <ul className="mb-1 ml-[1.375rem] mt-0.5 flex flex-col gap-0.5 border-l border-line pl-3">
-                          {item.children!.map((child) => {
-                            const childActive =
-                              pathname === child.href || (!child.exact && pathname.startsWith(`${child.href}/`));
-                            return (
-                              <li key={child.href}>
-                                <Link
-                                  href={child.href}
-                                  aria-current={childActive ? "page" : undefined}
-                                  className={cx(
-                                    "flex h-8 items-center rounded-md px-2.5 text-sm transition-colors",
-                                    childActive
-                                      ? "bg-surface-sunken font-medium text-fg"
-                                      : "text-fg-muted hover:bg-surface-sunken hover:text-fg",
-                                  )}
-                                >
-                                  {child.label}
-                                </Link>
-                              </li>
-                            );
-                          })}
-                        </ul>
-                      ) : null}
-                    </li>
-                  );
-                })}
+                  })}
               </ul>
             </div>
           ))}
         </nav>
 
         <div className={cx("border-t border-line p-3", !expanded && "flex flex-col items-center")}>
+          {isBandApp && mobileOpen ? (
+            <div className="mb-2 md:hidden">
+              <InstallAppButton variant="menu" />
+            </div>
+          ) : null}
           {expanded && userName ? (
             <Link
               href={config.profile}
@@ -426,7 +465,7 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
 
       <div className="flex min-w-0 flex-1 flex-col">
         {/* Barra superior só no mobile: abre a gaveta. No desktop o menu lateral já mostra a marca. */}
-        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line px-4 md:hidden">
+        <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] md:hidden">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
@@ -440,10 +479,58 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
           <Brand href={config.home} />
           {config.adminBadge ? <AdminBadge /> : null}
         </header>
-        <main id="conteudo" className="min-h-0 flex-1">
+        <main
+          id="conteudo"
+          className={cx(
+            "min-h-0 flex-1",
+            // Espaço para a barra de abas fixa (+ área da barra de gestos do iPhone).
+            showTabs && "pb-[calc(4rem+env(safe-area-inset-bottom))] md:pb-0",
+          )}
+        >
           {children}
         </main>
       </div>
+
+      {showTabs ? (
+        <nav
+          aria-label="Atalhos"
+          className="fixed inset-x-0 bottom-0 z-20 border-t border-line bg-canvas pb-[env(safe-area-inset-bottom)] md:hidden"
+        >
+          <ul className="mx-auto grid h-16 max-w-lg grid-cols-5">
+            {MOBILE_TABS.map((tab) => {
+              const active = tabActive(pathname, tab.match);
+              const TabIcon = tab.icon;
+              return (
+                <li key={tab.href}>
+                  <Link
+                    href={tab.href}
+                    aria-current={active ? "page" : undefined}
+                    className={cx(
+                      "flex h-full flex-col items-center justify-center gap-1 text-[0.7rem] font-medium",
+                      active ? "text-fg" : "text-fg-subtle",
+                    )}
+                  >
+                    <TabIcon className="size-5" aria-hidden strokeWidth={active ? 2.25 : 1.75} />
+                    {tab.label}
+                  </Link>
+                </li>
+              );
+            })}
+            <li>
+              <button
+                type="button"
+                onClick={() => setMobileOpen(true)}
+                aria-expanded={mobileOpen}
+                aria-controls="dashboard-nav"
+                className="flex h-full w-full flex-col items-center justify-center gap-1 text-[0.7rem] font-medium text-fg-subtle"
+              >
+                <MenuIcon className="size-5" aria-hidden strokeWidth={1.75} />
+                Menu
+              </button>
+            </li>
+          </ul>
+        </nav>
+      ) : null}
     </div>
   );
 }

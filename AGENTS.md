@@ -71,6 +71,7 @@ app/
   embed/[slug]/shows|contato/  PÚBLICO — widgets (agenda e formulário) para iframe em sites externos
   admin/                   PAINEL SUPERADMIN (docs/admin.md): login/ + (painel)/ palcos, usuarios/bandas|contas|administradores, senha
   design-system/           galeria viva do design system (só em dev: /design-system)
+  manifest.ts, apple-icon.png, offline/  app instalável (PWA) — docs/mobile.md
   not-found.tsx            404 global
 components/
   ui/                      design system (docs/design-system.md): styles.ts (receitas/tokens), icons.ts,
@@ -112,8 +113,10 @@ prisma/schema.prisma       modelo de dados
 docs/design-system.md      tokens, componentes, modelos de página, microcopy, acessibilidade
 docs/integracoes.md        agenda pública + formulário: contratos, privacidade, fases futuras
 docs/admin.md              painel superadmin: papéis, acesso, senhas provisórias, bootstrap, palcos
+docs/mobile.md             app no celular (PWA): instalação, service worker, barra de abas, safe areas
 docs/modulos-marketing.md  engenharia reversa (Palcos do Brasil) + desenho de EPK, Explorar Palcos e Abordagem com IA
 public/embed.js            script de auto-altura do widget (contrato público)
+public/sw.js, public/icons/  service worker (sem cache de dados) e ícones do PWA — docs/mobile.md
 tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 ```
 
@@ -199,6 +202,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
 - Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). O nome do usuário no rodapé leva a `/conta`. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`; `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
+- **Mobile/PWA** (`docs/mobile.md`): no celular o app da banda tem barra de abas fixa embaixo (`MOBILE_TABS`) — elementos fixos no rodapé precisam considerar essa barra e `env(safe-area-inset-bottom)`; campos com ≥ 16px no celular (zoom do iPhone).
 
 ## Banco e migrations
 

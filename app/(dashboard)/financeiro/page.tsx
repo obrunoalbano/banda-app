@@ -158,7 +158,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps) {
 
       <FinancePeriodFilter basePath="/financeiro" period={period} years={years} />
 
-      <section aria-label="Resumo do período" className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+      <section aria-label="Resumo do período" className="grid grid-cols-2 gap-3 lg:grid-cols-5">
         <Stat
           label="Receitas"
           value={formatCents(summary.incomeCents)}
@@ -180,6 +180,7 @@ export default async function FinanceiroPage({ searchParams }: PageProps) {
           value={formatCents(summary.resultCents)}
           hint="Receitas − despesas"
           tone={summary.resultCents < 0 ? "danger" : undefined}
+          className="col-span-2 lg:col-span-1"
         />
       </section>
 

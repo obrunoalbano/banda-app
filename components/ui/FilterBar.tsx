@@ -1,9 +1,12 @@
+import { Suspense } from "react";
 import { ButtonLink } from "./Button";
 import { Button } from "./Button";
+import { FilterDisclosure } from "./FilterDisclosure";
 
 /**
  * Barra de filtros de listagem: `<form method="get">` (estado na URL, funciona sem JS).
  * Filhos = campos (`<FilterField>`); ações padrão Aplicar/Limpar + extras.
+ * No celular fica recolhida atrás do botão "Filtros (n)" (`FilterDisclosure`).
  */
 export function FilterBar({
   clearHref,
@@ -15,12 +18,12 @@ export function FilterBar({
   extraActions?: React.ReactNode;
   children: React.ReactNode;
 }) {
-  return (
+  const form = (
     <form
       method="get"
       role="search"
       aria-label="Filtros"
-      className="mb-6 flex flex-col gap-3 rounded-lg border border-line bg-surface-muted p-4 sm:flex-row sm:flex-wrap sm:items-end"
+      className="flex flex-col gap-3 rounded-lg border border-line bg-surface-muted p-4 sm:flex-row sm:flex-wrap sm:items-end"
     >
       {children}
       <div className="flex flex-wrap gap-2">
@@ -31,6 +34,12 @@ export function FilterBar({
         </ButtonLink>
       </div>
     </form>
+  );
+  // Sem JS / antes de hidratar (Suspense do useSearchParams): o formulário aparece aberto.
+  return (
+    <Suspense fallback={<div className="mb-6">{form}</div>}>
+      <FilterDisclosure>{form}</FilterDisclosure>
+    </Suspense>
   );
 }
 
