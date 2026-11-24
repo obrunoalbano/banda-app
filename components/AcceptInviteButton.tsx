@@ -5,13 +5,25 @@ import { Button } from "@/components/ui/Button";
 import { useJsonSubmit } from "@/hooks/useJsonSubmit";
 import { useRouter } from "next/navigation";
 
-/** Aceita o convite (usuário logado com o email convidado) e abre a banda. */
-export function AcceptInviteButton({ token, bandName }: { token: string; bandName: string }) {
+/**
+ * Aceita o convite e abre a banda (usuário logado). `kind="band"`: link de convite do grupo;
+ * padrão: convite individual (email convidado).
+ */
+export function AcceptInviteButton({
+  token,
+  bandName,
+  kind = "member",
+}: {
+  token: string;
+  bandName: string;
+  kind?: "member" | "band";
+}) {
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
 
   async function accept() {
-    const data = await submit(`/api/invites/${encodeURIComponent(token)}`, "POST", {}, "Não foi possível aceitar o convite.");
+    const endpoint = `/api/invites/${kind === "band" ? "band/" : ""}${encodeURIComponent(token)}`;
+    const data = await submit(endpoint, "POST", {}, "Não foi possível aceitar o convite.");
     if (!data) return;
     router.push("/casas");
     router.refresh();

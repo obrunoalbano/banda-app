@@ -1,7 +1,14 @@
 import { NextResponse } from "next/server";
 import { hash } from "bcryptjs";
 import { isUniqueViolation, jsonError, parseBody } from "@/lib/api";
-import { claimInvite, createBandWithAdmin, findPendingInvite, setActiveBandCookie } from "@/lib/band-access";
+import {
+  claimInvite,
+  createBandWithAdmin,
+  findBandByLink,
+  findPendingInvite,
+  joinBandByLink,
+  setActiveBandCookie,
+} from "@/lib/band-access";
 import { prisma } from "@/lib/prisma";
 import { RATE_LIMITS, rateLimit } from "@/lib/rate-limit";
 import { clientIp } from "@/lib/request";
@@ -13,6 +20,7 @@ const EMAIL_TAKEN = "Este email já está cadastrado. Entre com ele (ou use “E
  * PÚBLICO — cadastro de usuário.
  * - Sem convite: cria a conta e a primeira banda (a pessoa é administradora dela).
  * - Com convite (`inviteToken`): cria a conta com o email do convite e entra na banda que convidou.
+ * - Com o link da banda (`bandLinkToken`): cria a conta (qualquer email) e entra na banda do link.
  */
 export async function POST(request: Request) {
   const limited = rateLimit(`register:${clientIp(request)}`, RATE_LIMITS.register);
@@ -24,13 +32,19 @@ export async function POST(request: Request) {
 
   const parsed = await parseBody(request, registerSchema);
   if (!parsed.ok) return parsed.response;
-  const { password, bandName, inviteToken, ...data } = parsed.data;
+  const { password, bandName, inviteToken, bandLinkToken, ...data } = parsed.data;
 
   const invite = inviteToken ? await findPendingInvite(inviteToken) : null;
   if (inviteToken) {
-    if (!invite || invite.band.disabledAt) return jsonError(400, "Convite inválido ou expirado. Peça um novo link à banda.");
+    if (!invite || invite.band.disabledAt)
+      return jsonError(400, "Convite inválido ou expirado. Peça um novo link à banda.");
     // O convite vale para o email que a banda cadastrou (é para lá que o link foi enviado).
     if (invite.email !== data.email) return jsonError(400, `Use o email do convite: ${invite.email}`);
+  }
+
+  const linkBand = bandLinkToken && !invite ? await findBandByLink(bandLinkToken) : null;
+  if (bandLinkToken && !invite && !linkBand) {
+    return jsonError(400, "Link de convite inválido ou desativado. Peça um novo link à banda.");
   }
 
   if (await prisma.user.findUnique({ where: { email: data.email }, select: { id: true } })) {
@@ -52,6 +66,11 @@ export async function POST(request: Request) {
   if (invite) {
     await claimInvite(invite.id, user.id);
     return setActiveBandCookie(NextResponse.json({ ok: true, bandId: invite.bandId }, { status: 201 }), invite.bandId);
+  }
+
+  if (linkBand) {
+    await joinBandByLink(linkBand, user);
+    return setActiveBandCookie(NextResponse.json({ ok: true, bandId: linkBand.id }, { status: 201 }), linkBand.id);
   }
 
   const band = await createBandWithAdmin(user, bandName!);

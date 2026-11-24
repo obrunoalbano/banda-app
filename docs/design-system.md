@@ -139,7 +139,7 @@ Tamanhos: **16px** dentro de botões (automático), **20px** no menu, **24px** e
 | --- | --- | --- |
 | `Button` | Ações em formulários e na página (submit, gerar, aplicar). | `variant` `primary`·`secondary`·`ghost`·`danger`·`danger-solid`; `size` `sm`(32px)·`md`(40px)·`lg`(48px); `icon`; `loading`; `type` padrão `"button"` |
 | `ButtonLink` | Navegação com cara de botão ("Nova casa", "Alterar", "Entrar"). | mesmas `variant`/`size`/`icon` + props de `next/link` |
-| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason`, `size` |
+| `ConfirmButton` | Qualquer ação que precise de confirmação (irreversível ou com efeito colateral). | `label`, `title`, `description`, `confirmLabel`, `tone` `primary`·`danger`, `onConfirm(): Promise<string \| null>` (retorne a mensagem de erro para manter aberto), `disabledReason`, `size`, `result` (conteúdo mostrado no próprio modal após confirmar — ex.: link gerado para copiar; com ele o modal troca a pergunta pelo resultado e um botão Fechar) |
 | `Sheet` | Painel lateral modal com detalhes de um item sem sair da tela (ex.: card do Fluxo de contatos). Controlado: `open`/`onClose`; Esc, X e clique fora passam pelo estado do pai; ao abrir, o foco vai para o título. | `open`, `onClose`, `title`, `description`, `children` |
 | `ConfirmDeleteButton` | Remover um registro via `DELETE` na API. | `endpoint`, `redirectTo`, `itemLabel` (ex.: `a casa "Bar X"`), `disabledReason` |
 

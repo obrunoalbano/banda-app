@@ -1,5 +1,7 @@
 import type { NextResponse } from "next/server";
+import type { BandRole } from "@/app/generated/prisma/enums";
 import { isUniqueViolation } from "@/lib/api";
+import { parseBandLinkToken } from "@/lib/band-link";
 import { findAvailableSlug } from "@/lib/band-slug";
 import { hashInviteToken } from "@/lib/members";
 import { emailLinkBaseUrl } from "@/lib/password-reset";
@@ -58,6 +60,54 @@ export async function claimInvite(memberId: string, userId: string): Promise<boo
     return count === 1;
   } catch (error) {
     if (isUniqueViolation(error)) return false;
+    throw error;
+  }
+}
+
+/** Banda do link de convite do grupo (assinatura conferida, link ativo, banda não desativada). */
+export async function findBandByLink(token: string) {
+  const nonce = parseBandLinkToken(token);
+  if (!nonce) return null;
+  return prisma.band.findFirst({
+    where: { inviteLinkNonce: nonce, disabledAt: null },
+    select: { id: true, name: true, inviteLinkRole: true },
+  });
+}
+
+export type JoinByLinkResult = "joined" | "already-member" | "conflict";
+
+/**
+ * Entra na banda pelo link do grupo. Já integrante → nada muda. Convite individual pendente para
+ * o mesmo email → é aceito (vale o acesso daquele convite). Senão cria o integrante com o acesso
+ * do link. `conflict`: o email já pertence a outro integrante com conta (raro: troca de email).
+ */
+export async function joinBandByLink(
+  band: { id: string; inviteLinkRole: BandRole },
+  user: { id: string; name: string; email: string },
+): Promise<JoinByLinkResult> {
+  const existing = await prisma.bandMember.findFirst({
+    where: { bandId: band.id, OR: [{ userId: user.id }, { email: user.email }] },
+    select: { id: true, userId: true },
+    orderBy: { createdAt: "asc" },
+  });
+  if (existing?.userId === user.id) return "already-member";
+  if (existing && !existing.userId) return (await claimInvite(existing.id, user.id)) ? "joined" : "already-member";
+  if (existing) return "conflict";
+  try {
+    await prisma.bandMember.create({
+      data: {
+        bandId: band.id,
+        userId: user.id,
+        name: user.name,
+        email: user.email,
+        role: band.inviteLinkRole,
+        joinedAt: new Date(),
+      },
+    });
+    return "joined";
+  } catch (error) {
+    // Duas abas aceitando ao mesmo tempo: o unique (bandId, userId|email) garante um registro só.
+    if (isUniqueViolation(error)) return "already-member";
     throw error;
   }
 }

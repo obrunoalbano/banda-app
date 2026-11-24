@@ -1,5 +1,5 @@
 import { appBaseUrl } from "@/lib/band-access";
-import { sendEmail } from "@/lib/email";
+import { sendEmailResult } from "@/lib/email";
 import { generateInviteToken, inviteEmail, inviteUrl } from "@/lib/members";
 import { prisma } from "@/lib/prisma";
 
@@ -12,7 +12,9 @@ export async function inviteMember(
   request: Request,
   member: { id: string; email: string },
   ctx: { bandId: string; userId: string },
-): Promise<{ status: "linked" } | { status: "invited"; inviteUrl: string | null; emailSent: boolean }> {
+): Promise<
+  { status: "linked" } | { status: "invited"; inviteUrl: string | null; emailSent: boolean; emailError?: string }
+> {
   const existing = await prisma.user.findUnique({ where: { email: member.email }, select: { id: true } });
   if (existing) {
     await prisma.bandMember.updateMany({
@@ -30,16 +32,18 @@ export async function inviteMember(
   const baseUrl = appBaseUrl(request);
   if (!baseUrl) {
     console.error("[convite] NEXT_PUBLIC_APP_URL/VERCEL_PROJECT_PRODUCTION_URL ausentes — link de convite não gerado.");
-    return { status: "invited", inviteUrl: null, emailSent: false };
+    return { status: "invited", inviteUrl: null, emailSent: false, emailError: "Endereço do app não configurado." };
   }
   const url = inviteUrl(baseUrl, token);
   const [band, inviter] = await Promise.all([
     prisma.band.findUnique({ where: { id: ctx.bandId }, select: { name: true } }),
     prisma.user.findUnique({ where: { id: ctx.userId }, select: { name: true } }),
   ]);
-  const emailSent = await sendEmail({
+  const email = await sendEmailResult({
     to: member.email,
     ...inviteEmail({ bandName: band?.name ?? "", inviterName: inviter?.name ?? "Um integrante", url }),
   });
-  return { status: "invited", inviteUrl: url, emailSent };
+  return email.ok
+    ? { status: "invited", inviteUrl: url, emailSent: true }
+    : { status: "invited", inviteUrl: url, emailSent: false, emailError: email.reason };
 }

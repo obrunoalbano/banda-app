@@ -43,6 +43,7 @@ export function MemberActions({
   }
 
   async function resend(): Promise<string | null> {
+    setInvite(null);
     const data = await submit<InviteResult>(`${base}/invite`, "POST", {}, "Não foi possível gerar o link.");
     if (!data) return "Não foi possível gerar o link.";
     setInvite(data);
@@ -53,7 +54,6 @@ export function MemberActions({
   return (
     <div className="flex flex-col items-stretch gap-2 sm:items-end">
       {error ? <Alert>{error}</Alert> : null}
-      {invite ? <InviteResultAlert result={invite} email={member.email} /> : null}
       <div className="flex flex-wrap items-center gap-2 sm:justify-end">
         <label className="sr-only" htmlFor={`role-${member.id}`}>
           Acesso de {member.name}
@@ -82,6 +82,7 @@ export function MemberActions({
             description={<>O link anterior deixa de valer. Enviaremos o novo para {member.email}.</>}
             confirmLabel="Gerar link"
             onConfirm={resend}
+            result={invite ? <InviteResultAlert result={invite} email={member.email} /> : null}
           />
         ) : null}
         <ConfirmButton

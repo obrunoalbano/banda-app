@@ -73,8 +73,13 @@ export const registerSchema = z
     password,
     bandName: optionalText(120),
     inviteToken: z.string().trim().min(1).max(200).optional(),
+    /** Link de convite da banda (grupo): entra na banda em vez de criar uma. */
+    bandLinkToken: z.string().trim().min(1).max(200).optional(),
   })
-  .refine((d) => d.inviteToken || d.bandName, { message: "Nome da banda é obrigatório", path: ["bandName"] });
+  .refine((d) => d.inviteToken || d.bandLinkToken || d.bandName, {
+    message: "Nome da banda é obrigatório",
+    path: ["bandName"],
+  });
 
 /** Dados da conta (usuário). */
 export const accountUpdateSchema = z.object({
@@ -86,6 +91,13 @@ export const accountUpdateSchema = z.object({
 /** Nova banda criada por um usuário logado (vira administrador dela). */
 export const bandCreateSchema = z.object({
   name: requiredText("Nome da banda é obrigatório").pipe(z.string().max(120)),
+});
+
+/** Link de convite da banda: ativar/regenerar (`regenerate`), trocar o acesso ou desativar. */
+export const bandInviteLinkSchema = z.object({
+  enabled: z.boolean(),
+  role: z.enum(BandRole).optional(),
+  regenerate: z.boolean().optional(),
 });
 
 /** Escolher a banda ativa. */
