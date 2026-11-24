@@ -35,18 +35,20 @@ function isPublicPage(path: string, isProduction: boolean): boolean {
     path === "/redefinir-senha" ||
     // Convite para uma banda: a página decide (entrar, cadastrar ou aceitar).
     path.startsWith("/convite/") ||
+    // App instalável (PWA): página sem conexão (mostrada pelo service worker).
+    path === "/offline" ||
     // Galeria do design system: só existe em desenvolvimento (a página dá 404 em produção).
     (!isProduction && path === "/design-system")
   );
 }
 
+/** Arquivos do app instalável (PWA): o navegador busca sem sessão (antes do login, inclusive). */
+const PWA_FILES = new Set(["/manifest.webmanifest", "/sw.js", "/apple-icon.png"]);
+
 /** Superfícies públicas das integrações (página/widget/API pública e script do widget). */
 export function isPublicIntegrationPath(path: string): boolean {
   return (
-    path.startsWith("/b/") ||
-    path.startsWith("/embed/") ||
-    path === "/embed.js" ||
-    path.startsWith("/api/public/")
+    path.startsWith("/b/") || path.startsWith("/embed/") || path === "/embed.js" || path.startsWith("/api/public/")
   );
 }
 
@@ -58,6 +60,7 @@ export function decideAccess(
   { isProduction }: { isProduction: boolean },
 ): AccessDecision {
   if (isPublicIntegrationPath(path)) return { type: "allow" };
+  if (PWA_FILES.has(path)) return { type: "allow" };
   if (path.startsWith("/api/auth")) return { type: "allow" };
 
   const isApi = path.startsWith("/api/");

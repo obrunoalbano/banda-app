@@ -16,7 +16,8 @@ export function cx(...classes: Array<string | false | null | undefined>): string
 export const inputClass =
   "w-full rounded-md border border-line-strong bg-surface px-3 py-2 text-fg shadow-sm placeholder:text-fg-subtle focus:border-focus focus:outline-none focus:ring-1 focus:ring-focus disabled:cursor-not-allowed disabled:opacity-60";
 
-export const inputSmClass = `${inputClass} text-sm`;
+// No celular fica em 16px: abaixo disso o Safari do iPhone dá zoom na página ao focar o campo.
+export const inputSmClass = `${inputClass} text-base sm:text-sm`;
 
 export const labelClass = "text-sm font-medium text-fg";
 

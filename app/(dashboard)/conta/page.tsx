@@ -1,4 +1,5 @@
 import { AccountForm } from "@/components/AccountForm";
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { ButtonLink } from "@/components/ui/Button";
 import { KeyIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
@@ -24,9 +25,12 @@ export default async function ContaPage() {
         title="Minha conta"
         description="Seus dados de acesso. Valem para todas as suas bandas."
         actions={
-          <ButtonLink href="/conta/senha" variant="secondary" icon={KeyIcon}>
-            Alterar senha
-          </ButtonLink>
+          <>
+            <InstallAppButton />
+            <ButtonLink href="/conta/senha" variant="secondary" icon={KeyIcon}>
+              Alterar senha
+            </ButtonLink>
+          </>
         }
       />
       <AccountForm initial={{ ...user, phone: user.phone ?? "" }} />

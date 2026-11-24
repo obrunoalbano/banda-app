@@ -181,7 +181,7 @@ Complementos: `Alert` (erro/sucesso no topo do form), `FormActions` (rodapé com
 | `ExternalLink` | `mailto:`, `wa.me`, Instagram, ingressos; `icon` opcional à esquerda (ex.: `EmailIcon`). Links `http(s)` já ganham o ícone de link externo no fim e abrem em nova aba com aviso para leitor de tela — não passe `ExternalLinkIcon` como `icon`. |
 | `Table` + `Tr` + `Td` | Listagens. `caption` (sr-only) obrigatório; **todo `Td` recebe `label`** (vira rótulo no mobile). `strong` = coluna principal (link para o detalhe); `numeric`; `align="right"` = ações. |
 | `Pagination` + `parsePage`/`pageArgs` | `?pagina=N`, 50 por página, preserva filtros via `searchParams`. |
-| `FilterBar` + `FilterField` | Filtros de listagem como `<form method="get">` (estado na URL). Aplicar/Limpar inclusos; `extraActions` para atalhos. |
+| `FilterBar` + `FilterField` | Filtros de listagem como `<form method="get">` (estado na URL). Aplicar/Limpar inclusos; `extraActions` para atalhos. No celular fica recolhida atrás do botão "Filtros (n)" (`FilterDisclosure`). |
 | `Badge` | Status curto (1–3 palavras) por `tone`. Componentes de domínio: `StatusBadge`, `ShowPaymentBadge` (`overdue` → "Atrasado"), `FinanceEntryStatusBadge` (Pago · Pendente · Atrasado). |
 | `Stat` | Indicador numérico de resumo (rótulo, valor grande `tabular`, `hint`). `tone="danger"` só quando o valor tem significado (ex.: resultado negativo). Em grade: `grid gap-3 sm:grid-cols-2 lg:grid-cols-5`. |
 | `Alert` | Feedback em bloco: `tone` `danger`(padrão)·`success`·`warning`·`info`; `title` opcional. |

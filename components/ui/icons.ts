@@ -55,5 +55,10 @@ export {
   ArrowLeftRight as SwitchBandIcon,
   CircleUserRound as AccountIcon,
   Link as LinkIcon,
+  WifiOff as OfflineIcon,
+  Download as InstallIcon,
+  Share as ShareIcon,
+  SquarePlus as AddToHomeIcon,
+  Ellipsis as MoreIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

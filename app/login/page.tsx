@@ -1,3 +1,4 @@
+import { InstallAppButton } from "@/components/InstallAppButton";
 import { LoginForm } from "@/components/LoginForm";
 import { AuthLayout } from "@/components/ui/AuthLayout";
 import { linkClass } from "@/components/ui/styles";
@@ -21,9 +22,19 @@ export default function LoginPage() {
         </>
       }
     >
-      <Suspense fallback={<p className="text-sm text-fg-subtle" aria-live="polite">Carregando…</p>}>
+      <Suspense
+        fallback={
+          <p className="text-sm text-fg-subtle" aria-live="polite">
+            Carregando…
+          </p>
+        }
+      >
         <LoginForm />
       </Suspense>
+      {/* Some no desktop e quando o app já está instalado. */}
+      <div className="mt-6 flex justify-center empty:hidden">
+        <InstallAppButton />
+      </div>
     </AuthLayout>
   );
 }
