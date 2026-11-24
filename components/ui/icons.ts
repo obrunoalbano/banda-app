@@ -60,5 +60,18 @@ export {
   Share as ShareIcon,
   SquarePlus as AddToHomeIcon,
   Ellipsis as MoreIcon,
+  Search as SearchIcon,
+  Drum as RehearsalIcon,
+  ListMusic as RepertoireIcon,
+  Music2 as SongIcon,
+  GripVertical as DragIcon,
+  ChevronUp as MoveUpIcon,
+  ChevronDown as MoveDownIcon,
+  MapPin as LocationIcon,
+  Clock as TimeIcon,
+  Repeat as RecurrenceIcon,
+  ThumbsUp as ConfirmIcon,
+  ThumbsDown as DeclineIcon,
+  ListPlus as PlaylistIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

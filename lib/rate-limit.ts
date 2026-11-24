@@ -57,6 +57,12 @@ export const RATE_LIMITS = {
   register: { limit: 5, windowMs: 60 * 60_000 },
   /** Convites de integrante por banda (cada um pode enviar um email). */
   bandInvite: { limit: 30, windowMs: 60 * 60_000 },
+  /** Busca de música no Spotify por banda (Repertórios). */
+  spotifyLookup: { limit: 60, windowMs: 60_000 },
+  /** Importação de playlist do Spotify por banda (até 2 páginas da Web API cada). */
+  spotifyPlaylist: { limit: 10, windowMs: 60_000 },
+  /** Ensaios criados por banda (cada um envia email a todos os integrantes). */
+  rehearsalCreate: { limit: 20, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */
   leadIngest: { limit: 60, windowMs: 60_000 },
   /** Envios do formulário público por IP + banda. */
