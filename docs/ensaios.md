@@ -17,6 +17,13 @@ Menu: **Administrativo → Ensaios** e **Administrativo → Repertórios**. Admi
 - **Ordem**: arrastar (mouse, toque longo no celular, teclado com espaço + setas — `@dnd-kit/sortable`) ou botões Subir/Descer. O formulário salva a lista inteira; o PATCH substitui as músicas numa transação.
 - Excluir repertório: os ensaios que o usavam ficam sem repertório (`onDelete: SetNull`).
 
+### Compartilhar (texto ou imagem para o WhatsApp)
+
+Botão **Compartilhar** no detalhe do repertório (administrador e visualizador): painel com opções (artistas, observações, duração de cada música). Tudo no navegador — nada é publicado nem gravado.
+
+- **Texto** (`repertoireShareText` em `lib/repertoire.ts`, com teste): `*negrito*`/`_itálico_` do WhatsApp; marcadores `* _ ~` do texto livre são removidos. Copiar (clipboard; se negado, seleciona o campo e usa `execCommand("copy")`), **Abrir no WhatsApp** (`https://wa.me/?text=`) e, onde houver, o compartilhar do sistema (`navigator.share`).
+- **Imagem** PNG desenhada em `<canvas>` (`components/repertoire/repertoire-image.ts`): fundo claro ou escuro, 1 coluna até 24 músicas (1080px), 2 colunas acima disso (1600px). Compartilhar a imagem (`navigator.share({ files })` — no celular abre a lista de apps), copiar (`ClipboardItem`) ou baixar. As cores da imagem ficam no arquivo (a imagem não usa os tokens de tema).
+
 ## Ensaios (`/ensaios`)
 
 - Campos: nome, descrição, local, data, horário (`HH:mm`), repetição (`NONE | WEEKLY | BIWEEKLY | MONTHLY`), "repetir até" (opcional) e repertório (opcional).
@@ -30,8 +37,19 @@ Menu: **Administrativo → Ensaios** e **Administrativo → Repertórios**. Admi
 - Resposta (`RehearsalAttendance`) é **por ocorrência** (`occurrenceDate`): num ensaio recorrente cada data tem sua confirmação; mudar o dia do ensaio faz as novas datas aparecerem sem resposta. `POST /api/rehearsals/<id>/attendance` aceita visualizador (`withBand({ viewer: true })`), só para o próprio integrante, só datas válidas da série e de hoje em diante.
 - Convite pendente (sem conta) não recebe aviso nem aparece na presença.
 
+## Músicas do ensaio: ordem e ensaiadas
+
+Na tela do ensaio, a seção **Músicas do ensaio** lista o repertório escolhido.
+
+- **Ordem própria do ensaio** (`Rehearsal.songOrder`, ids de `RepertoireSong`): "Organizar ordem" (arrastar ou subir/descer) → `PATCH /api/rehearsals/<id>/songs` com **todas** as músicas na nova ordem (lista diferente da do repertório = 409 "recarregue"). Ordem igual à do repertório (ou "Usar a ordem do repertório") salva vazia = volta a seguir o repertório. O repertório em si não muda.
+  - `orderRehearsalSongs`: músicas adicionadas ao repertório depois vão para o fim; ids removidos são ignorados.
+- **Ensaiada / Faltou** por música e **por data** (`RehearsalSongCheck`, único por ensaio + música + `occurrenceDate`): `POST /api/rehearsals/<id>/song-checks` `{ songId, occurrenceDate, status: REHEARSED | MISSED | null }` (`null` tira a marcação). Só datas da série que já chegaram (até hoje). Num recorrente, o seletor "Ensaio de" mostra as últimas 12 datas que já aconteceram (`pastOccurrences`, `?data=YYYY-MM-DD`); padrão = a mais recente. Contagem: ensaiadas · faltaram · sem marcação.
+- Organizar e marcar: só administrador (API 403 para visualizador); visualizador vê a ordem e as marcações.
+- **Ids estáveis das músicas:** o `PATCH /api/repertoires/<id>` atualiza as músicas enviadas com `id` (em vez de apagar e recriar), cria as novas e remove as que saíram — a ordem e as marcações dos ensaios apontam para esses ids. Música removida do repertório leva as marcações junto (cascade).
+- Trocar o repertório do ensaio zera a ordem própria e as marcações.
+
 ## Pendências possíveis (v2)
 
 - Avisar os integrantes quando o ensaio muda ou é cancelado; lembrete na véspera.
 - Notificação push no app instalado (PWA) — ver docs/mobile.md.
-- Exceções na recorrência (cancelar uma data só), presença de convidados, setlist por ensaio diferente do repertório.
+- Exceções na recorrência (cancelar uma data só), presença de convidados.

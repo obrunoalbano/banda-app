@@ -21,7 +21,15 @@ export default async function EditarRepertorioPage({ params }: PageProps) {
       description: true,
       songs: {
         orderBy: { position: "asc" },
-        select: { title: true, artists: true, spotifyUrl: true, imageUrl: true, durationMs: true, notes: true },
+        select: {
+          id: true,
+          title: true,
+          artists: true,
+          spotifyUrl: true,
+          imageUrl: true,
+          durationMs: true,
+          notes: true,
+        },
       },
     },
   });

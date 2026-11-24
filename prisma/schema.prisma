@@ -399,20 +399,21 @@ model Repertoire {
 /// Música de um repertório. `position` = ordem na lista (0, 1, 2…). Dados do Spotify são uma cópia
 /// (título/artistas editáveis); sem link, a banda preenche à mão.
 model RepertoireSong {
-  id             String     @id @default(cuid())
-  repertoireId   String
-  repertoire     Repertoire @relation(fields: [repertoireId], references: [id], onDelete: Cascade)
-  position       Int
-  title          String
-  artists        String?
+  id              String               @id @default(cuid())
+  repertoireId    String
+  repertoire      Repertoire           @relation(fields: [repertoireId], references: [id], onDelete: Cascade)
+  position        Int
+  title           String
+  artists         String?
   /// Link canônico https://open.spotify.com/track/<id> (normalizado no schema Zod).
-  spotifyUrl     String?
-  spotifyTrackId String?
+  spotifyUrl      String?
+  spotifyTrackId  String?
   /// Capa do álbum (só i.scdn.co, servida pelo Spotify).
-  imageUrl       String?
-  durationMs     Int?
+  imageUrl        String?
+  durationMs      Int?
   /// Observação curta (ex.: "toca em um tom a menos").
-  notes          String?
+  notes           String?
+  rehearsalChecks RehearsalSongCheck[]
 
   @@index([repertoireId, position])
 }
@@ -440,9 +441,13 @@ model Rehearsal {
   recurrenceUntil DateTime?
   repertoireId    String?
   repertoire      Repertoire?           @relation(fields: [repertoireId], references: [id], onDelete: SetNull)
+  /// Ordem das músicas NESTE ensaio (ids de RepertoireSong). Vazio = ordem do repertório; músicas
+  /// fora da lista vão para o fim e ids que não existem mais são ignorados (`orderRehearsalSongs`).
+  songOrder       String[]              @default([])
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt
   attendances     RehearsalAttendance[]
+  songChecks      RehearsalSongCheck[]
 
   @@index([bandId, date])
 }
@@ -466,4 +471,25 @@ model RehearsalAttendance {
 
   @@unique([rehearsalId, memberId, occurrenceDate])
   @@index([memberId])
+}
+
+enum RehearsalSongStatus {
+  REHEARSED
+  MISSED
+}
+
+/// Música marcada como ensaiada ou que faltou em UMA ocorrência do ensaio (sem registro = sem marcação).
+model RehearsalSongCheck {
+  id             String              @id @default(cuid())
+  rehearsalId    String
+  rehearsal      Rehearsal           @relation(fields: [rehearsalId], references: [id], onDelete: Cascade)
+  songId         String
+  song           RepertoireSong      @relation(fields: [songId], references: [id], onDelete: Cascade)
+  /// Data pura da ocorrência.
+  occurrenceDate DateTime
+  status         RehearsalSongStatus
+  updatedAt      DateTime            @updatedAt
+
+  @@unique([rehearsalId, songId, occurrenceDate])
+  @@index([songId])
 }

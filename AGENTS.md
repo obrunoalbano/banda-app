@@ -36,8 +36,8 @@ app/
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
     shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
-    ensaios/               Rehearsal: lista (próximos + anteriores, Vou/Não vou), detalhe (presença), novo, editar — docs/ensaios.md
-    repertorios/           Repertoire: lista, detalhe, novo (pode começar de playlist do Spotify), editar (músicas: Spotify ou manual, ordem por arrastar)
+    ensaios/               Rehearsal: lista (próximos + anteriores, Vou/Não vou), detalhe (presença; músicas do ensaio: ordem própria e ensaiada/faltou por data), novo, editar — docs/ensaios.md
+    repertorios/           Repertoire: lista, detalhe, novo (pode começar de playlist do Spotify), compartilhar (texto/imagem p/ WhatsApp), editar (músicas: Spotify ou manual, ordem por arrastar)
     contatos/              Lead: lista (paginada, coluna Fluxo), detalhe ("Adicionar ao fluxo"), editar
     financeiro/            Financeiro (docs/financeiro.md): visão geral (resumo do período, atrasados, próximos),
       lancamentos/         FinanceEntry: lista (filtro período/tipo/situação), nova (?showId&tipo), [id]/editar
@@ -64,7 +64,7 @@ app/
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
     shows (POST), shows/[id] (PATCH, DELETE)
-    rehearsals (POST: cria e avisa integrantes), rehearsals/[id] (PATCH, DELETE), rehearsals/[id]/attendance (POST: própria presença, visualizador também)
+    rehearsals (POST: cria e avisa integrantes), rehearsals/[id] (PATCH, DELETE), rehearsals/[id]/attendance (POST: própria presença, visualizador também), rehearsals/[id]/songs (PATCH: ordem no ensaio), rehearsals/[id]/song-checks (POST: ensaiada/faltou)
     repertoires (POST), repertoires/[id] (PATCH: substitui as músicas, DELETE), spotify/track (POST: dados da música pelo link), spotify/playlist (POST: músicas de playlist pública, não grava)
     finance-entries (POST), finance-entries/[id] (PATCH, DELETE)  lançamentos do Financeiro
     leads/[id] (PATCH, DELETE)
@@ -102,7 +102,7 @@ lib/
   validations.ts           schemas Zod que validam E normalizam
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas, data de recebimento)
   rehearsals.ts            Ensaios: recorrência, próxima ocorrência, presença, email (com teste) · rehearsal-query.ts / rehearsal-notify.ts
-  spotify.ts               link do Spotify → faixa ou playlist pública (Web API, metatags ou página do player) (com teste) · repertoire.ts: limite de músicas
+  spotify.ts               link do Spotify → faixa ou playlist pública (Web API, metatags ou página do player) (com teste) · repertoire.ts: limite de músicas, texto para compartilhar (com teste)
   finance.ts               Financeiro: resumo do período, atraso/vencimento, resultado do show, período, CSV (com teste)
   finance-categories.ts    tipos/categorias de lançamento (labels, categorias por tipo) · finance-query.ts: consultas
   money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
@@ -139,7 +139,7 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
 - **FinanceEntry** — lançamento do Financeiro: `type` (`RECEITA | DESPESA`), `category` (`FinanceCategory`; quais valem por tipo em `lib/finance-categories.ts`, conferido no schema e no PATCH), `description`, `amountCents`, `date` e `paidAt` (datas puras; `paidAt` vazio = pendente), `showId?` (`onDelete: SetNull`). **O cachê do show não vira lançamento** — os totais somam `Show.cacheCents` + lançamentos (show cancelado fica fora).
 - **Repertoire** / **RepertoireSong** — repertório e músicas em ordem (`position`); dados do Spotify são cópia editável (`spotifyUrl` canônico, `spotifyTrackId`, `imageUrl` só i.scdn.co, `durationMs`), `notes` por música.
-- **Rehearsal** — ensaio: `name`, `description`, `location`, `date` (data pura; 1ª ocorrência se recorrente), `time`, `recurrence` (`NONE | WEEKLY | BIWEEKLY | MONTHLY`), `recurrenceUntil?`, `repertoireId?` (`SetNull`). **RehearsalAttendance** — resposta por ocorrência: `memberId` (BandMember), `occurrenceDate`, `status` (`CONFIRMED | DECLINED`); sem registro = sem resposta.
+- **Rehearsal** — ensaio: `name`, `description`, `location`, `date` (data pura; 1ª ocorrência se recorrente), `time`, `recurrence` (`NONE | WEEKLY | BIWEEKLY | MONTHLY`), `recurrenceUntil?`, `repertoireId?` (`SetNull`), `songOrder` (ids das músicas na ordem do ensaio; vazio = do repertório). **RehearsalSongCheck** — música `REHEARSED | MISSED` por ocorrência (cascade com a música). Músicas do repertório têm **id estável** (o PATCH atualiza em vez de recriar). **RehearsalAttendance** — resposta por ocorrência: `memberId` (BandMember), `occurrenceDate`, `status` (`CONFIRMED | DECLINED`); sem registro = sem resposta.
 - **Deal** — negociação do Fluxo de contatos. `step` (`PRIMEIRO_CONTATO | PROPOSTA | PERDEU | GANHOU`, fixas), `source` (`CONTATO | EXPLORADOR`), `leadId?`/`stageId?` (uma negociação por contato/palco por banda), `venueId?` (casa criada ao ganhar), `notes` (observações da banda), cópia de `name/city/state` (origens com `SetNull`). **Casa a partir do fluxo só com etapa Ganhou** — regra `canAddToVenues`, conferida também em `POST /api/venues` (`dealId`).
 
 Todas as entidades pertencem a uma banda (`bandId`, `onDelete: Cascade`). Exceção: `Show.venueId` é `onDelete: NoAction` — **casa com shows não pode ser apagada** (a API devolve 409 e a UI desabilita o botão). Não troque para `Restrict`: quebraria o cascade Band → Venue/Show.

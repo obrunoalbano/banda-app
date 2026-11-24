@@ -1,6 +1,6 @@
 import { AttendanceBadge } from "@/components/rehearsals/AttendanceBadge";
 import { AttendanceButtons } from "@/components/rehearsals/AttendanceButtons";
-import { SongList } from "@/components/repertoire/SongList";
+import { RehearsalSongs } from "@/components/rehearsals/RehearsalSongs";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -13,22 +13,32 @@ import { containerClass, linkClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
 import { getMemberId } from "@/lib/rehearsal-query";
 import { formatOccurrence } from "@/lib/rehearsal-view";
-import { attendanceCounts, recurrenceDescription, upcomingOccurrences } from "@/lib/rehearsals";
+import {
+  attendanceCounts,
+  orderRehearsalSongs,
+  pastOccurrences,
+  recurrenceDescription,
+  upcomingOccurrences,
+} from "@/lib/rehearsals";
 import { formatDateOnly } from "@/lib/format";
 import { requireBandContext } from "@/lib/session";
-import { todayDateOnly, toDateOnlyString } from "@/lib/shows";
+import { parseDateOnly, todayDateOnly, toDateOnlyString } from "@/lib/shows";
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 
 export const metadata: Metadata = { title: "Ensaio" };
 
-type PageProps = { params: Promise<{ id: string }>; searchParams: Promise<{ criado?: string }> };
+type PageProps = {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ criado?: string; data?: string }>;
+};
 
 export default async function EnsaioPage({ params, searchParams }: PageProps) {
   const { bandId, userId, canEdit } = await requireBandContext();
   const { id } = await params;
-  const created = (await searchParams).criado === "1";
+  const query = await searchParams;
+  const created = query.criado === "1";
   const today = todayDateOnly();
 
   const [rehearsal, members, memberId] = await Promise.all([
@@ -43,6 +53,7 @@ export default async function EnsaioPage({ params, searchParams }: PageProps) {
         time: true,
         recurrence: true,
         recurrenceUntil: true,
+        songOrder: true,
         repertoire: {
           select: {
             id: true,
@@ -81,6 +92,18 @@ export default async function EnsaioPage({ params, searchParams }: PageProps) {
       })
     : [];
   const statusBy = new Map(responses.map((r) => [r.memberId, r.status]));
+
+  // Músicas: data a marcar = a escolhida (?data=) entre as que já chegaram, ou a mais recente.
+  const past = rehearsal.repertoire ? pastOccurrences(rehearsal, today, 12) : [];
+  const requested = query.data ? parseDateOnly(query.data) : null;
+  const checkDate = past.find((d) => requested && d.getTime() === requested.getTime()) ?? past[0] ?? null;
+  const songChecks =
+    checkDate && rehearsal.repertoire
+      ? await prisma.rehearsalSongCheck.findMany({
+          where: { rehearsalId: rehearsal.id, occurrenceDate: checkDate },
+          select: { songId: true, status: true },
+        })
+      : [];
   const counts = attendanceCounts(
     members.map((m) => m.id),
     responses,
@@ -198,9 +221,24 @@ export default async function EnsaioPage({ params, searchParams }: PageProps) {
       {rehearsal.repertoire ? (
         <section className="mt-8" aria-labelledby="repertorio">
           <h2 id="repertorio" className="mb-3 text-base font-semibold text-fg">
-            Repertório: {rehearsal.repertoire.name}
+            Músicas do ensaio{" "}
+            <span className="font-normal text-fg-subtle">
+              ({rehearsal.repertoire.songs.length} · repertório {rehearsal.repertoire.name})
+            </span>
           </h2>
-          <SongList songs={rehearsal.repertoire.songs} />
+          <RehearsalSongs
+            rehearsalId={rehearsal.id}
+            songs={orderRehearsalSongs(rehearsal.repertoire.songs, rehearsal.songOrder)}
+            repertoireOrder={rehearsal.repertoire.songs.map((s) => s.id)}
+            customOrder={rehearsal.songOrder.length > 0}
+            canEdit={canEdit}
+            occurrences={past.map((d) => ({
+              value: toDateOnlyString(d),
+              label: formatOccurrence(d, rehearsal.time),
+            }))}
+            occurrence={checkDate ? toDateOnlyString(checkDate) : null}
+            checks={Object.fromEntries(songChecks.map((c) => [c.songId, c.status]))}
+          />
         </section>
       ) : null}
     </div>

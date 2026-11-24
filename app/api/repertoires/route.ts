@@ -12,7 +12,7 @@ export const POST = withBand(async (request, { bandId }) => {
     data: {
       ...data,
       bandId,
-      songs: { create: songs.map((song, position) => ({ ...song, position })) },
+      songs: { create: songs.map((song, position) => ({ ...song, id: undefined, position })) },
     },
     select: { id: true },
   });
