@@ -1,6 +1,7 @@
 import { AttendanceBadge } from "@/components/rehearsals/AttendanceBadge";
 import { AttendanceButtons } from "@/components/rehearsals/AttendanceButtons";
-import { RehearsalSongs } from "@/components/rehearsals/RehearsalSongs";
+import { SetlistSongs } from "@/components/repertoire/SetlistSongs";
+import { orderSetlistSongs } from "@/lib/repertoire";
 import { Alert } from "@/components/ui/Alert";
 import { Badge } from "@/components/ui/Badge";
 import { ButtonLink } from "@/components/ui/Button";
@@ -13,13 +14,7 @@ import { containerClass, linkClass } from "@/components/ui/styles";
 import { prisma } from "@/lib/prisma";
 import { getMemberId } from "@/lib/rehearsal-query";
 import { formatOccurrence } from "@/lib/rehearsal-view";
-import {
-  attendanceCounts,
-  orderRehearsalSongs,
-  pastOccurrences,
-  recurrenceDescription,
-  upcomingOccurrences,
-} from "@/lib/rehearsals";
+import { attendanceCounts, pastOccurrences, recurrenceDescription, upcomingOccurrences } from "@/lib/rehearsals";
 import { formatDateOnly } from "@/lib/format";
 import { requireBandContext } from "@/lib/session";
 import { parseDateOnly, todayDateOnly, toDateOnlyString } from "@/lib/shows";
@@ -226,18 +221,22 @@ export default async function EnsaioPage({ params, searchParams }: PageProps) {
               ({rehearsal.repertoire.songs.length} · repertório {rehearsal.repertoire.name})
             </span>
           </h2>
-          <RehearsalSongs
-            rehearsalId={rehearsal.id}
-            songs={orderRehearsalSongs(rehearsal.repertoire.songs, rehearsal.songOrder)}
+          <SetlistSongs
+            noun="ensaio"
+            orderEndpoint={`/api/rehearsals/${rehearsal.id}/songs`}
+            songs={orderSetlistSongs(rehearsal.repertoire.songs, rehearsal.songOrder)}
             repertoireOrder={rehearsal.repertoire.songs.map((s) => s.id)}
             customOrder={rehearsal.songOrder.length > 0}
             canEdit={canEdit}
-            occurrences={past.map((d) => ({
-              value: toDateOnlyString(d),
-              label: formatOccurrence(d, rehearsal.time),
-            }))}
-            occurrence={checkDate ? toDateOnlyString(checkDate) : null}
-            checks={Object.fromEntries(songChecks.map((c) => [c.songId, c.status]))}
+            marking={{
+              endpoint: `/api/rehearsals/${rehearsal.id}/song-checks`,
+              occurrences: past.map((d) => ({
+                value: toDateOnlyString(d),
+                label: formatOccurrence(d, rehearsal.time),
+              })),
+              occurrence: checkDate ? toDateOnlyString(checkDate) : null,
+              checks: Object.fromEntries(songChecks.map((c) => [c.songId, c.status])),
+            }}
           />
         </section>
       ) : null}

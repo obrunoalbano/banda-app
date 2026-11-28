@@ -75,5 +75,7 @@ export {
   ListPlus as PlaylistIcon,
   Image as ImageIcon,
   Type as TextIcon,
+  FileText as PdfIcon,
+  Upload as UploadIcon,
 } from "lucide-react";
 export type { LucideIcon as Icon } from "lucide-react";

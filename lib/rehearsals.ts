@@ -151,23 +151,6 @@ export const SONG_CHECK_TONES: Record<RehearsalSongStatus | "NONE", Tone> = {
   NONE: "neutral",
 };
 
-/**
- * Músicas do repertório na ordem do ensaio (`songOrder`). Músicas que não estão na ordem salva
- * (adicionadas ao repertório depois) vão para o fim, na ordem do repertório; ids que não
- * existem mais são ignorados.
- */
-export function orderRehearsalSongs<T extends { id: string }>(songs: T[], songOrder: string[]): T[] {
-  if (songOrder.length === 0) return songs;
-  const rank = new Map(songOrder.map((id, i) => [id, i]));
-  const ordered = songs.filter((s) => rank.has(s.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
-  return [...ordered, ...songs.filter((s) => !rank.has(s.id))];
-}
-
-/** A ordem enviada é a mesma do repertório? (então salva vazia = segue o repertório). */
-export function isRepertoireOrder(songIds: string[], repertoireIds: string[]): boolean {
-  return songIds.length === repertoireIds.length && songIds.every((id, i) => id === repertoireIds[i]);
-}
-
 export type SongCheckCounts = Record<RehearsalSongStatus | "NONE", number>;
 
 export function songCheckCounts(songIds: string[], checks: { songId: string; status: RehearsalSongStatus }[]) {

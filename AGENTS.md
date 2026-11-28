@@ -35,9 +35,9 @@ app/
   esqueci-senha/, redefinir-senha/  "esqueci minha senha" da banda (link por email — docs/admin.md §2)
   (dashboard)/             área autenticada (layout com DashboardShell, loading.tsx, error.tsx)
     casas/                 Venue: lista (filtro cidade/status, paginada), detalhe, nova, editar
-    shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe, nova, editar
+    shows/                 Show: lista (filtro casa/ano/mês, paginada), detalhe (músicas do show: repertório com ordem própria, compartilhar), nova, editar
     ensaios/               Rehearsal: lista (próximos + anteriores, Vou/Não vou), detalhe (presença; músicas do ensaio: ordem própria e ensaiada/faltou por data), novo, editar — docs/ensaios.md
-    repertorios/           Repertoire: lista, detalhe, novo (pode começar de playlist do Spotify), compartilhar (texto/imagem p/ WhatsApp), editar (músicas: Spotify ou manual, ordem por arrastar)
+    repertorios/           Repertoire: lista, detalhe, novo (pode começar de playlist do Spotify), compartilhar (texto/imagem/PDF p/ WhatsApp), editar (músicas: Spotify ou manual, ordem por arrastar)
     contatos/              Lead: lista (paginada, coluna Fluxo), detalhe ("Adicionar ao fluxo"), editar
     financeiro/            Financeiro (docs/financeiro.md): visão geral (resumo do período, atrasados, próximos),
       lancamentos/         FinanceEntry: lista (filtro período/tipo/situação), nova (?showId&tipo), [id]/editar
@@ -47,14 +47,14 @@ app/
     integracoes/           submenu no menu lateral; /integracoes → /integracoes/agenda (next.config.ts)
       agenda/              Integrações → Agenda: agenda pública (ativar, slug, divulgar)
       contato/             Integrações → Contatos: status, formulário pronto, domínios, token de servidor
-    banda/                 dados da banda (admin edita; visualizador só lê) · integrantes/ (convites, papéis)
+    banda/                 dados da banda (admin edita; visualizador só lê) + logo da banda (logo/ = GET da imagem, com sessão) · integrantes/ (convites, papéis)
     bandas/                Minhas bandas: escolher a banda ativa, criar outra
     conta/                 dados da conta do usuário · senha/ (troca da senha)
   api/                     só ESCRITA (leitura é feita direto nos Server Components)
     auth/[...nextauth]     next-auth
     register               cadastro público (rate limit por IP)
     password/forgot, password/reset  PÚBLICO — "esqueci minha senha" (token por email, só hash no banco)
-    band (PATCH), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
+    band (PATCH), band/logo (POST: PNG reduzido no navegador; DELETE), band/ingest-token (POST), band/public-agenda (PATCH: opt-in + slug),
     band/lead-form (PATCH: opt-in + domínios), band/lead-form/test (POST: lead de teste)
     band/members (POST), band/members/[id] (PATCH, DELETE), band/members/[id]/invite (POST: novo link),
     band/invite-link (PATCH: link de convite da banda — ativar, regenerar, acesso, desativar)
@@ -63,7 +63,7 @@ app/
     admin/*                SUPERADMIN (withAdmin): stages, bands, users (+reset-password), admins, password
     venues (POST), venues/[id] (PATCH, DELETE)
     deals (POST), deals/[id] (PATCH, DELETE)  Fluxo de contatos (incluir contato/palco, mover etapa, tirar)
-    shows (POST), shows/[id] (PATCH, DELETE)
+    shows (POST), shows/[id] (PATCH, DELETE), shows/[id]/songs (PATCH: ordem das músicas no show)
     rehearsals (POST: cria e avisa integrantes), rehearsals/[id] (PATCH, DELETE), rehearsals/[id]/attendance (POST: própria presença, visualizador também), rehearsals/[id]/songs (PATCH: ordem no ensaio), rehearsals/[id]/song-checks (POST: ensaiada/faltou)
     repertoires (POST), repertoires/[id] (PATCH: substitui as músicas, DELETE), spotify/track (POST: dados da música pelo link), spotify/playlist (POST: músicas de playlist pública, não grava)
     finance-entries (POST), finance-entries/[id] (PATCH, DELETE)  lançamentos do Financeiro
@@ -85,7 +85,7 @@ components/
   explore/                 StageCard, ExploreFilterForm (Explorar Palcos)
   deals/                   DealBoard (client: arrastar e soltar com @dnd-kit/core, estado local), DealCard, DealDetails (painel), DealStepBadge, AddToFlowButton
   *Form.tsx                formulários client (POST/PATCH na API)
-  DashboardShell.tsx       menu lateral (gaveta no mobile) + header (avatar com UserMenu à esquerda, marca à direita)
+  DashboardShell.tsx       menu lateral (gaveta no mobile) + header (marca à esquerda, avatar com UserMenu à direita)
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
 lib/
   api.ts                   withBand (só ADMIN da banda por padrão; { viewer: true } libera leitura), withUser, withAdmin, parseBody, jsonError…
@@ -102,10 +102,10 @@ lib/
   validations.ts           schemas Zod que validam E normalizam
   shows.ts                 regras de domínio de Show (local, snapshot de cachê, datas, data de recebimento)
   rehearsals.ts            Ensaios: recorrência, próxima ocorrência, presença, email (com teste) · rehearsal-query.ts / rehearsal-notify.ts
-  spotify.ts               link do Spotify → faixa ou playlist pública (Web API, metatags ou página do player) (com teste) · repertoire.ts: limite de músicas, texto para compartilhar (com teste)
+  spotify.ts               link do Spotify → faixa ou playlist pública (Web API, metatags ou página do player) (com teste) · repertoire.ts: limite de músicas, texto para compartilhar, ordem própria de ensaio/show (`orderSetlistSongs`, `resolveSongOrder`) (com teste)
   finance.ts               Financeiro: resumo do período, atraso/vencimento, resultado do show, período, CSV (com teste)
   finance-categories.ts    tipos/categorias de lançamento (labels, categorias por tipo) · finance-query.ts: consultas
-  money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram)
+  money.ts / format.ts     formatação (moeda, datas, telefone, links wa.me/Instagram) · pdf.ts: PDF de páginas JPEG, sem biblioteca (com teste)
   rate-limit.ts            rate limit em memória
   lead-ingest-auth.ts      extração/geração/hash do token de ingestão
   public-agenda.ts         toPublicShow (saída pública de show — PRIVACIDADE), JSON-LD
@@ -131,9 +131,9 @@ tests/                     testes fora de lib/ (contraste WCAG dos tokens)
 
 - **User** — pessoa que faz login (`email` único, `passwordHash`, `disabledAt`, `mustChangePassword`, `passwordResetTokenHash/ExpiresAt`, `lastLoginAt`).
 - **BandMember** — integrante: `bandId`, `userId?` (vazio = convite pendente), `name`, `email`, `role` (`ADMIN | VIEWER`), `inviteTokenHash`/`inviteExpiresAt`, `joinedAt`. Únicos `(bandId, email)` e `(bandId, userId)`.
-- **Band** — tenant. `responsible`/`phone` (contato), `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `disabledAt` (banda desativada pelo painel), `inviteLinkNonce`/`inviteLinkRole` (link de convite da banda — `lib/band-link.ts`). `email`/`passwordHash`/`mustChangePassword`/`passwordReset*` são **legado** (pré multi-bandas; anuláveis, não usar).
+- **Band** — tenant. `responsible`/`phone` (contato), `leadIngestTokenHash` (SHA-256 do token; o token em si nunca é salvo), `slug` único (endereço público `/b/<slug>`), `publicAgendaEnabled` (opt-in da agenda pública), `leadFormEnabled` (opt-in do formulário público), `leadAllowedOrigins` (domínios autorizados a enviar o formulário pelo navegador), `disabledAt` (banda desativada pelo painel), `inviteLinkNonce`/`inviteLinkRole` (link de convite da banda — `lib/band-link.ts`). Logo em **BandLogo** (1:1, `data` PNG ≤ 1 MB/800 px, `width`, `height`) — `lib/band-logo.ts`. `email`/`passwordHash`/`mustChangePassword`/`passwordReset*` são **legado** (pré multi-bandas; anuláveis, não usar).
 - **Venue** (casa de show) — `sendStatus`: `NAO_ENVIADO | ENVIADO | FINALIZADO` (status do envio de material/proposta). `valorCacheCents` opcional = cachê de **referência** da casa. `stageId?` = palco do diretório de onde veio (`@@unique([bandId, stageId])`, `onDelete: SetNull`).
-- **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`; `paymentDueDate` (vencimento do cachê, vazio = data do show) e `paidAt` (data do recebimento, preenchida ao marcar pago — `resolveShowPaidAt`), ambos data pura. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado).
+- **Show** — pode ser em uma `Venue` (`venueId`) **ou** um *evento particular* (`venueId = null` + `privateCity`, `privateState`, `privateEventDetails`). Todo show tem o próprio `cacheCents` (**snapshot**): na criação, se não vier no payload, copia o `valorCacheCents` da casa; ao trocar de casa no PATCH sem enviar cachê, copia o da nova casa (`resolveShowCache` em `lib/shows.ts`). Exibir sempre `show.cacheCents`, nunca `show.venue.valorCacheCents`. A regra "sem casa ⇒ cidade e UF obrigatórias" está em `showCreateSchema.superRefine`. `date` é **data pura armazenada em UTC 00:00**; `time` é string `HH:mm`. `paymentStatus`: `PAGO | AGUARDANDO_PAGAMENTO`; `paymentDueDate` (vencimento do cachê, vazio = data do show) e `paidAt` (data do recebimento, preenchida ao marcar pago — `resolveShowPaidAt`), ambos data pura. Agenda pública: `isPublic` (padrão: casa = true, particular = false — `resolveShowVisibility`), `ticketUrl`, `cancelledAt` (cancelado continua listado). Setlist: `repertoireId?` (`SetNull`) + `songOrder` (ordem própria, como no ensaio; trocar o repertório zera).
 - **AdminUser** — equipe do produto (painel `/admin`), separado de `Band`. `mustChangePassword`, `disabledAt`, `lastLoginAt`.
 - **Stage** — palco da base curada (Explorar Palcos), global. Campos de contato: `whatsapp`, `publicPhone`, `publicEmail`, `instagram` (institucionais); `neighborhood`, `imageUrl` (link de ORIGEM, nunca exibido), `imageThumbUrl` (única imagem servida), `lastActivityAt`; `externalSource`+`externalId` (únicos) para reimportação. `status` `DRAFT|PUBLISHED|ARCHIVED`, `verifiedAt/By`. Só canais institucionais (LGPD).
 - **Lead** — contato recebido pela ingestão. Campos livres (`eventDate` é string, não data). `metadata` JSON arbitrário.
@@ -209,7 +209,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows, Ensaios — com selo de pendências, Repertórios) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). Header no topo do conteúdo: avatar à esquerda (`UserMenu` → `DropdownMenu`: Minha conta, Alterar senha, Minhas bandas, Sair) e marca à direita. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`/`novo`; selos numéricos por item via `band.badges` (href → número); `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows, Ensaios — com selo de pendências, Repertórios) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). Header no topo do conteúdo: marca à esquerda e avatar à direita (`UserMenu` → `DropdownMenu`: Minha conta, Alterar senha, Minhas bandas, Sair). URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`/`novo`; selos numéricos por item via `band.badges` (href → número); `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 - **Mobile/PWA** (`docs/mobile.md`): no celular o app da banda tem barra de abas fixa embaixo (`MOBILE_TABS`) — elementos fixos no rodapé precisam considerar essa barra e `env(safe-area-inset-bottom)`; campos com ≥ 16px no celular (zoom do iPhone).
 

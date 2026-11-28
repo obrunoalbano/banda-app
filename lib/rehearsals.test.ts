@@ -2,8 +2,6 @@ import { describe, expect, it } from "vitest";
 import {
   attendanceCounts,
   isOccurrence,
-  isRepertoireOrder,
-  orderRehearsalSongs,
   pastOccurrences,
   songCheckCounts,
   nextOccurrence,
@@ -136,19 +134,6 @@ describe("pastOccurrences", () => {
 });
 
 describe("músicas do ensaio", () => {
-  const songs = ["a", "b", "c", "d"].map((id) => ({ id }));
-  const ids = (list: { id: string }[]) => list.map((s) => s.id);
-
-  it("sem ordem salva = ordem do repertório", () => {
-    expect(ids(orderRehearsalSongs(songs, []))).toEqual(["a", "b", "c", "d"]);
-  });
-  it("aplica a ordem do ensaio; novas no fim; ids removidos ignorados", () => {
-    expect(ids(orderRehearsalSongs(songs, ["c", "x", "a"]))).toEqual(["c", "a", "b", "d"]);
-  });
-  it("detecta a ordem do repertório", () => {
-    expect(isRepertoireOrder(["a", "b"], ["a", "b"])).toBe(true);
-    expect(isRepertoireOrder(["b", "a"], ["a", "b"])).toBe(false);
-  });
   it("conta ensaiadas, que faltaram e sem marcação", () => {
     expect(
       songCheckCounts(

@@ -83,3 +83,36 @@ export function repertoireFileName(name: string, ext: string): string {
     .slice(0, 60);
   return `repertorio${slug ? `-${slug}` : ""}.${ext}`;
 }
+
+/**
+ * Valida a ordem enviada para um ensaio/show (`songOrder`): precisa ter TODAS as músicas do
+ * repertório, cada uma uma vez. Lista vazia ou igual à ordem do repertório = segue o repertório
+ * (`songOrder` vazio). `ok: false` = o repertório mudou enquanto a pessoa organizava (→ 409).
+ */
+export function resolveSongOrder(
+  songIds: string[],
+  repertoireIds: string[],
+): { ok: true; songOrder: string[] } | { ok: false } {
+  if (songIds.length === 0) return { ok: true, songOrder: [] };
+  const known = new Set(repertoireIds);
+  const unique = new Set(songIds);
+  if (unique.size !== songIds.length || unique.size !== known.size || songIds.some((id) => !known.has(id))) {
+    return { ok: false };
+  }
+  const same = songIds.every((id, i) => id === repertoireIds[i]);
+  return { ok: true, songOrder: same ? [] : songIds };
+}
+
+export const SONG_ORDER_CONFLICT = "O repertório mudou enquanto você organizava. Recarregue a página e tente de novo.";
+
+/**
+ * Músicas do repertório na ordem própria do ensaio/show (`songOrder`). Músicas que não estão na ordem salva
+ * (adicionadas ao repertório depois) vão para o fim, na ordem do repertório; ids que não
+ * existem mais são ignorados.
+ */
+export function orderSetlistSongs<T extends { id: string }>(songs: T[], songOrder: string[]): T[] {
+  if (songOrder.length === 0) return songs;
+  const rank = new Map(songOrder.map((id, i) => [id, i]));
+  const ordered = songs.filter((s) => rank.has(s.id)).sort((a, b) => rank.get(a.id)! - rank.get(b.id)!);
+  return [...ordered, ...songs.filter((s) => !rank.has(s.id))];
+}

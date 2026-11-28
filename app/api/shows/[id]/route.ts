@@ -32,6 +32,7 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
     isPublic,
     ticketUrl,
     cancelled,
+    repertoireId,
     ...locationInput
   } = parsed.data;
 
@@ -54,6 +55,15 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
     if (!venue) return jsonError(400, "Casa de show inválida");
     venueCacheCents = venue.valorCacheCents;
   }
+
+  if (
+    repertoireId &&
+    !(await prisma.repertoire.findFirst({ where: { id: repertoireId, bandId }, select: { id: true } }))
+  ) {
+    return jsonError(400, "Repertório inválido");
+  }
+  // Trocou o repertório: a ordem própria era do repertório antigo.
+  const repertoireChanged = repertoireId !== undefined && repertoireId !== existing.repertoireId;
 
   let dateValue: Date | undefined;
   if (date !== undefined) {
@@ -94,6 +104,7 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
       }),
       ...(ticketUrl !== undefined && { ticketUrl }),
       cancelledAt: resolveCancelledAt(cancelled, existing.cancelledAt),
+      ...(repertoireChanged && { repertoireId, songOrder: [] }),
     },
   });
 

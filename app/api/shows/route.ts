@@ -26,10 +26,18 @@ export const POST = withBand(async (request, { bandId }) => {
     isPublic,
     ticketUrl,
     cancelled,
+    repertoireId,
     ...locationInput
   } = parsed.data;
 
   const location = resolveShowLocation(locationInput);
+
+  if (
+    repertoireId &&
+    !(await prisma.repertoire.findFirst({ where: { id: repertoireId, bandId }, select: { id: true } }))
+  ) {
+    return jsonError(400, "Repertório inválido");
+  }
 
   let venueCacheCents: number | null | undefined;
   if (location.venueId) {
@@ -67,6 +75,7 @@ export const POST = withBand(async (request, { bandId }) => {
       isPublic: resolveShowVisibility({ inputIsPublic: isPublic, venueId: location.venueId }),
       ticketUrl: ticketUrl ?? null,
       cancelledAt: resolveCancelledAt(cancelled, null),
+      repertoireId: repertoireId ?? null,
     },
   });
 

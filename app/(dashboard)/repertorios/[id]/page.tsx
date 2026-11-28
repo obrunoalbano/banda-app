@@ -1,4 +1,5 @@
 import { ShareRepertoireButton } from "@/components/repertoire/ShareRepertoireButton";
+import { getBandLogoUrl } from "@/lib/band-logo-query";
 import { SongList } from "@/components/repertoire/SongList";
 import { ButtonLink } from "@/components/ui/Button";
 import { ConfirmDeleteButton } from "@/components/ui/ConfirmDeleteButton";
@@ -19,6 +20,7 @@ type PageProps = { params: Promise<{ id: string }> };
 
 export default async function RepertorioPage({ params }: PageProps) {
   const { bandId, bandName, canEdit } = await requireBandContext();
+  const logoUrl = await getBandLogoUrl(bandId);
   const { id } = await params;
   const repertoire = await prisma.repertoire.findFirst({
     where: { id, bandId },
@@ -57,6 +59,7 @@ export default async function RepertorioPage({ params }: PageProps) {
             {repertoire.songs.length ? (
               <ShareRepertoireButton
                 bandName={bandName}
+                logoUrl={logoUrl}
                 name={repertoire.name}
                 description={repertoire.description}
                 songs={repertoire.songs}

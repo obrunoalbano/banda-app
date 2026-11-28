@@ -53,6 +53,19 @@ model Band {
   members                BandMember[]
   repertoires            Repertoire[]
   rehearsals             Rehearsal[]
+  logo                   BandLogo?
+}
+
+/// Logo da banda (Minha banda). PNG já reduzido no navegador (até 800 px, até 1 MB); o servidor
+/// só confere assinatura/dimensões (lib/band-logo.ts). Tabela separada: consultas da banda não
+/// carregam os bytes. Servida por /banda/logo; usada no "Compartilhar" (imagem e PDF).
+model BandLogo {
+  bandId    String   @id
+  band      Band     @relation(fields: [bandId], references: [id], onDelete: Cascade)
+  data      Bytes
+  width     Int
+  height    Int
+  updatedAt DateTime @updatedAt
 }
 
 /// Pessoa que entra no app (email + senha). Acessa N bandas via BandMember.
@@ -172,12 +185,19 @@ model Show {
   ticketUrl           String?
   /// Show cancelado continua listado (como "Cancelado") em vez de sumir.
   cancelledAt         DateTime?
+  /// Repertório do show (setlist). SetNull: apagar o repertório deixa o show sem repertório.
+  repertoireId        String?
+  repertoire          Repertoire?       @relation(fields: [repertoireId], references: [id], onDelete: SetNull)
+  /// Ordem das músicas NESTE show (ids de RepertoireSong). Vazio = ordem do repertório
+  /// (`orderSetlistSongs`: músicas fora da lista vão para o fim; ids removidos são ignorados).
+  songOrder           String[]          @default([])
   createdAt           DateTime          @default(now())
   updatedAt           DateTime          @updatedAt
   financeEntries      FinanceEntry[]
 
   @@index([bandId, date])
   @@index([venueId])
+  @@index([repertoireId])
 }
 
 model Lead {
@@ -392,6 +412,7 @@ model Repertoire {
   updatedAt   DateTime         @updatedAt
   songs       RepertoireSong[]
   rehearsals  Rehearsal[]
+  shows       Show[]
 
   @@index([bandId, name])
 }
@@ -442,7 +463,7 @@ model Rehearsal {
   repertoireId    String?
   repertoire      Repertoire?           @relation(fields: [repertoireId], references: [id], onDelete: SetNull)
   /// Ordem das músicas NESTE ensaio (ids de RepertoireSong). Vazio = ordem do repertório; músicas
-  /// fora da lista vão para o fim e ids que não existem mais são ignorados (`orderRehearsalSongs`).
+  /// fora da lista vão para o fim e ids que não existem mais são ignorados (`orderSetlistSongs`).
   songOrder       String[]              @default([])
   createdAt       DateTime              @default(now())
   updatedAt       DateTime              @updatedAt

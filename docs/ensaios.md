@@ -19,10 +19,14 @@ Menu: **Administrativo → Ensaios** e **Administrativo → Repertórios**. Admi
 
 ### Compartilhar (texto ou imagem para o WhatsApp)
 
-Botão **Compartilhar** no detalhe do repertório (administrador e visualizador): painel com opções (artistas, observações, duração de cada música). Tudo no navegador — nada é publicado nem gravado.
+Botão **Compartilhar** no detalhe do repertório e do show (administrador e visualizador): painel com opções (artistas, observações, duração de cada música). Tudo no navegador — nada é publicado nem gravado.
 
 - **Texto** (`repertoireShareText` em `lib/repertoire.ts`, com teste): `*negrito*`/`_itálico_` do WhatsApp; marcadores `* _ ~` do texto livre são removidos. Copiar (clipboard; se negado, seleciona o campo e usa `execCommand("copy")`), **Abrir no WhatsApp** (`https://wa.me/?text=`) e, onde houver, o compartilhar do sistema (`navigator.share`).
 - **Imagem** PNG desenhada em `<canvas>` (`components/repertoire/repertoire-image.ts`): fundo claro ou escuro, 1 coluna até 24 músicas (1080px), 2 colunas acima disso (1600px). Compartilhar a imagem (`navigator.share({ files })` — no celular abre a lista de apps), copiar (`ClipboardItem`) ou baixar. As cores da imagem ficam no arquivo (a imagem não usa os tokens de tema).
+- **PDF** (uma página A4, para imprimir ou mandar como documento): a página é desenhada no mesmo `<canvas>` da imagem (`renderRepertoirePdfPage`), sempre com fundo claro e a lista em **duas colunas** equilibradas pela altura (desce a 1ª coluna e continua na 2ª). Para caber numa página, o desenho é reduzido (escala de 1 até 0,4); se ainda não couber (repertório muito grande), artistas e observações ficam de fora e o painel avisa (`compact`). Gerada a 300 dpi (2480×3508 px) para as letras pequenas saírem nítidas, e montada em PDF por `jpegPagesToPdf` (`lib/pdf.ts`, sem biblioteca: JPEG embutido com `DCTDecode`; com teste). Texto do PDF não é selecionável (é imagem); em troca, qualquer caractere/acento sai igual à tela. Compartilhar (`navigator.share` com `application/pdf`), baixar ou abrir para imprimir.
+- **Logo da banda** (Minha banda → Dados da banda, cartão "Logo da banda"): aparece no **canto superior direito** da imagem e do PDF, ajustada numa caixa de 240×120 (unidades de desenho; logo larga ocupa a largura, alta ocupa a altura — `logoPlacement`); o texto do cabeçalho quebra antes da logo. No PDF ela mantém o mesmo tamanho na folha, qualquer que seja a redução da lista. Sem logo, nada muda.
+  - Envio: PNG, JPG, WebP ou SVG de até **2 MB** (`LOGO_LIMITS` em `lib/band-logo.ts`). O navegador reduz para no máximo 800 px e envia um PNG (mantém transparência; tenta 600/400 px se passar de 1 MB). `POST /api/band/logo` (corpo = PNG, `Content-Type: image/png`; só administrador; rate limit 20/h por banda) confere assinatura PNG, dimensões (IHDR) e tamanho — o servidor não processa a imagem. `DELETE` remove.
+  - Guardada no banco (`BandLogo`, tabela separada para as consultas da banda não carregarem os bytes) e servida por `GET /banda/logo` (sessão de qualquer integrante; `?v=<updatedAt>` versiona e permite cache privado longo; `nosniff`). Prévia da tela sempre em fundo branco (como sai no papel).
 
 ## Ensaios (`/ensaios`)
 
@@ -42,11 +46,20 @@ Botão **Compartilhar** no detalhe do repertório (administrador e visualizador)
 Na tela do ensaio, a seção **Músicas do ensaio** lista o repertório escolhido.
 
 - **Ordem própria do ensaio** (`Rehearsal.songOrder`, ids de `RepertoireSong`): "Organizar ordem" (arrastar ou subir/descer) → `PATCH /api/rehearsals/<id>/songs` com **todas** as músicas na nova ordem (lista diferente da do repertório = 409 "recarregue"). Ordem igual à do repertório (ou "Usar a ordem do repertório") salva vazia = volta a seguir o repertório. O repertório em si não muda.
-  - `orderRehearsalSongs`: músicas adicionadas ao repertório depois vão para o fim; ids removidos são ignorados.
+  - `orderSetlistSongs` (`lib/repertoire.ts`): músicas adicionadas ao repertório depois vão para o fim; ids removidos são ignorados. Validação da ordem enviada: `resolveSongOrder` (mesma regra para ensaio e show).
+  - Tela: `components/repertoire/SetlistSongs.tsx` (ensaio e show; a marcação de ensaiada/faltou é a prop opcional `marking`, só no ensaio).
 - **Ensaiada / Faltou** por música e **por data** (`RehearsalSongCheck`, único por ensaio + música + `occurrenceDate`): `POST /api/rehearsals/<id>/song-checks` `{ songId, occurrenceDate, status: REHEARSED | MISSED | null }` (`null` tira a marcação). Só datas da série que já chegaram (até hoje). Num recorrente, o seletor "Ensaio de" mostra as últimas 12 datas que já aconteceram (`pastOccurrences`, `?data=YYYY-MM-DD`); padrão = a mais recente. Contagem: ensaiadas · faltaram · sem marcação.
 - Organizar e marcar: só administrador (API 403 para visualizador); visualizador vê a ordem e as marcações.
 - **Ids estáveis das músicas:** o `PATCH /api/repertoires/<id>` atualiza as músicas enviadas com `id` (em vez de apagar e recriar), cria as novas e remove as que saíram — a ordem e as marcações dos ensaios apontam para esses ids. Música removida do repertório leva as marcações junto (cascade).
 - Trocar o repertório do ensaio zera a ordem própria e as marcações.
+
+## Repertório nos shows
+
+O show também pode ter um repertório (`Show.repertoireId`, `SetNull`) com **ordem própria** (`Show.songOrder`), igual ao ensaio:
+
+- Formulário do show: campo **Repertório** (opcional). Trocar o repertório zera a ordem própria (o PATCH de `/api/shows/<id>` faz isso; o formulário avisa).
+- Detalhe do show: item "Repertório" + seção **Músicas do show** (`SetlistSongs` sem `marking`) com "Organizar ordem" → `PATCH /api/shows/<id>/songs` `{ songIds }` (mesmas regras do ensaio: todas as músicas, 409 se o repertório mudou, ordem igual à do repertório = segue o repertório) e **Compartilhar** já na ordem do show (texto/imagem, com "Show: casa · data" na descrição).
+- Organizar: só administrador (API 403 para visualizador); visualizador vê a lista na ordem do show.
 
 ## Pendências possíveis (v2)
 

@@ -9,22 +9,33 @@ export const metadata: Metadata = { title: "Novo show" };
 
 export default async function NovoShowPage() {
   const { bandId } = await requireBandEditor("/shows");
-  const venues = await prisma.venue.findMany({
-    where: { bandId },
-    select: {
-      id: true,
-      name: true,
-      city: true,
-      state: true,
-      valorCacheCents: true,
-    },
-    orderBy: { name: "asc" },
-  });
+  const [venues, repertoires] = await Promise.all([
+    prisma.venue.findMany({
+      where: { bandId },
+      select: {
+        id: true,
+        name: true,
+        city: true,
+        state: true,
+        valorCacheCents: true,
+      },
+      orderBy: { name: "asc" },
+    }),
+    prisma.repertoire.findMany({
+      where: { bandId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, _count: { select: { songs: true } } },
+    }),
+  ]);
 
   return (
     <div className={containerClass}>
       <PageHeader title="Novo show" back={{ href: "/shows", label: "Voltar à listagem" }} />
-      <ShowForm mode="create" venues={venues} />
+      <ShowForm
+        mode="create"
+        venues={venues}
+        repertoires={repertoires.map((r) => ({ id: r.id, name: r.name, songs: r._count.songs }))}
+      />
     </div>
   );
 }

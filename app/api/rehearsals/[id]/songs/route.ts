@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import { jsonError, parseBody, withBand } from "@/lib/api";
 import { prisma } from "@/lib/prisma";
-import { isRepertoireOrder } from "@/lib/rehearsals";
+import { resolveSongOrder, SONG_ORDER_CONFLICT } from "@/lib/repertoire";
 import { rehearsalSongOrderSchema } from "@/lib/validations";
 
 /**
@@ -26,15 +26,12 @@ export const PATCH = withBand<{ id: string }>(async (request, { bandId, params: 
   if (!rehearsal) return jsonError(404, "Ensaio não encontrado");
   if (!rehearsal.repertoire) return jsonError(400, "Este ensaio não tem repertório");
 
-  const repertoireIds = rehearsal.repertoire.songs.map((s) => s.id);
-  if (songIds.length > 0) {
-    const known = new Set(repertoireIds);
-    const unique = new Set(songIds);
-    if (unique.size !== songIds.length || songIds.some((s) => !known.has(s)) || unique.size !== known.size) {
-      return jsonError(409, "O repertório mudou enquanto você organizava. Recarregue a página e tente de novo.");
-    }
-  }
-  const songOrder = songIds.length === 0 || isRepertoireOrder(songIds, repertoireIds) ? [] : songIds;
+  const order = resolveSongOrder(
+    songIds,
+    rehearsal.repertoire.songs.map((s) => s.id),
+  );
+  if (!order.ok) return jsonError(409, SONG_ORDER_CONFLICT);
+  const { songOrder } = order;
   await prisma.rehearsal.updateMany({
     where: { id, bandId },
     data: { songOrder },

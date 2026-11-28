@@ -185,6 +185,8 @@ const showBaseSchema = z.object({
   ticketUrl: optionalUrl(500),
   /** true = cancelado (mantém na agenda como "Cancelado"); false = reativa. */
   cancelled: z.boolean().optional(),
+  /** Repertório do show (setlist); vazio = sem repertório. */
+  repertoireId: optionalText(64),
 });
 
 /** Regra: sem casa ⇒ cidade e UF do evento particular obrigatórias. */
@@ -499,7 +501,7 @@ export const rehearsalAttendanceSchema = z.object({
   status: z.enum(AttendanceStatus, "Escolha se vai ou não"),
 });
 
-/** Ordem das músicas no ensaio (ids das músicas do repertório, todas, na nova ordem). */
+/** Ordem das músicas no ensaio/show (ids das músicas do repertório, todas, na nova ordem). */
 export const rehearsalSongOrderSchema = z.object({
   songIds: z.array(z.string().min(1).max(40)).max(MAX_REPERTOIRE_SONGS),
 });

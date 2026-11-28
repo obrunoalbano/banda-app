@@ -20,8 +20,12 @@ type ShowVenueOption = {
   valorCacheCents: number | null;
 };
 
+/** Repertório disponível para o show (`songs` = quantidade de músicas). */
+export type ShowRepertoireOption = { id: string; name: string; songs: number };
+
 type ShowFormData = {
   id: string;
+  repertoireId: string | null;
   venueId: string | null;
   date: string;
   time: string;
@@ -42,12 +46,13 @@ type ShowFormData = {
 type ShowFormProps = {
   mode: "create" | "edit";
   venues: ShowVenueOption[];
+  repertoires: ShowRepertoireOption[];
   show?: ShowFormData;
 };
 
 const PRIVATE_EVENT_VALUE = "__PRIVATE_EVENT__";
 
-export function ShowForm({ mode, venues, show }: ShowFormProps) {
+export function ShowForm({ mode, venues, repertoires, show }: ShowFormProps) {
   const router = useRouter();
   const { submit, loading, error } = useJsonSubmit();
   /** Enquanto o usuário não mexer no cachê, trocar de casa preenche com o cachê da casa. */
@@ -68,6 +73,7 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
     isPublic: show?.isPublic ?? true,
     ticketUrl: show?.ticketUrl ?? "",
     cancelled: show?.cancelled ?? false,
+    repertoireId: show?.repertoireId ?? "",
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -93,6 +99,7 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
         isPublic: form.isPublic,
         ticketUrl: form.ticketUrl,
         cancelled: form.cancelled,
+        repertoireId: form.repertoireId || null,
       },
     );
     if (!data) return;
@@ -215,6 +222,33 @@ export function ShowForm({ mode, venues, show }: ShowFormProps) {
           />
         )}
       </div>
+
+      <SelectField
+        label="Repertório"
+        value={form.repertoireId}
+        onChange={(e) => set({ repertoireId: e.target.value })}
+        hint={
+          repertoires.length === 0 ? (
+            <>
+              Nenhum repertório ainda.{" "}
+              <Link href="/repertorios/novo" className={linkClass}>
+                Criar repertório
+              </Link>
+            </>
+          ) : mode === "edit" && show?.repertoireId && form.repertoireId !== show.repertoireId ? (
+            "Trocar o repertório desfaz a ordem organizada para este show."
+          ) : (
+            "Músicas a tocar (opcional). A ordem do show você organiza nos detalhes."
+          )
+        }
+      >
+        <option value="">Sem repertório</option>
+        {repertoires.map((r) => (
+          <option key={r.id} value={r.id}>
+            {r.name} ({r.songs} {r.songs === 1 ? "música" : "músicas"})
+          </option>
+        ))}
+      </SelectField>
 
       <fieldset className="flex flex-col gap-4 rounded-lg border border-line p-4">
         <legend className="px-1 text-sm font-semibold text-fg">Agenda pública</legend>
