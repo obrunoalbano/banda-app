@@ -1,10 +1,24 @@
 "use client";
 
-import { renderRepertoireImage, type ImageTheme } from "@/components/repertoire/repertoire-image";
+import {
+  PDF_PAGE_PX,
+  renderRepertoireImage,
+  renderRepertoirePdfPage,
+  type ImageTheme,
+} from "@/components/repertoire/repertoire-image";
 import { Alert } from "@/components/ui/Alert";
 import { Button } from "@/components/ui/Button";
 import { CheckboxField } from "@/components/ui/fields";
-import { CopyIcon, DownloadIcon, ImageIcon, ShareIcon, TextIcon, WhatsappIcon } from "@/components/ui/icons";
+import {
+  CopyIcon,
+  DownloadIcon,
+  ExternalLinkIcon,
+  ImageIcon,
+  PdfIcon,
+  ShareIcon,
+  TextIcon,
+  WhatsappIcon,
+} from "@/components/ui/icons";
 import { Sheet } from "@/components/ui/Sheet";
 import { buttonClass } from "@/components/ui/styles";
 import {
@@ -14,46 +28,70 @@ import {
   type ShareOptions,
   type ShareSong,
 } from "@/lib/repertoire";
+import { jpegPagesToPdf } from "@/lib/pdf";
 import { useEffect, useRef, useState } from "react";
 
-type Format = "text" | "image";
+type Format = "text" | "image" | "pdf";
+type PdfFile = { blob: Blob; url: string; previewUrl: string; compact: boolean; key: string };
 type Feedback = { tone: "success" | "danger"; text: string } | null;
 
 /**
- * "Compartilhar" do repertório: listagem em texto (formatação do WhatsApp) ou imagem PNG.
- * Copiar, abrir no WhatsApp (wa.me) ou o compartilhar do celular (Web Share API, que manda
- * a imagem direto para o WhatsApp). Tudo no navegador — nada é publicado nem gravado.
+ * "Compartilhar" do repertório: listagem em texto (formatação do WhatsApp), imagem PNG ou PDF
+ * (páginas A4 para imprimir/enviar). Copiar, baixar, abrir no WhatsApp (wa.me) ou o compartilhar
+ * do celular (Web Share API, que manda o arquivo direto para o WhatsApp). Tudo no navegador —
+ * nada é publicado nem gravado.
  */
 export function ShareRepertoireButton({
   bandName,
   name,
   description,
   songs,
+  logoUrl = null,
 }: {
   bandName: string;
   name: string;
   description: string | null;
   songs: ShareSong[];
+  /** Logo da banda (/banda/logo?v=…), no canto superior direito da imagem e do PDF. */
+  logoUrl?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<Format>("text");
   const [options, setOptions] = useState<ShareOptions>(DEFAULT_SHARE_OPTIONS);
   const [theme, setTheme] = useState<ImageTheme>("light");
   const [image, setImage] = useState<{ blob: Blob; url: string; key: string } | null>(null);
+  const [pdf, setPdf] = useState<PdfFile | null>(null);
+  const [logo, setLogo] = useState<{ url: string; img: HTMLImageElement | null } | null>(null);
+  // Logo carregada (ou falhou: segue sem logo) para a URL atual?
+  const logoReady = !logoUrl || logo?.url === logoUrl;
+  const logoImg = logoUrl && logo?.url === logoUrl ? logo.img : null;
   const [feedback, setFeedback] = useState<Feedback>(null);
   const textRef = useRef<HTMLTextAreaElement>(null);
-  const [canShare, setCanShare] = useState({ text: false, files: false, copyImage: false });
+  const [canShare, setCanShare] = useState({ text: false, files: false, pdfFiles: false, copyImage: false });
 
   const text = repertoireShareText({ bandName, name, description, songs, options });
   const fileName = repertoireFileName(name, "png");
+  const pdfName = repertoireFileName(name, "pdf");
 
   // A imagem atual corresponde às opções escolhidas? (senão está sendo gerada de novo)
-  const imageKey = `${theme}|${options.artists}|${options.notes}|${options.durations}`;
+  const imageKey = `${theme}|${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
   const rendering = format === "image" && image?.key !== imageKey;
+  // PDF: sempre fundo claro (impressão), então o tema não entra na chave.
+  const pdfKey = `${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
+  const pdfRendering = format === "pdf" && pdf?.key !== pdfKey;
+
+  // Carrega a logo uma vez (mesma origem: o canvas não fica "contaminado" e pode exportar).
+  useEffect(() => {
+    if (!open || !logoUrl || logo?.url === logoUrl) return;
+    const img = new Image();
+    img.onload = () => setLogo({ url: logoUrl, img });
+    img.onerror = () => setLogo({ url: logoUrl, img: null });
+    img.src = logoUrl;
+  }, [open, logoUrl, logo]);
 
   // Gera a imagem ao abrir a aba "Imagem" e sempre que as opções mudam.
   useEffect(() => {
-    if (!open || format !== "image") return;
+    if (!open || format !== "image" || !logoReady) return;
     let cancelled = false;
     renderRepertoireImage({
       bandName,
@@ -62,6 +100,7 @@ export function ShareRepertoireButton({
       songs,
       options,
       theme,
+      logo: logoImg,
       fontFamily: getComputedStyle(document.body).fontFamily || "system-ui, sans-serif",
     })
       .then((blob) => {
@@ -77,7 +116,45 @@ export function ShareRepertoireButton({
     return () => {
       cancelled = true;
     };
-  }, [open, format, options, theme, imageKey, bandName, name, description, songs]);
+  }, [open, format, options, theme, imageKey, logoReady, logoImg, bandName, name, description, songs]);
+
+  // Gera o PDF (páginas A4 em canvas → JPEG → PDF) ao abrir a aba "PDF" e quando as opções mudam.
+  useEffect(() => {
+    if (!open || format !== "pdf" || !logoReady) return;
+    let cancelled = false;
+    renderRepertoirePdfPage({
+      bandName,
+      name,
+      description,
+      songs,
+      options,
+      logo: logoImg,
+      fontFamily: getComputedStyle(document.body).fontFamily || "system-ui, sans-serif",
+    })
+      .then((page) => {
+        if (cancelled) return;
+        const bytes = jpegPagesToPdf([{ jpeg: page.jpeg, ...PDF_PAGE_PX }]);
+        const blob = new Blob([bytes as BlobPart], { type: "application/pdf" });
+        const next: PdfFile = {
+          blob,
+          url: URL.createObjectURL(blob),
+          previewUrl: URL.createObjectURL(new Blob([page.jpeg as BlobPart], { type: "image/jpeg" })),
+          compact: page.compact,
+          key: pdfKey,
+        };
+        setPdf((previous) => {
+          if (previous) {
+            URL.revokeObjectURL(previous.url);
+            URL.revokeObjectURL(previous.previewUrl);
+          }
+          return next;
+        });
+      })
+      .catch(() => !cancelled && setFeedback({ tone: "danger", text: "Não foi possível gerar o PDF." }));
+    return () => {
+      cancelled = true;
+    };
+  }, [open, format, options, pdfKey, logoReady, logoImg, bandName, name, description, songs]);
 
   const done = (message: string) => setFeedback({ tone: "success", text: message });
   const fail = (message: string) => setFeedback({ tone: "danger", text: message });
@@ -123,6 +200,15 @@ export function ShareRepertoireButton({
     }
   }
 
+  async function sharePdf() {
+    if (!pdf) return;
+    try {
+      await navigator.share({ files: [new File([pdf.blob], pdfName, { type: "application/pdf" })], title: name });
+    } catch (e) {
+      if ((e as Error).name !== "AbortError") fail("Não foi possível abrir o compartilhamento.");
+    }
+  }
+
   const toggle = (key: keyof ShareOptions) => setOptions((o) => ({ ...o, [key]: !o[key] }));
 
   return (
@@ -132,9 +218,13 @@ export function ShareRepertoireButton({
         icon={ShareIcon}
         onClick={() => {
           const probe = new File([new Blob()], "x.png", { type: "image/png" });
+          const pdfProbe = new File([new Blob()], "x.pdf", { type: "application/pdf" });
+          const canShareFiles = (file: File) =>
+            typeof navigator.canShare === "function" && navigator.canShare({ files: [file] });
           setCanShare({
             text: typeof navigator.share === "function",
-            files: typeof navigator.canShare === "function" && navigator.canShare({ files: [probe] }),
+            files: canShareFiles(probe),
+            pdfFiles: canShareFiles(pdfProbe),
             copyImage: typeof ClipboardItem !== "undefined" && typeof navigator.clipboard?.write === "function",
           });
           setFeedback(null);
@@ -147,13 +237,14 @@ export function ShareRepertoireButton({
         open={open}
         onClose={() => setOpen(false)}
         title="Compartilhar repertório"
-        description="Gere a listagem em texto ou imagem para mandar no WhatsApp."
+        description="Gere a listagem em texto, imagem ou PDF para mandar no WhatsApp ou imprimir."
       >
         <div className="flex gap-2" role="group" aria-label="Formato">
           {(
             [
               ["text", "Texto", TextIcon],
               ["image", "Imagem", ImageIcon],
+              ["pdf", "PDF", PdfIcon],
             ] as const
           ).map(([value, label, icon]) => (
             <Button
@@ -226,6 +317,64 @@ export function ShareRepertoireButton({
             </div>
             <p className="text-xs text-fg-subtle">
               No WhatsApp, o texto entre *asteriscos* aparece em negrito e entre _sublinhados_ em itálico.
+            </p>
+          </div>
+        ) : format === "pdf" ? (
+          <div className="flex flex-col gap-3">
+            <div
+              className="flex min-h-40 items-start justify-center overflow-hidden rounded-lg border border-line bg-surface-muted"
+              aria-busy={pdfRendering}
+              style={{ opacity: pdfRendering && pdf ? 0.6 : 1 }}
+            >
+              {pdf ? (
+                // eslint-disable-next-line @next/next/no-img-element -- blob gerado no navegador
+                <img
+                  src={pdf.previewUrl}
+                  alt={`Primeira página do PDF do repertório ${name}`}
+                  className="h-auto w-full"
+                />
+              ) : (
+                <p className="self-center p-6 text-sm text-fg-muted">Gerando o PDF…</p>
+              )}
+            </div>
+            {pdf ? (
+              pdf.compact ? (
+                <Alert tone="warning">
+                  O repertório é grande: para caber numa página, artistas e observações ficaram de fora do PDF.
+                </Alert>
+              ) : (
+                <p className="text-sm text-fg-muted" aria-live="polite">
+                  Uma página A4, com a lista em duas colunas.
+                </p>
+              )
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {canShare.pdfFiles ? (
+                <Button icon={ShareIcon} disabled={!pdf} onClick={() => void sharePdf()}>
+                  Compartilhar PDF
+                </Button>
+              ) : null}
+              {pdf ? (
+                <>
+                  <a
+                    href={pdf.url}
+                    download={pdfName}
+                    onClick={() => done("PDF baixado. Envie pelo WhatsApp como documento.")}
+                    className={buttonClass(canShare.pdfFiles ? "secondary" : "primary")}
+                  >
+                    <DownloadIcon className="size-4" aria-hidden />
+                    Baixar PDF
+                  </a>
+                  <a href={pdf.url} target="_blank" rel="noreferrer" className={buttonClass("secondary")}>
+                    <ExternalLinkIcon className="size-4" aria-hidden />
+                    Abrir para imprimir
+                  </a>
+                </>
+              ) : null}
+            </div>
+            <p className="text-xs text-fg-subtle">
+              Sempre com fundo branco, para imprimir. No celular, &quot;Compartilhar PDF&quot; abre a lista de apps —
+              escolha o WhatsApp.
             </p>
           </div>
         ) : (

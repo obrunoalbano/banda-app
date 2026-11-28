@@ -63,6 +63,8 @@ export const RATE_LIMITS = {
   spotifyPlaylist: { limit: 10, windowMs: 60_000 },
   /** Ensaios criados por banda (cada um envia email a todos os integrantes). */
   rehearsalCreate: { limit: 20, windowMs: 60 * 60_000 },
+  /** Envio de logo da banda (cada um grava até 1 MB). */
+  bandLogo: { limit: 20, windowMs: 60 * 60_000 },
   /** Leads recebidos por token. */
   leadIngest: { limit: 60, windowMs: 60_000 },
   /** Envios do formulário público por IP + banda. */

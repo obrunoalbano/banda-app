@@ -1,4 +1,8 @@
 import { FinanceEntryStatusBadge } from "@/components/FinanceEntryStatusBadge";
+import { SetlistSongs } from "@/components/repertoire/SetlistSongs";
+import { ShareRepertoireButton } from "@/components/repertoire/ShareRepertoireButton";
+import { getBandLogoUrl } from "@/lib/band-logo-query";
+import { orderSetlistSongs } from "@/lib/repertoire";
 import { ShowPaymentBadge } from "@/components/ShowPaymentBadge";
 import { Card } from "@/components/ui/Card";
 import { Table, Td, Tr } from "@/components/ui/Table";
@@ -26,12 +30,31 @@ import { notFound } from "next/navigation";
 type PageProps = { params: Promise<{ id: string }> };
 
 export default async function ShowDetalhePage({ params }: PageProps) {
-  const { bandId, canEdit } = await requireBandContext();
+  const { bandId, bandName, canEdit } = await requireBandContext();
+  const logoUrl = await getBandLogoUrl(bandId);
   const { id } = await params;
   const show = await prisma.show.findFirst({
     where: { id, bandId },
     include: {
       venue: { select: { id: true, name: true, city: true, state: true } },
+      repertoire: {
+        select: {
+          id: true,
+          name: true,
+          songs: {
+            orderBy: { position: "asc" },
+            select: {
+              id: true,
+              title: true,
+              artists: true,
+              spotifyUrl: true,
+              imageUrl: true,
+              durationMs: true,
+              notes: true,
+            },
+          },
+        },
+      },
       financeEntries: {
         select: entryMoneySelect,
         orderBy: [{ date: "asc" }, { createdAt: "asc" }],
@@ -46,6 +69,7 @@ export default async function ShowDetalhePage({ params }: PageProps) {
 
   const title = show.venue?.name ?? "Evento Particular";
   const date = formatDateOnly(show.date);
+  const setlist = show.repertoire ? orderSetlistSongs(show.repertoire.songs, show.songOrder) : [];
 
   return (
     <div className={containerClass}>
@@ -110,6 +134,15 @@ export default async function ShowDetalhePage({ params }: PageProps) {
             {show.paymentDueDate ? null : <span className="text-fg-subtle"> (data do show)</span>}
           </DetailItem>
         )}
+        <DetailItem label="Repertório">
+          {show.repertoire ? (
+            <Link href={`/repertorios/${show.repertoire.id}`} className={linkClass}>
+              {show.repertoire.name}
+            </Link>
+          ) : (
+            "Sem repertório"
+          )}
+        </DetailItem>
         <DetailItem label="Agenda pública">
           {show.isPublic ? <Badge tone="info">Visível</Badge> : <Badge>Oculto</Badge>}
         </DetailItem>
@@ -119,6 +152,36 @@ export default async function ShowDetalhePage({ params }: PageProps) {
           ) : null}
         </DetailItem>
       </DetailList>
+
+      {show.repertoire ? (
+        <section className="mt-8" aria-labelledby="musicas-show">
+          <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+            <h2 id="musicas-show" className="text-base font-semibold text-fg">
+              Músicas do show{" "}
+              <span className="font-normal text-fg-subtle">
+                ({setlist.length} · repertório {show.repertoire.name})
+              </span>
+            </h2>
+            {setlist.length ? (
+              <ShareRepertoireButton
+                bandName={bandName}
+                logoUrl={logoUrl}
+                name={show.repertoire.name}
+                description={`Show: ${title} · ${date} às ${show.time}`}
+                songs={setlist}
+              />
+            ) : null}
+          </div>
+          <SetlistSongs
+            noun="show"
+            orderEndpoint={`/api/shows/${show.id}/songs`}
+            songs={setlist}
+            repertoireOrder={show.repertoire.songs.map((s) => s.id)}
+            customOrder={show.songOrder.length > 0}
+            canEdit={canEdit}
+          />
+        </section>
+      ) : null}
 
       <Card
         title="Financeiro do show"

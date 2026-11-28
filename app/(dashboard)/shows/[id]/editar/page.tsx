@@ -14,7 +14,7 @@ type PageProps = { params: Promise<{ id: string }> };
 export default async function EditarShowPage({ params }: PageProps) {
   const { bandId } = await requireBandEditor("/shows");
   const { id } = await params;
-  const [show, venues] = await Promise.all([
+  const [show, venues, repertoires] = await Promise.all([
     prisma.show.findFirst({
       where: { id, bandId },
       select: {
@@ -32,6 +32,7 @@ export default async function EditarShowPage({ params }: PageProps) {
         isPublic: true,
         ticketUrl: true,
         cancelledAt: true,
+        repertoireId: true,
       },
     }),
     prisma.venue.findMany({
@@ -45,6 +46,11 @@ export default async function EditarShowPage({ params }: PageProps) {
       },
       orderBy: { name: "asc" },
     }),
+    prisma.repertoire.findMany({
+      where: { bandId },
+      orderBy: { name: "asc" },
+      select: { id: true, name: true, _count: { select: { songs: true } } },
+    }),
   ]);
   if (!show) notFound();
 
@@ -54,6 +60,7 @@ export default async function EditarShowPage({ params }: PageProps) {
       <ShowForm
         mode="edit"
         venues={venues}
+        repertoires={repertoires.map((r) => ({ id: r.id, name: r.name, songs: r._count.songs }))}
         show={{
           ...show,
           date: toDateOnlyString(show.date),

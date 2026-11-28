@@ -42,33 +42,47 @@ import { useState } from "react";
 
 type Occurrence = { value: string; label: string };
 
-/**
- * Músicas do repertório no ensaio: ordem própria do ensaio (o repertório não muda) e marcação
- * de ensaiada / faltou por data. Administrador organiza e marca; visualizador só vê.
- */
-export function RehearsalSongs({
-  rehearsalId,
-  songs: initialSongs,
-  repertoireOrder,
-  customOrder,
-  canEdit,
-  occurrences,
-  occurrence,
-  checks: initialChecks,
-}: {
-  rehearsalId: string;
-  /** Na ordem do ensaio. */
-  songs: SongView[];
-  /** Ids na ordem do repertório (para "Usar a ordem do repertório"). */
-  repertoireOrder: string[];
-  customOrder: boolean;
-  canEdit: boolean;
+/** Marcação de ensaiada / faltou por data (só no ensaio). */
+export type SetlistMarking = {
+  /** POST { songId, occurrenceDate, status }. */
+  endpoint: string;
   /** Datas que já chegaram (mais recente primeiro), para escolher qual marcar. */
   occurrences: Occurrence[];
   /** Data selecionada (YYYY-MM-DD) ou null = nenhuma data chegou ainda. */
   occurrence: string | null;
   checks: Record<string, RehearsalSongStatus>;
+};
+
+const NO_CHECKS: Record<string, RehearsalSongStatus> = {};
+
+/**
+ * Músicas do repertório num ensaio ou show: ordem própria (o repertório não muda) e, no ensaio,
+ * marcação de ensaiada / faltou por data. Administrador organiza e marca; visualizador só vê.
+ */
+export function SetlistSongs({
+  noun,
+  orderEndpoint,
+  songs: initialSongs,
+  repertoireOrder,
+  customOrder,
+  canEdit,
+  marking,
+}: {
+  /** Para as mensagens: "Ordem do ensaio salva", "Vale só para este show"… */
+  noun: "ensaio" | "show";
+  /** PATCH { songIds } — ordem própria (lista vazia/igual à do repertório = segue o repertório). */
+  orderEndpoint: string;
+  /** Na ordem do ensaio/show. */
+  songs: SongView[];
+  /** Ids na ordem do repertório (para "Usar a ordem do repertório"). */
+  repertoireOrder: string[];
+  customOrder: boolean;
+  canEdit: boolean;
+  marking?: SetlistMarking;
 }) {
+  const occurrences = marking?.occurrences ?? [];
+  const occurrence = marking?.occurrence ?? null;
+  const initialChecks = marking?.checks ?? NO_CHECKS;
   const router = useRouter();
   const pathname = usePathname();
   const [songs, setSongs] = useState(initialSongs);
@@ -122,7 +136,7 @@ export function RehearsalSongs({
     setSaving(true);
     setError(null);
     try {
-      const res = await fetch(`/api/rehearsals/${rehearsalId}/songs`, {
+      const res = await fetch(orderEndpoint, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ songIds: list.map((s) => s.id) }),
@@ -134,7 +148,9 @@ export function RehearsalSongs({
       }
       setSongs(list);
       setOrdering(false);
-      setNotice(data.followsRepertoire ? "O ensaio voltou a seguir a ordem do repertório." : "Ordem do ensaio salva.");
+      setNotice(
+        data.followsRepertoire ? `O ${noun} voltou a seguir a ordem do repertório.` : `Ordem do ${noun} salva.`,
+      );
       router.refresh();
     } catch {
       setError("Falha de conexão. Tente de novo.");
@@ -155,7 +171,8 @@ export function RehearsalSongs({
       return next;
     });
     try {
-      const res = await fetch(`/api/rehearsals/${rehearsalId}/song-checks`, {
+      if (!marking) return;
+      const res = await fetch(marking.endpoint, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ songId, occurrenceDate: occurrence, status }),
@@ -184,7 +201,7 @@ export function RehearsalSongs({
     return (
       <div className="flex flex-col gap-3">
         <p className="text-sm text-fg-muted">
-          Arraste (no celular, segure o dedo um instante) ou use os botões. Vale só para este ensaio: o repertório
+          Arraste (no celular, segure o dedo um instante) ou use os botões. Vale só para este {noun}: o repertório
           continua igual.
         </p>
         {error ? <Alert>{error}</Alert> : null}
@@ -228,7 +245,9 @@ export function RehearsalSongs({
   return (
     <div className="flex flex-col gap-3">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        {occurrence ? (
+        {!marking ? (
+          <span />
+        ) : occurrence ? (
           <div className="flex flex-wrap items-center gap-2" aria-live="polite">
             <Badge tone="success">
               {counts.REHEARSED} {counts.REHEARSED === 1 ? "ensaiada" : "ensaiadas"}
@@ -282,7 +301,7 @@ export function RehearsalSongs({
       {notice ? <Alert tone="success">{notice}</Alert> : null}
       {error ? <Alert>{error}</Alert> : null}
       {customOrder ? (
-        <p className="text-xs text-fg-subtle">Ordem própria deste ensaio (diferente da ordem do repertório).</p>
+        <p className="text-xs text-fg-subtle">Ordem própria deste {noun} (diferente da ordem do repertório).</p>
       ) : null}
 
       <ol className="divide-y divide-line overflow-hidden rounded-lg border border-line bg-surface">

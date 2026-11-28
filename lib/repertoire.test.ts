@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { repertoireFileName, repertoireShareText, repertoireSummary } from "./repertoire";
+import {
+  orderSetlistSongs,
+  repertoireFileName,
+  repertoireShareText,
+  repertoireSummary,
+  resolveSongOrder,
+} from "./repertoire";
 
 const songs = [
   { title: "Garota de Ipanema", artists: "Tom Jobim", durationMs: 200_000, notes: "toca em um tom a menos" },
@@ -47,5 +53,33 @@ describe("helpers", () => {
   it("nome de arquivo sem acento", () => {
     expect(repertoireFileName("Show de Sábado!", "png")).toBe("repertorio-show-de-sabado.png");
     expect(repertoireFileName("***", "png")).toBe("repertorio.png");
+  });
+});
+
+describe("resolveSongOrder", () => {
+  const ids = ["a", "b", "c"];
+  it("ordem diferente é salva", () => {
+    expect(resolveSongOrder(["c", "a", "b"], ids)).toEqual({ ok: true, songOrder: ["c", "a", "b"] });
+  });
+  it("vazia ou igual à do repertório = segue o repertório", () => {
+    expect(resolveSongOrder([], ids)).toEqual({ ok: true, songOrder: [] });
+    expect(resolveSongOrder(["a", "b", "c"], ids)).toEqual({ ok: true, songOrder: [] });
+  });
+  it.each([
+    [["a", "b"]], // faltou música
+    [["a", "b", "c", "d"]], // música de fora
+    [["a", "a", "b"]], // repetida
+    [["a", "b", "x"]], // id desconhecido
+  ])("recusa %j", (songIds) => expect(resolveSongOrder(songIds, ids)).toEqual({ ok: false }));
+});
+
+describe("orderSetlistSongs", () => {
+  const songs = ["a", "b", "c", "d"].map((id) => ({ id }));
+  const ids = (list: { id: string }[]) => list.map((s) => s.id);
+  it("sem ordem salva = ordem do repertório", () => {
+    expect(ids(orderSetlistSongs(songs, []))).toEqual(["a", "b", "c", "d"]);
+  });
+  it("aplica a ordem; novas no fim; ids removidos ignorados", () => {
+    expect(ids(orderSetlistSongs(songs, ["c", "x", "a"]))).toEqual(["c", "a", "b", "d"]);
   });
 });
