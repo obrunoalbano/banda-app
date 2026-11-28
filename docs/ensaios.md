@@ -19,7 +19,7 @@ Menu: **Administrativo → Ensaios** e **Administrativo → Repertórios**. Admi
 
 ### Compartilhar (texto ou imagem para o WhatsApp)
 
-Botão **Compartilhar** no detalhe do repertório e do show (administrador e visualizador): painel com opções (artistas, observações, duração de cada música). Tudo no navegador — nada é publicado nem gravado.
+Botão **Compartilhar** no detalhe do repertório e do show (administrador e visualizador): painel com opções (título do repertório, artistas, observações, duração de cada música; sem o título, texto/imagem/PDF abrem com o nome da banda como título). No show com **Nome do evento** aparece também "Mostrar nome do evento" (marcada por padrão): o título passa a ser o nome do evento e a opção do repertório some — regra única em `shareHeading` (`lib/repertoire.ts`, com teste). Tudo no navegador — nada é publicado nem gravado.
 
 - **Texto** (`repertoireShareText` em `lib/repertoire.ts`, com teste): `*negrito*`/`_itálico_` do WhatsApp; marcadores `* _ ~` do texto livre são removidos. Copiar (clipboard; se negado, seleciona o campo e usa `execCommand("copy")`), **Abrir no WhatsApp** (`https://wa.me/?text=`) e, onde houver, o compartilhar do sistema (`navigator.share`).
 - **Imagem** PNG desenhada em `<canvas>` (`components/repertoire/repertoire-image.ts`): fundo claro ou escuro, 1 coluna até 24 músicas (1080px), 2 colunas acima disso (1600px). Compartilhar a imagem (`navigator.share({ files })` — no celular abre a lista de apps), copiar (`ClipboardItem`) ou baixar. As cores da imagem ficam no arquivo (a imagem não usa os tokens de tema).
@@ -57,7 +57,7 @@ Na tela do ensaio, a seção **Músicas do ensaio** lista o repertório escolhid
 
 O show também pode ter um repertório (`Show.repertoireId`, `SetNull`) com **ordem própria** (`Show.songOrder`), igual ao ensaio:
 
-- Formulário do show: campo **Repertório** (opcional). Trocar o repertório zera a ordem própria (o PATCH de `/api/shows/<id>` faz isso; o formulário avisa).
+- Formulário do show: **Nome do evento** (opcional, `Show.eventName`; interno — não sai na agenda pública, que usa a lista fechada de `toPublicShow`) e **Repertório** (opcional). Trocar o repertório zera a ordem própria (o PATCH de `/api/shows/<id>` faz isso; o formulário avisa).
 - Detalhe do show: item "Repertório" + seção **Músicas do show** (`SetlistSongs` sem `marking`) com "Organizar ordem" → `PATCH /api/shows/<id>/songs` `{ songIds }` (mesmas regras do ensaio: todas as músicas, 409 se o repertório mudou, ordem igual à do repertório = segue o repertório) e **Compartilhar** já na ordem do show (texto/imagem, com "Show: casa · data" na descrição).
 - Organizar: só administrador (API 403 para visualizador); visualizador vê a lista na ordem do show.
 

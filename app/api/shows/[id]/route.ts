@@ -33,6 +33,7 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
     ticketUrl,
     cancelled,
     repertoireId,
+    eventName,
     ...locationInput
   } = parsed.data;
 
@@ -103,6 +104,7 @@ export const PATCH = withBand<Params>(async (request, { bandId, params: { id } }
         venueId: location.venueId,
       }),
       ...(ticketUrl !== undefined && { ticketUrl }),
+      ...(eventName !== undefined && { eventName }),
       cancelledAt: resolveCancelledAt(cancelled, existing.cancelledAt),
       ...(repertoireChanged && { repertoireId, songOrder: [] }),
     },

@@ -168,6 +168,9 @@ model Show {
   /// Não usar Restrict: bloquearia o cascade Band → Venue/Show na mesma instrução.
   venue               Venue?            @relation(fields: [venueId], references: [id], onDelete: NoAction)
   privateEventDetails String?
+  /// Nome do evento (opcional, ex.: "Festa junina da Vila"). Interno: não sai na agenda pública.
+  /// No "Compartilhar" das músicas do show pode virar o título do arquivo.
+  eventName           String?
   privateCity         String?
   privateState        String?
   /// Cachê do show em centavos. Snapshot: não muda se o cachê da casa mudar depois.

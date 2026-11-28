@@ -1,6 +1,6 @@
 import { PRODUCT_NAME } from "@/components/ui/Brand";
 import { logoPlacement } from "@/lib/band-logo";
-import { repertoireSummary, type ShareOptions, type ShareSong } from "@/lib/repertoire";
+import { repertoireSummary, shareHeading, type ShareOptions, type ShareSong } from "@/lib/repertoire";
 import { formatDuration } from "@/lib/spotify";
 
 /**
@@ -59,6 +59,8 @@ type RenderInput = {
   options: ShareOptions;
   theme: ImageTheme;
   fontFamily: string;
+  /** Nome do evento do show (opção "Mostrar nome do evento" → vira o título). */
+  eventName?: string | null;
   /** Logo da banda (já carregada, mesma origem). Vai no canto superior direito. */
   logo?: HTMLImageElement | null;
 };
@@ -98,15 +100,23 @@ function layout(input: RenderInput, contentWidth: number, textWidth: number, hea
   const font = (weight: number, size: number) => `${weight} ${size}px ${fontFamily}`;
   const measure = document.createElement("canvas").getContext("2d")!;
 
-  const header: Line[] = [
-    { text: bandName.toUpperCase(), font: font(600, 26), color: colors.muted, size: 26, gapBefore: 0 },
-    ...wrap(measure, name, font(700, 60), headerWidth).map((text, i) => ({
-      text,
+  // Sem o título do repertório, o nome da banda vira o título (como no texto do WhatsApp).
+  const titleLines = (text: string, firstGap: number): Line[] =>
+    wrap(measure, text, font(700, 60), headerWidth).map((t, i) => ({
+      text: t,
       font: font(700, 60),
       color: colors.fg,
       size: 60,
-      gapBefore: i === 0 ? 18 : 6,
-    })),
+      gapBefore: i === 0 ? firstGap : 6,
+    }));
+  const heading = shareHeading({ name, eventName: input.eventName, options });
+  const header: Line[] = [
+    ...(heading.text
+      ? [
+          { text: bandName.toUpperCase(), font: font(600, 26), color: colors.muted, size: 26, gapBefore: 0 },
+          ...titleLines(heading.text, 18),
+        ]
+      : titleLines(bandName, 0)),
     ...(description?.trim()
       ? wrap(measure, description.trim(), font(400, 28), headerWidth).map((text, i) => ({
           text,

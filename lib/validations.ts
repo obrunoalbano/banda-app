@@ -171,6 +171,8 @@ const showBaseSchema = z.object({
     .trim()
     .regex(/^([01]\d|2[0-3]):([0-5]\d)$/, "Horário inválido"),
   privateEventDetails: optionalText(500),
+  /** Nome do evento (opcional). */
+  eventName: optionalText(120),
   privateCity: optionalText(120),
   privateState: optionalText(2),
   /** Omitido na criação de show em casa → herda o cachê atual da casa. */

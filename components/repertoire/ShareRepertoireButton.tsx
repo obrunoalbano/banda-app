@@ -47,6 +47,7 @@ export function ShareRepertoireButton({
   description,
   songs,
   logoUrl = null,
+  eventName = null,
 }: {
   bandName: string;
   name: string;
@@ -54,6 +55,8 @@ export function ShareRepertoireButton({
   songs: ShareSong[];
   /** Logo da banda (/banda/logo?v=…), no canto superior direito da imagem e do PDF. */
   logoUrl?: string | null;
+  /** Nome do evento do show: aparece a opção "Mostrar nome do evento" (vira o título). */
+  eventName?: string | null;
 }) {
   const [open, setOpen] = useState(false);
   const [format, setFormat] = useState<Format>("text");
@@ -69,15 +72,15 @@ export function ShareRepertoireButton({
   const textRef = useRef<HTMLTextAreaElement>(null);
   const [canShare, setCanShare] = useState({ text: false, files: false, pdfFiles: false, copyImage: false });
 
-  const text = repertoireShareText({ bandName, name, description, songs, options });
+  const text = repertoireShareText({ bandName, name, description, songs, options, eventName });
   const fileName = repertoireFileName(name, "png");
   const pdfName = repertoireFileName(name, "pdf");
 
   // A imagem atual corresponde às opções escolhidas? (senão está sendo gerada de novo)
-  const imageKey = `${theme}|${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
+  const imageKey = `${theme}|${options.title}|${options.eventName}|${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
   const rendering = format === "image" && image?.key !== imageKey;
   // PDF: sempre fundo claro (impressão), então o tema não entra na chave.
-  const pdfKey = `${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
+  const pdfKey = `${options.title}|${options.eventName}|${options.artists}|${options.notes}|${options.durations}|${logoImg ? logoUrl : ""}`;
   const pdfRendering = format === "pdf" && pdf?.key !== pdfKey;
 
   // Carrega a logo uma vez (mesma origem: o canvas não fica "contaminado" e pode exportar).
@@ -100,6 +103,7 @@ export function ShareRepertoireButton({
       songs,
       options,
       theme,
+      eventName,
       logo: logoImg,
       fontFamily: getComputedStyle(document.body).fontFamily || "system-ui, sans-serif",
     })
@@ -116,7 +120,7 @@ export function ShareRepertoireButton({
     return () => {
       cancelled = true;
     };
-  }, [open, format, options, theme, imageKey, logoReady, logoImg, bandName, name, description, songs]);
+  }, [open, format, options, theme, imageKey, logoReady, logoImg, eventName, bandName, name, description, songs]);
 
   // Gera o PDF (páginas A4 em canvas → JPEG → PDF) ao abrir a aba "PDF" e quando as opções mudam.
   useEffect(() => {
@@ -128,6 +132,7 @@ export function ShareRepertoireButton({
       description,
       songs,
       options,
+      eventName,
       logo: logoImg,
       fontFamily: getComputedStyle(document.body).fontFamily || "system-ui, sans-serif",
     })
@@ -154,7 +159,7 @@ export function ShareRepertoireButton({
     return () => {
       cancelled = true;
     };
-  }, [open, format, options, pdfKey, logoReady, logoImg, bandName, name, description, songs]);
+  }, [open, format, options, pdfKey, logoReady, logoImg, eventName, bandName, name, description, songs]);
 
   const done = (message: string) => setFeedback({ tone: "success", text: message });
   const fail = (message: string) => setFeedback({ tone: "danger", text: message });
@@ -265,6 +270,23 @@ export function ShareRepertoireButton({
 
         <fieldset className="flex flex-col gap-3">
           <legend className="mb-2 text-sm font-medium text-fg">Mostrar</legend>
+          {eventName ? (
+            <CheckboxField
+              label="Mostrar nome do evento"
+              checked={options.eventName}
+              onChange={() => toggle("eventName")}
+              hint={options.eventName ? `Título: “${eventName}”.` : undefined}
+            />
+          ) : null}
+          {/* Com o nome do evento como título, o título do repertório não entra. */}
+          {eventName && options.eventName ? null : (
+            <CheckboxField
+              label="Título do repertório"
+              checked={options.title}
+              onChange={() => toggle("title")}
+              hint={options.title ? undefined : "Sem o título, o arquivo abre com o nome da banda."}
+            />
+          )}
           <CheckboxField label="Artistas" checked={options.artists} onChange={() => toggle("artists")} />
           <CheckboxField label="Observações" checked={options.notes} onChange={() => toggle("notes")} />
           <CheckboxField

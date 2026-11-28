@@ -33,6 +33,7 @@ export default async function EditarShowPage({ params }: PageProps) {
         ticketUrl: true,
         cancelledAt: true,
         repertoireId: true,
+        eventName: true,
       },
     }),
     prisma.venue.findMany({
