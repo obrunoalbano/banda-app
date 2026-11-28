@@ -146,3 +146,15 @@ const integerFmt = new Intl.NumberFormat("pt-BR");
 export function formatInteger(n: number): string {
   return integerFmt.format(n);
 }
+
+/**
+ * Iniciais para o avatar: primeira letra do primeiro e do último nome ("Ana Maria Souza" → "AS").
+ * Sem nome, usa a primeira letra do email; sem nada, "?".
+ */
+export function initials(name: string | null | undefined, email?: string | null): string {
+  const parts = (name ?? "").trim().split(/\s+/).filter(Boolean);
+  const letters =
+    parts.length > 1 ? [parts[0], parts[parts.length - 1]] : parts.length === 1 ? [parts[0]] : [email?.trim() ?? ""];
+  const result = letters.map((p) => Array.from(p)[0] ?? "").join("");
+  return result ? result.toLocaleUpperCase("pt-BR") : "?";
+}

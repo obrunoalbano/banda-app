@@ -1,6 +1,7 @@
 "use client";
 
 import { InstallAppButton } from "@/components/InstallAppButton";
+import { USER_MENU_LINKS, UserMenu } from "@/components/UserMenu";
 import { Brand } from "@/components/ui/Brand";
 import {
   AiIcon,
@@ -134,8 +135,8 @@ const ADMIN_NAV_GROUPS: NavGroup[] = [
 
 /** Configuração por área: o shell é o mesmo, muda menu, início e perfil. */
 const VARIANTS = {
-  band: { groups: NAV_GROUPS, home: "/casas", profile: "/conta", adminBadge: false },
-  admin: { groups: ADMIN_NAV_GROUPS, home: "/admin/palcos", profile: "/admin/senha", adminBadge: true },
+  band: { groups: NAV_GROUPS, home: "/casas", adminBadge: false },
+  admin: { groups: ADMIN_NAV_GROUPS, home: "/admin/palcos", adminBadge: true },
 } as const;
 
 /**
@@ -247,14 +248,22 @@ type DashboardShellProps = {
   /** "admin" = painel superadmin (menu e links próprios, selo "Admin" na marca). */
   variant?: keyof typeof VARIANTS;
   userName?: string | null;
+  userEmail?: string | null;
   /** App da banda: banda ativa (seletor no topo do menu; esconde itens só de administrador). */
   band?: ShellBand;
-  /** Rodapé do menu (botão Sair). Use `group-data-[collapsed=true]:…` para adaptar ao menu recolhido. */
-  footer: React.ReactNode;
+  /** Item "Sair" do menu do avatar (<LogoutButton variant="menu" />, server action). */
+  logout: React.ReactNode;
   children: React.ReactNode;
 };
 
-export function DashboardShell({ variant = "band", userName, band = null, footer, children }: DashboardShellProps) {
+export function DashboardShell({
+  variant = "band",
+  userName,
+  userEmail,
+  band = null,
+  logout,
+  children,
+}: DashboardShellProps) {
   const config = VARIANTS[variant];
   const isBandApp = variant === "band";
   const pathname = usePathname();
@@ -304,10 +313,15 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
         <div
           className={cx(
             "flex h-14 items-center border-b border-line px-3",
-            expanded ? "justify-between" : "justify-center",
+            expanded ? "justify-between md:justify-end" : "justify-center",
           )}
         >
-          {expanded ? <Brand href={config.home} /> : null}
+          {/* A marca fica no header; aqui só na gaveta do celular (que cobre o header). */}
+          {mobileOpen ? (
+            <span className="md:hidden">
+              <Brand href={config.home} />
+            </span>
+          ) : null}
           <button
             type="button"
             onClick={() => (mobileOpen ? setMobileOpen(false) : writeCollapsed(!collapsed))}
@@ -473,40 +487,32 @@ export function DashboardShell({ variant = "band", userName, band = null, footer
           ))}
         </nav>
 
-        <div className={cx("border-t border-line p-3", !expanded && "flex flex-col items-center")}>
-          {isBandApp && mobileOpen ? (
-            <div className="mb-2 md:hidden">
-              <InstallAppButton variant="menu" />
-            </div>
-          ) : null}
-          {expanded && userName ? (
-            <Link
-              href={config.profile}
-              className="mb-2 block truncate px-2.5 text-xs text-fg-subtle hover:text-fg"
-              title={userName}
-            >
-              {userName}
-            </Link>
-          ) : null}
-          {footer}
-        </div>
+        {isBandApp && mobileOpen ? (
+          <div className="border-t border-line p-3 md:hidden">
+            <InstallAppButton variant="menu" />
+          </div>
+        ) : null}
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Barra superior só no mobile: abre a gaveta. No desktop o menu lateral já mostra a marca. */}
-        <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] md:hidden">
+        {/* Header: avatar (menu da conta + Sair) à esquerda, marca à direita. No celular, antes do
+            avatar, o botão que abre a gaveta do menu. */}
+        <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] md:px-6">
           <button
             type="button"
             onClick={() => setMobileOpen(true)}
-            className={cx(iconButtonClass("md"), "-ml-2")}
+            className={cx(iconButtonClass("md"), "-ml-2 md:hidden")}
             aria-label="Abrir menu"
             aria-expanded={mobileOpen}
             aria-controls="dashboard-nav"
           >
             <MenuIcon aria-hidden />
           </button>
-          <Brand href={config.home} />
-          {config.adminBadge ? <AdminBadge /> : null}
+          <UserMenu name={userName} email={userEmail} links={USER_MENU_LINKS[variant]} logout={logout} />
+          <div className="ml-auto flex items-center gap-2">
+            {config.adminBadge ? <AdminBadge /> : null}
+            <Brand href={config.home} />
+          </div>
         </header>
         <main
           id="conteudo"

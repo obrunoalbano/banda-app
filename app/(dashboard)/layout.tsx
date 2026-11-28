@@ -22,7 +22,12 @@ export default async function DashboardLayout({ children }: { children: React.Re
         };
 
   return (
-    <DashboardShell userName={session?.user?.name} band={band} footer={<LogoutButton />}>
+    <DashboardShell
+      userName={session?.user?.name}
+      userEmail={session?.user?.email}
+      band={band}
+      logout={<LogoutButton variant="menu" />}
+    >
       {children}
     </DashboardShell>
   );

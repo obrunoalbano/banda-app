@@ -59,6 +59,10 @@ export function iconButtonClass(size: ButtonSize = "md"): string {
 /* ── Texto e links ──────────────────────────────────────────────────────── */
 
 /** Link inline em texto corrido / tabelas. */
+/** Item de menu suspenso (`DropdownMenu`): link ou botão em linha, com ícone à esquerda. */
+export const menuItemClass =
+  "flex w-full items-center gap-2.5 rounded-md px-2.5 py-2 text-left text-sm text-fg outline-none hover:bg-surface-sunken focus-visible:bg-surface-sunken focus-visible:ring-2 focus-visible:ring-focus";
+
 export const linkClass = "font-medium text-fg underline underline-offset-2 hover:no-underline";
 
 /** Link discreto (ex.: "← Voltar"). */

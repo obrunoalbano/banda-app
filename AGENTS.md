@@ -80,12 +80,12 @@ app/
 components/
   ui/                      design system (docs/design-system.md): styles.ts (receitas/tokens), icons.ts,
                            Button, Badge, Card, Alert, fields, PageHeader, DetailList, Table, FilterBar,
-                           Pagination, EmptyState, CodeBlock, ConfirmButton, StatusPage, Brand, AuthLayout
+                           Pagination, EmptyState, CodeBlock, ConfirmButton, DropdownMenu, StatusPage, Brand, AuthLayout
   public/                  PublicShowList, EmbedAutoResize (página pública e widget)
   explore/                 StageCard, ExploreFilterForm (Explorar Palcos)
   deals/                   DealBoard (client: arrastar e soltar com @dnd-kit/core, estado local), DealCard, DealDetails (painel), DealStepBadge, AddToFlowButton
   *Form.tsx                formulários client (POST/PATCH na API)
-  DashboardShell.tsx       menu lateral (gaveta no mobile) + header
+  DashboardShell.tsx       menu lateral (gaveta no mobile) + header (avatar com UserMenu à esquerda, marca à direita)
 hooks/                     useJsonSubmit (envio de formulário), useIbgeCities (municípios c/ cache)
 lib/
   api.ts                   withBand (só ADMIN da banda por padrão; { viewer: true } libera leitura), withUser, withAdmin, parseBody, jsonError…
@@ -209,7 +209,7 @@ Sempre **centavos em `Int`** (campos com sufixo `Cents`), máx. `MAX_CENTS` (Pos
 - Listagem: `FilterBar` → `EmptyState` → `Table` (todo `Td` com `label`; vira card no mobile) → `Pagination`.
 - Confirmação/exclusão: `ConfirmButton`/`ConfirmDeleteButton` (nunca `window.confirm`/`alert`); bloqueios com `disabledReason`.
 - Ícones de `components/ui/icons.ts` por nome semântico (`VenueIcon`, `ShowIcon`…). Nome do produto: `PRODUCT_NAME`/`Brand`.
-- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows, Ensaios — com selo de pendências, Repertórios) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). O nome do usuário no rodapé leva a `/conta`. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`/`novo`; selos numéricos por item via `band.badges` (href → número); `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
+- Menu por **módulos** (`NAV_GROUPS` em `components/DashboardShell.tsx`), com o seletor da banda ativa no topo: Administrativo (Casas, Shows, Ensaios — com selo de pendências, Repertórios) · Financeiro (Visão geral, Lançamentos) · Marketing (Contatos, Fluxo de contatos, Redes Sociais, EPK Profissional, Explorar Palcos, Abordagem com IA) · Configurações (Integrações — `adminOnly`, Minha banda → Dados da banda, Integrantes). Header no topo do conteúdo: avatar à esquerda (`UserMenu` → `DropdownMenu`: Minha conta, Alterar senha, Minhas bandas, Sair) e marca à direita. URLs não têm prefixo de módulo. Item não lançado = `soon: true` (desabilitado, "Em breve"); módulo não lançado = `soon: { icon }`. `matchNova: false` se houver sub-rota `nova`/`novo`; selos numéricos por item via `band.badges` (href → número); `children` para submenu (cada filho é uma rota com `PageHeader eyebrow`).
 - Microcopy em pt-BR, botões com verbo, vocabulário fixo (Casa de show, Show, Contato, Cachê…). Teste em 390px e no tema escuro.
 - **Mobile/PWA** (`docs/mobile.md`): no celular o app da banda tem barra de abas fixa embaixo (`MOBILE_TABS`) — elementos fixos no rodapé precisam considerar essa barra e `env(safe-area-inset-bottom)`; campos com ≥ 16px no celular (zoom do iPhone).
 
