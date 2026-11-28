@@ -25,6 +25,7 @@ export type ShowRepertoireOption = { id: string; name: string; songs: number };
 
 type ShowFormData = {
   id: string;
+  eventName: string | null;
   repertoireId: string | null;
   venueId: string | null;
   date: string;
@@ -74,6 +75,7 @@ export function ShowForm({ mode, venues, repertoires, show }: ShowFormProps) {
     ticketUrl: show?.ticketUrl ?? "",
     cancelled: show?.cancelled ?? false,
     repertoireId: show?.repertoireId ?? "",
+    eventName: show?.eventName ?? "",
   });
   const set = (patch: Partial<typeof form>) => setForm((f) => ({ ...f, ...patch }));
 
@@ -100,6 +102,7 @@ export function ShowForm({ mode, venues, repertoires, show }: ShowFormProps) {
         ticketUrl: form.ticketUrl,
         cancelled: form.cancelled,
         repertoireId: form.repertoireId || null,
+        eventName: form.eventName,
       },
     );
     if (!data) return;
@@ -110,6 +113,14 @@ export function ShowForm({ mode, venues, repertoires, show }: ShowFormProps) {
   return (
     <form onSubmit={handleSubmit} className="flex max-w-xl flex-col gap-4">
       {error && <Alert>{error}</Alert>}
+      <TextField
+        label="Nome do evento"
+        maxLength={120}
+        value={form.eventName}
+        onChange={(e) => set({ eventName: e.target.value })}
+        placeholder="Ex.: Festa junina da Vila"
+        hint="Opcional. Pode virar o título ao compartilhar as músicas do show. Não aparece na agenda pública."
+      />
       <div className="grid gap-4 sm:grid-cols-2">
         <SelectField
           label="Casa de show"

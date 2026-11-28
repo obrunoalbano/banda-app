@@ -27,6 +27,7 @@ export const POST = withBand(async (request, { bandId }) => {
     ticketUrl,
     cancelled,
     repertoireId,
+    eventName,
     ...locationInput
   } = parsed.data;
 
@@ -76,6 +77,7 @@ export const POST = withBand(async (request, { bandId }) => {
       ticketUrl: ticketUrl ?? null,
       cancelledAt: resolveCancelledAt(cancelled, null),
       repertoireId: repertoireId ?? null,
+      eventName: eventName ?? null,
     },
   });
 

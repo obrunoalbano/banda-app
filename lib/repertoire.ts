@@ -3,9 +3,42 @@ export const MAX_REPERTOIRE_SONGS = 200;
 
 export type ShareSong = { title: string; artists: string | null; durationMs: number | null; notes: string | null };
 
-export type ShareOptions = { artists: boolean; notes: boolean; durations: boolean };
+export type ShareOptions = {
+  /** Mostra o nome do repertório (sem ele, o arquivo abre com o nome da banda). */
+  title: boolean;
+  /** Show com nome do evento: o título passa a ser o nome do evento (no lugar do repertório). */
+  eventName: boolean;
+  artists: boolean;
+  notes: boolean;
+  durations: boolean;
+};
 
-export const DEFAULT_SHARE_OPTIONS: ShareOptions = { artists: true, notes: true, durations: false };
+export const DEFAULT_SHARE_OPTIONS: ShareOptions = {
+  title: true,
+  eventName: true,
+  artists: true,
+  notes: true,
+  durations: false,
+};
+
+/**
+ * Título do arquivo compartilhado: nome do evento (show com nome do evento e opção marcada),
+ * senão nome do repertório (opção "Título do repertório"), senão nenhum — aí o nome da banda
+ * vira o título.
+ */
+export function shareHeading({
+  name,
+  eventName,
+  options,
+}: {
+  name: string;
+  eventName?: string | null;
+  options: Pick<ShareOptions, "title" | "eventName">;
+}): { kind: "event" | "repertoire"; text: string } | { kind: "band"; text: null } {
+  if (eventName?.trim() && options.eventName) return { kind: "event", text: eventName.trim() };
+  if (options.title) return { kind: "repertoire", text: name };
+  return { kind: "band", text: null };
+}
 
 /** "3:32" · "1h05" (mesma regra de `formatDuration` em lib/spotify.ts, sem importar o módulo de rede). */
 function duration(ms: number | null): string | null {
@@ -50,14 +83,23 @@ export function repertoireShareText({
   description,
   songs,
   options = DEFAULT_SHARE_OPTIONS,
+  eventName = null,
 }: {
   bandName: string;
   name: string;
   description: string | null;
   songs: ShareSong[];
   options?: ShareOptions;
+  /** Nome do evento do show (opção "Mostrar nome do evento"). */
+  eventName?: string | null;
 }): string {
-  const lines = [`*Repertório: ${plain(name)}*`, plain(bandName)];
+  const heading = shareHeading({ name, eventName, options });
+  const lines =
+    heading.kind === "event"
+      ? [`*${plain(heading.text)}*`, plain(bandName)]
+      : heading.kind === "repertoire"
+        ? [`*Repertório: ${plain(heading.text)}*`, plain(bandName)]
+        : [`*${plain(bandName)}*`];
   if (description?.trim()) lines.push(`_${plain(description)}_`);
   lines.push("");
   songs.forEach((song, i) => {

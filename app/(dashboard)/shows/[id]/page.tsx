@@ -96,6 +96,11 @@ export default async function ShowDetalhePage({ params }: PageProps) {
       </PageHeader>
 
       <DetailList>
+        {show.eventName ? (
+          <DetailItem label="Nome do evento" wide>
+            {show.eventName}
+          </DetailItem>
+        ) : null}
         <DetailItem label="Casa de show" wide>
           {show.venue ? (
             <Link href={`/casas/${show.venue.id}`} className={linkClass}>
@@ -166,6 +171,7 @@ export default async function ShowDetalhePage({ params }: PageProps) {
               <ShareRepertoireButton
                 bandName={bandName}
                 logoUrl={logoUrl}
+                eventName={show.eventName}
                 name={show.repertoire.name}
                 description={`Show: ${title} · ${date} às ${show.time}`}
                 songs={setlist}

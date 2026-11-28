@@ -5,6 +5,7 @@ import {
   repertoireShareText,
   repertoireSummary,
   resolveSongOrder,
+  shareHeading,
 } from "./repertoire";
 
 const songs = [
@@ -37,11 +38,52 @@ describe("repertoireShareText", () => {
       name: "R",
       description: null,
       songs,
-      options: { artists: false, notes: false, durations: true },
+      options: { title: true, eventName: true, artists: false, notes: false, durations: true },
     });
     expect(text).toContain("1. Garota de Ipanema (3:20)\n2. Música própria (1:40)");
     expect(text).not.toContain("Tom Jobim");
     expect(text).not.toContain("↳");
+  });
+});
+
+describe("repertoireShareText sem título", () => {
+  it("abre com o nome da banda em negrito", () => {
+    const text = repertoireShareText({
+      bandName: "Banda Demo",
+      name: "Show de sábado",
+      description: null,
+      songs,
+      options: { title: false, eventName: true, artists: true, notes: true, durations: false },
+    });
+    expect(text.split("\n").slice(0, 3)).toEqual(["*Banda Demo*", "", "1. Garota de Ipanema — Tom Jobim"]);
+    expect(text).not.toContain("Show de sábado");
+  });
+});
+
+describe("título com nome do evento", () => {
+  it("nome do evento marcado vira o título (no lugar do repertório)", () => {
+    expect(
+      shareHeading({ name: "Pop", eventName: " Festa junina ", options: { title: true, eventName: true } }),
+    ).toEqual({ kind: "event", text: "Festa junina" });
+    const text = repertoireShareText({
+      bandName: "Banda Demo",
+      name: "Pop",
+      description: null,
+      songs,
+      eventName: "Festa junina",
+    });
+    expect(text.split("\n").slice(0, 2)).toEqual(["*Festa junina*", "Banda Demo"]);
+    expect(text).not.toContain("Repertório: Pop");
+  });
+  it("desmarcado ou vazio: segue a opção do repertório", () => {
+    expect(shareHeading({ name: "Pop", eventName: "Festa", options: { title: true, eventName: false } })).toEqual({
+      kind: "repertoire",
+      text: "Pop",
+    });
+    expect(shareHeading({ name: "Pop", eventName: "  ", options: { title: false, eventName: true } })).toEqual({
+      kind: "band",
+      text: null,
+    });
   });
 });
 
