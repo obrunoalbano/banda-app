@@ -12,14 +12,15 @@ import { Card } from "@/components/ui/Card";
 import { CodeBlock } from "@/components/ui/CodeBlock";
 import { ConfirmButton } from "@/components/ui/ConfirmButton";
 import { DetailItem, DetailList, ExternalLink } from "@/components/ui/DetailList";
+import { DropdownMenu, DropdownMenuHeader, DropdownMenuLink, DropdownMenuSeparator } from "@/components/ui/DropdownMenu";
 import { EmptyState } from "@/components/ui/EmptyState";
 import { CheckboxField, CurrencyField, PasswordField, PhoneField, SelectField, TextAreaField, TextField } from "@/components/ui/fields";
-import { AddIcon, EditIcon, EmailIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
+import { AccountIcon, AddIcon, EditIcon, EmailIcon, KeyIcon, LogoutIcon, ShowIcon, WhatsappIcon } from "@/components/ui/icons";
 import { PageHeader } from "@/components/ui/PageHeader";
 import { Pagination } from "@/components/ui/Pagination";
 import { Sheet } from "@/components/ui/Sheet";
 import { Stat } from "@/components/ui/Stat";
-import { containerClass, type ButtonVariant } from "@/components/ui/styles";
+import { containerClass, menuItemClass, type ButtonVariant } from "@/components/ui/styles";
 import { Table, Td, Tr } from "@/components/ui/Table";
 import { formatCents } from "@/lib/money";
 import { useState } from "react";
@@ -135,6 +136,28 @@ export function Gallery() {
               </DetailList>
               <TextAreaField label="Observações" rows={4} defaultValue="Ligar sexta." />
             </Sheet>
+            <DropdownMenu
+              label="Menu da conta: Ana Demo"
+              triggerClassName="flex size-9 items-center justify-center rounded-full border border-line bg-surface-sunken text-sm font-semibold text-fg"
+              trigger="AD"
+            >
+              <DropdownMenuHeader>
+                <p className="text-sm font-medium text-fg">Ana Demo</p>
+                <p className="text-xs text-fg-subtle">ana@exemplo.com</p>
+              </DropdownMenuHeader>
+              <DropdownMenuSeparator />
+              <DropdownMenuLink href="#acoes" icon={AccountIcon}>
+                Minha conta
+              </DropdownMenuLink>
+              <DropdownMenuLink href="#acoes" icon={KeyIcon}>
+                Alterar senha
+              </DropdownMenuLink>
+              <DropdownMenuSeparator />
+              <button type="button" role="menuitem" tabIndex={-1} className={menuItemClass}>
+                <LogoutIcon className="size-4 shrink-0" aria-hidden />
+                Sair
+              </button>
+            </DropdownMenu>
           </div>
         </div>
       </Section>

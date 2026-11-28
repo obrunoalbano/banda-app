@@ -6,6 +6,7 @@ import {
   formatRelative,
   formatDateOnly,
   formatDateTimeShort,
+  initials,
   instagramHref,
   maskPhoneBr,
   monthLabel,
@@ -95,4 +96,15 @@ describe("formatInteger", () => {
   it("separador de milhar pt-BR", () => {
     expect(formatInteger(5775)).toBe("5.775");
   });
+});
+
+describe("initials", () => {
+  it.each([
+    ["Ana Maria Souza", null, "AS"],
+    ["beto", null, "B"],
+    ["  Élida  Nunes ", null, "ÉN"],
+    [null, "carla@x.com", "C"],
+    ["", "", "?"],
+    [undefined, undefined, "?"],
+  ])("%s / %s → %s", (name, email, expected) => expect(initials(name, email)).toBe(expected));
 });

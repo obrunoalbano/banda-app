@@ -14,7 +14,12 @@ export default async function AdminPainelLayout({ children }: { children: React.
   await requireAdminId();
   const session = await getSession();
   return (
-    <DashboardShell variant="admin" userName={session?.user?.name} footer={<LogoutButton redirectTo="/admin/login" />}>
+    <DashboardShell
+      variant="admin"
+      userName={session?.user?.name}
+      userEmail={session?.user?.email}
+      logout={<LogoutButton variant="menu" redirectTo="/admin/login" />}
+    >
       {children}
     </DashboardShell>
   );
