@@ -34,6 +34,7 @@ export function UserMenu({
   const display = name?.trim() || email || "Sua conta";
   return (
     <DropdownMenu
+      align="end"
       label={`Menu da conta: ${display}`}
       triggerClassName="flex size-9 items-center justify-center rounded-full outline-none focus-visible:ring-2 focus-visible:ring-focus focus-visible:ring-offset-2 focus-visible:ring-offset-canvas"
       trigger={

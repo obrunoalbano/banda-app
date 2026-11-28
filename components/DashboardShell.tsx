@@ -495,8 +495,8 @@ export function DashboardShell({
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        {/* Header: avatar (menu da conta + Sair) à esquerda, marca à direita. No celular, antes do
-            avatar, o botão que abre a gaveta do menu. */}
+        {/* Header: marca à esquerda (no celular, depois do botão que abre a gaveta do menu) e
+            avatar (menu da conta + Sair) à direita. */}
         <header className="sticky top-0 z-20 flex h-[calc(3.5rem+env(safe-area-inset-top))] shrink-0 items-center gap-2 border-b border-line bg-canvas px-4 pt-[env(safe-area-inset-top)] md:px-6">
           <button
             type="button"
@@ -508,10 +508,10 @@ export function DashboardShell({
           >
             <MenuIcon aria-hidden />
           </button>
-          <UserMenu name={userName} email={userEmail} links={USER_MENU_LINKS[variant]} logout={logout} />
-          <div className="ml-auto flex items-center gap-2">
-            {config.adminBadge ? <AdminBadge /> : null}
-            <Brand href={config.home} />
+          <Brand href={config.home} />
+          {config.adminBadge ? <AdminBadge /> : null}
+          <div className="ml-auto">
+            <UserMenu name={userName} email={userEmail} links={USER_MENU_LINKS[variant]} logout={logout} />
           </div>
         </header>
         <main
